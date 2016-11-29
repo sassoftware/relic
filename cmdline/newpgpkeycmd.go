@@ -1,0 +1,160 @@
+/*
+ * Copyright (c) SAS Institute Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package cmdline
+
+import (
+	"crypto"
+	"crypto/ecdsa"
+	"crypto/rsa"
+	"encoding/hex"
+	"errors"
+	"fmt"
+	"os"
+	"strings"
+	"time"
+
+	"gerrit-pdt.unx.sas.com/tools/relic.git/p11token"
+	"github.com/spf13/cobra"
+	"golang.org/x/crypto/openpgp"
+	"golang.org/x/crypto/openpgp/armor"
+	"golang.org/x/crypto/openpgp/packet"
+)
+
+var NewPgpKeyCmd = &cobra.Command{
+	Use:   "new-pgp-key",
+	Short: "Generate a new PGP key from token",
+	RunE:  newPgpKeyCmd,
+}
+
+var (
+	argUserName    string
+	argUserComment string
+	argUserEmail   string
+	argRsaBits     uint
+	argEcdsaBits   uint
+)
+
+func init() {
+	RootCmd.AddCommand(NewPgpKeyCmd)
+	NewPgpKeyCmd.Flags().StringVarP(&argKeyName, "key", "k", "", "Name of key section in config file to use")
+	NewPgpKeyCmd.Flags().StringVarP(&argUserName, "name", "n", "", "Name of user identity")
+	NewPgpKeyCmd.Flags().StringVarP(&argUserComment, "comment", "C", "", "Comment of user identity")
+	NewPgpKeyCmd.Flags().StringVarP(&argUserEmail, "email", "E", "", "Email of user identity")
+	NewPgpKeyCmd.Flags().UintVar(&argRsaBits, "generate-rsa", 0, "Generate a RSA key of the specified bit size, if needed")
+	NewPgpKeyCmd.Flags().UintVar(&argEcdsaBits, "generate-ecdsa", 0, "Generate an ECDSA key of the specified curve size, if needed")
+}
+
+func selectOrGenerate(token *p11token.Token) (*p11token.Key, error) {
+	key, err := token.GetKey(argKeyName)
+	if err == nil {
+		fmt.Fprintln(os.Stderr, "Using existing key in token")
+		return key, nil
+	} else if _, ok := err.(p11token.KeyNotFoundError); !ok {
+		return nil, err
+	}
+	fmt.Fprintln(os.Stderr, "Generating a new key in token")
+	if argRsaBits != 0 {
+		return token.Generate(argKeyName, p11token.CKK_RSA, argRsaBits)
+	} else if argEcdsaBits != 0 {
+		return token.Generate(argKeyName, p11token.CKK_ECDSA, argEcdsaBits)
+	} else {
+		return nil, errors.New("No matching key exists, specify --generate-rsa or --generate-ecdsa to generate one")
+	}
+}
+
+func makeKey(key *p11token.Key, uids []*packet.UserId) (*openpgp.Entity, error) {
+	creationTime := time.Now()
+	var pubKey *packet.PublicKey
+	switch pub := key.Public().(type) {
+	case *rsa.PublicKey:
+		pubKey = packet.NewRSAPublicKey(creationTime, pub)
+	case *ecdsa.PublicKey:
+		pubKey = packet.NewECDSAPublicKey(creationTime, pub)
+	default:
+		return nil, errors.New("Unsupported key type")
+	}
+	entity := &openpgp.Entity{
+		PrimaryKey: pubKey,
+		PrivateKey: &packet.PrivateKey{
+			PublicKey:  *pubKey,
+			Encrypted:  false,
+			PrivateKey: key,
+		},
+		Identities: make(map[string]*openpgp.Identity),
+	}
+	isPrimaryId := true
+	for _, uid := range uids {
+		sig := &packet.Signature{
+			SigType:      packet.SigTypePositiveCert,
+			CreationTime: creationTime,
+			PubKeyAlgo:   pubKey.PubKeyAlgo,
+			Hash:         crypto.SHA512,
+			IsPrimaryId:  &isPrimaryId,
+			FlagsValid:   true,
+			FlagSign:     true,
+			FlagCertify:  true,
+			IssuerKeyId:  &pubKey.KeyId,
+		}
+		err := sig.SignUserId(uid.Id, entity.PrimaryKey, entity.PrivateKey, nil)
+		if err != nil {
+			return nil, err
+		}
+		entity.Identities[uid.Id] = &openpgp.Identity{
+			Name:          uid.Name,
+			UserId:        uid,
+			SelfSignature: sig,
+		}
+	}
+	return entity, nil
+}
+
+func newPgpKeyCmd(cmd *cobra.Command, args []string) error {
+	if argUserName == "" {
+		return errors.New("--name is required")
+	}
+	uid := packet.NewUserId(argUserName, argUserComment, argUserEmail)
+	if uid == nil {
+		return errors.New("Invalid user ID")
+	}
+	token, err := openTokenByKey(argKeyName)
+	if err != nil {
+		return err
+	}
+	defer token.Close()
+	key, err := selectOrGenerate(token)
+	if err != nil {
+		return err
+	}
+	entity, err := makeKey(key, []*packet.UserId{uid})
+	if err != nil {
+		return err
+	}
+	fingerprint := hex.EncodeToString(entity.PrimaryKey.Fingerprint[:])
+	fmt.Fprintln(os.Stderr, "Token CKA_ID: ", formatKeyId(key.GetId()))
+	fmt.Fprintln(os.Stderr, "PGP ID:       ", strings.ToUpper(fingerprint))
+	writer, err := armor.Encode(os.Stdout, openpgp.PublicKeyType, nil)
+	if err != nil {
+		return err
+	}
+	err = entity.Serialize(writer)
+	if err != nil {
+		return err
+	}
+	writer.Close()
+	fmt.Println()
+	return nil
+}
