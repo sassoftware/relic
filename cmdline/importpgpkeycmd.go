@@ -28,7 +28,7 @@ import (
 )
 
 var ImportPgpCmd = &cobra.Command{
-	Use:   "import-pgp-key",
+	Use:   "pgp-import",
 	Short: "Import PGP key to token",
 	RunE:  importPgpCmd,
 }

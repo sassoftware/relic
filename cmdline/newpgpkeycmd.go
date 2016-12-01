@@ -35,7 +35,7 @@ import (
 )
 
 var NewPgpKeyCmd = &cobra.Command{
-	Use:   "new-pgp-key",
+	Use:   "pgp-generate",
 	Short: "Generate a new PGP key from token",
 	RunE:  newPgpKeyCmd,
 }
@@ -50,30 +50,10 @@ var (
 
 func init() {
 	RootCmd.AddCommand(NewPgpKeyCmd)
-	NewPgpKeyCmd.Flags().StringVarP(&argKeyName, "key", "k", "", "Name of key section in config file to use")
 	NewPgpKeyCmd.Flags().StringVarP(&argUserName, "name", "n", "", "Name of user identity")
 	NewPgpKeyCmd.Flags().StringVarP(&argUserComment, "comment", "C", "", "Comment of user identity")
 	NewPgpKeyCmd.Flags().StringVarP(&argUserEmail, "email", "E", "", "Email of user identity")
-	NewPgpKeyCmd.Flags().UintVar(&argRsaBits, "generate-rsa", 0, "Generate a RSA key of the specified bit size, if needed")
-	NewPgpKeyCmd.Flags().UintVar(&argEcdsaBits, "generate-ecdsa", 0, "Generate an ECDSA key of the specified curve size, if needed")
-}
-
-func selectOrGenerate(token *p11token.Token) (*p11token.Key, error) {
-	key, err := token.GetKey(argKeyName)
-	if err == nil {
-		fmt.Fprintln(os.Stderr, "Using existing key in token")
-		return key, nil
-	} else if _, ok := err.(p11token.KeyNotFoundError); !ok {
-		return nil, err
-	}
-	fmt.Fprintln(os.Stderr, "Generating a new key in token")
-	if argRsaBits != 0 {
-		return token.Generate(argKeyName, p11token.CKK_RSA, argRsaBits)
-	} else if argEcdsaBits != 0 {
-		return token.Generate(argKeyName, p11token.CKK_ECDSA, argEcdsaBits)
-	} else {
-		return nil, errors.New("No matching key exists, specify --generate-rsa or --generate-ecdsa to generate one")
-	}
+	addSelectOrGenerateFlags(NewPgpKeyCmd)
 }
 
 func makeKey(key *p11token.Key, uids []*packet.UserId) (*openpgp.Entity, error) {
@@ -130,15 +110,11 @@ func newPgpKeyCmd(cmd *cobra.Command, args []string) error {
 	if uid == nil {
 		return errors.New("Invalid user ID")
 	}
-	token, err := openTokenByKey(argKeyName)
+	key, err := selectOrGenerate()
 	if err != nil {
 		return err
 	}
-	defer token.Close()
-	key, err := selectOrGenerate(token)
-	if err != nil {
-		return err
-	}
+	defer key.CloseToken()
 	entity, err := makeKey(key, []*packet.UserId{uid})
 	if err != nil {
 		return err

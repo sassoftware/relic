@@ -20,6 +20,7 @@ import (
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/rsa"
+	"crypto/x509"
 	"encoding/hex"
 	"errors"
 	"io"
@@ -111,6 +112,10 @@ func (token *Token) findKey(keyConf *config.KeyConfig, class uint) (pkcs11.Objec
 	return objects[0], nil
 }
 
+func (key *Key) CloseToken() {
+	key.token.Close()
+}
+
 func (key *Key) Public() crypto.PublicKey {
 	return key.pubParsed
 }
@@ -119,6 +124,17 @@ func (key *Key) GetId() []byte {
 	key.token.mutex.Lock()
 	defer key.token.mutex.Unlock()
 	return key.token.getAttribute(key.priv, pkcs11.CKA_ID)
+}
+
+func (key *Key) X509SignatureAlgorithm() x509.SignatureAlgorithm {
+	switch key.keyType {
+	case CKK_RSA:
+		return x509.SHA256WithRSA
+	case CKK_ECDSA:
+		return x509.ECDSAWithSHA256
+	default:
+		return x509.UnknownSignatureAlgorithm
+	}
 }
 
 func (key *Key) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts) ([]byte, error) {
