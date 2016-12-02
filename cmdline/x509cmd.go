@@ -192,7 +192,7 @@ func makeCertificate(key *p11token.Key) (string, error) {
 
 func x509Cmd(cmd *cobra.Command, args []string) error {
 	if argCommonName == "" {
-		return errors.New("--name is required")
+		return errors.New("--commonName is required")
 	}
 	key, err := selectOrGenerate()
 	if err != nil {
