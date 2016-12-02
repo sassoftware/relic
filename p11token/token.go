@@ -89,6 +89,9 @@ func openLib(tokenConf *config.TokenConfig, write bool) (*Token, error) {
 		return nil, errors.New("Missing attribute \"provider\" in token configuration")
 	}
 	ctx := pkcs11.New(tokenConf.Provider)
+	if ctx == nil {
+		return nil, errors.New("Failed to initialize pkcs11 provider")
+	}
 	err := ctx.Initialize()
 	if err != nil {
 		ctx.Destroy()
