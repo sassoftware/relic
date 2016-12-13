@@ -40,9 +40,12 @@ const (
 	CKK_ECDSA = pkcs11.CKK_ECDSA
 )
 
+var providerMap map[string]*pkcs11.Ctx
+var providerMutex sync.Mutex
+
 type Token struct {
 	config *config.Config
-	name   string
+	Name   string
 	ctx    *pkcs11.Ctx
 	sh     pkcs11.SessionHandle
 	mutex  sync.Mutex
@@ -58,12 +61,12 @@ func Open(config *config.Config, tokenName string, pinProvider PinProvider) (*To
 	if err != nil {
 		return nil, err
 	}
-	token, err := openLib(tokenConf, true)
+	ctx, err := openLib(tokenConf, true)
 	if err != nil {
 		return nil, err
 	}
-	token.config = config
-	token.name = tokenName
+	token := &Token{ctx: ctx, config: config, Name: tokenName}
+	runtime.SetFinalizer(token, (*Token).Close)
 	slot, err := token.findSlot(tokenConf)
 	if err != nil {
 		token.Close()
@@ -84,11 +87,20 @@ func Open(config *config.Config, tokenName string, pinProvider PinProvider) (*To
 	return token, nil
 }
 
-func openLib(tokenConf *config.TokenConfig, write bool) (*Token, error) {
+func openLib(tokenConf *config.TokenConfig, write bool) (*pkcs11.Ctx, error) {
 	if tokenConf.Provider == "" {
 		return nil, errors.New("Missing attribute \"provider\" in token configuration")
 	}
-	ctx := pkcs11.New(tokenConf.Provider)
+	providerMutex.Lock()
+	defer providerMutex.Unlock()
+	if providerMap == nil {
+		providerMap = make(map[string]*pkcs11.Ctx)
+	}
+	ctx, ok := providerMap[tokenConf.Provider]
+	if ok {
+		return ctx, nil
+	}
+	ctx = pkcs11.New(tokenConf.Provider)
 	if ctx == nil {
 		return nil, errors.New("Failed to initialize pkcs11 provider")
 	}
@@ -97,18 +109,15 @@ func openLib(tokenConf *config.TokenConfig, write bool) (*Token, error) {
 		ctx.Destroy()
 		return nil, err
 	}
-	token := new(Token)
-	token.ctx = ctx
-	runtime.SetFinalizer(token, (*Token).Close)
-	return token, nil
+	providerMap[tokenConf.Provider] = ctx
+	return ctx, nil
 }
 
 func (token *Token) Close() {
 	token.mutex.Lock()
 	defer token.mutex.Unlock()
 	if token.ctx != nil {
-		token.ctx.Finalize()
-		token.ctx.Destroy()
+		token.ctx.CloseSession(token.sh)
 		token.ctx = nil
 		runtime.SetFinalizer(token, nil)
 	}
@@ -187,7 +196,7 @@ func (token *Token) autoLogIn(admin bool, pin string, pinProvider PinProvider) e
 		}
 	} else if pinProvider != nil {
 		for {
-			pin, err = pinProvider.GetPin(token.name)
+			pin, err = pinProvider.GetPin(token.Name)
 			if err != nil {
 				return err
 			} else if pin == "" {

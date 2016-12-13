@@ -198,7 +198,6 @@ func x509Cmd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	defer key.CloseToken()
 	var result string
 	if cmd == ReqCmd {
 		result, err = makeRequest(key)

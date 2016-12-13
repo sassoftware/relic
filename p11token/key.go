@@ -30,12 +30,13 @@ import (
 )
 
 type Key struct {
-	name      string
-	token     *Token
-	keyType   uint
-	pub       pkcs11.ObjectHandle
-	priv      pkcs11.ObjectHandle
-	pubParsed crypto.PublicKey
+	Name        string
+	Certificate string
+	token       *Token
+	keyType     uint
+	pub         pkcs11.ObjectHandle
+	priv        pkcs11.ObjectHandle
+	pubParsed   crypto.PublicKey
 }
 
 func (token *Token) GetKey(keyName string) (*Key, error) {
@@ -50,7 +51,11 @@ func (token *Token) GetKey(keyName string) (*Key, error) {
 
 func (token *Token) getKey(keyConf *config.KeyConfig, keyName string) (*Key, error) {
 	var err error
-	key := &Key{name: keyName, token: token}
+	key := &Key{
+		Name:        keyName,
+		token:       token,
+		Certificate: keyConf.Certificate,
+	}
 	key.priv, err = token.findKey(keyConf, pkcs11.CKO_PRIVATE_KEY)
 	if err != nil {
 		return nil, err
@@ -110,10 +115,6 @@ func (token *Token) findKey(keyConf *config.KeyConfig, class uint) (pkcs11.Objec
 		return 0, KeyNotFoundError{}
 	}
 	return objects[0], nil
-}
-
-func (key *Key) CloseToken() {
-	key.token.Close()
 }
 
 func (key *Key) Public() crypto.PublicKey {

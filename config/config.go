@@ -32,15 +32,22 @@ type TokenConfig struct {
 }
 
 type KeyConfig struct {
-	Token       string // Token section to use for this key (required)
-	Label       string // Select a key by label
-	Id          string // Select a key by ID (hex notation)
-	Certificate string // Path to certificate associated with this key
+	Token       string   // Token section to use for this key (required)
+	Label       string   // Select a key by label
+	Id          string   // Select a key by ID (hex notation)
+	Certificate string   // Path to certificate associated with this key
+	Roles       []string // List of user roles that can use this key
+}
+
+type ServerConfig struct {
+	Listen string // Port to listen for TLS connections
+	Key    string // Name of key section to use for serving TLS
 }
 
 type Config struct {
 	Tokens map[string]*TokenConfig
 	Keys   map[string]*KeyConfig
+	Server *ServerConfig
 }
 
 func ReadFile(path string) (*Config, error) {
@@ -80,4 +87,16 @@ func (config *Config) GetKey(keyName string) (*KeyConfig, error) {
 	} else {
 		return keyConf, nil
 	}
+}
+
+func (config *Config) GetServedKeys() (keys []string) {
+	if config.Keys == nil {
+		return
+	}
+	for keyName, keyConf := range config.Keys {
+		if len(keyConf.Roles) > 0 {
+			keys = append(keys, keyName)
+		}
+	}
+	return
 }

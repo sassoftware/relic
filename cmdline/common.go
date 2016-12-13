@@ -36,11 +36,6 @@ func selectOrGenerate() (key *p11token.Key, err error) {
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		if err != nil {
-			token.Close()
-		}
-	}()
 	key, err = token.GetKey(argKeyName)
 	if err == nil {
 		fmt.Fprintln(os.Stderr, "Using existing key in token")

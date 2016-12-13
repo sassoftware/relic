@@ -114,7 +114,6 @@ func newPgpKeyCmd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	defer key.CloseToken()
 	entity, err := makeKey(key, []*packet.UserId{uid})
 	if err != nil {
 		return err

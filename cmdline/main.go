@@ -19,7 +19,6 @@ package cmdline
 import (
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"strings"
 
@@ -27,9 +26,6 @@ import (
 	"gerrit-pdt.unx.sas.com/tools/relic.git/p11token"
 	"github.com/howeyc/gopass"
 	"github.com/spf13/cobra"
-	"golang.org/x/crypto/openpgp"
-	"golang.org/x/crypto/openpgp/armor"
-	"golang.org/x/crypto/openpgp/packet"
 )
 
 var RootCmd = &cobra.Command{
@@ -46,8 +42,10 @@ var (
 )
 
 var currentConfig *config.Config
+var tokenMap map[string]*p11token.Token
 
 func init() {
+	tokenMap = make(map[string]*p11token.Token)
 	RootCmd.PersistentFlags().StringVarP(&argConfig, "config", "c", "", "Configuration file")
 }
 
@@ -79,11 +77,20 @@ func initConfig() error {
 }
 
 func openToken(tokenName string) (*p11token.Token, error) {
+	token, ok := tokenMap[tokenName]
+	if ok {
+		return token, nil
+	}
 	err := initConfig()
 	if err != nil {
 		return nil, err
 	}
-	return p11token.Open(currentConfig, tokenName, &pinPrompt{})
+	token, err = p11token.Open(currentConfig, tokenName, &pinPrompt{})
+	if err != nil {
+		return nil, err
+	}
+	tokenMap[tokenName] = token
+	return token, nil
 }
 
 func openTokenByKey(keyName string) (*p11token.Token, error) {
@@ -91,7 +98,7 @@ func openTokenByKey(keyName string) (*p11token.Token, error) {
 	if err != nil {
 		return nil, err
 	}
-	keyConf, err := currentConfig.GetKey(argKeyName)
+	keyConf, err := currentConfig.GetKey(keyName)
 	if err != nil {
 		return nil, err
 	}
@@ -102,43 +109,23 @@ func openTokenByKey(keyName string) (*p11token.Token, error) {
 	return token, nil
 }
 
-func openKey(keyName string) (*p11token.Token, *p11token.Key, error) {
+func openKey(keyName string) (*p11token.Key, error) {
 	token, err := openTokenByKey(keyName)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	key, err := token.GetKey(keyName)
 	if err != nil {
 		token.Close()
-		return nil, nil, err
+		return nil, err
 	}
-	return token, key, err
+	return key, err
 }
 
-func readEntity(path string) (*openpgp.Entity, error) {
-	keyfile, err := os.Open(path)
-	if err != nil {
-		return nil, err
+func closeTokens() {
+	for _, token := range tokenMap {
+		token.Close()
 	}
-	first := make([]byte, 1, 1)
-	n, err := keyfile.Read(first)
-	if err != nil {
-		return nil, err
-	} else if n != 1 {
-		return nil, errors.New("Key file is empty")
-	}
-	keyfile.Seek(0, 0)
-	var reader io.Reader
-	if first[0] == '-' {
-		block, err := armor.Decode(keyfile)
-		if err != nil {
-			return nil, err
-		}
-		reader = block.Body
-	} else {
-		reader = keyfile
-	}
-	return openpgp.ReadEntity(packet.NewReader(reader))
 }
 
 func formatKeyId(key_id []byte) string {
@@ -150,6 +137,7 @@ func formatKeyId(key_id []byte) string {
 }
 
 func Main() {
+	defer closeTokens()
 	if err := RootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

@@ -22,6 +22,7 @@ import (
 	"os"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/p11token"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/pgptoken"
 	"github.com/howeyc/gopass"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/openpgp"
@@ -40,7 +41,7 @@ func init() {
 }
 
 func readPrivateKey(path string) (*openpgp.Entity, error) {
-	entity, err := readEntity(path)
+	entity, err := pgptoken.ReadEntity(path)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +79,6 @@ func importPgpCmd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	defer token.Close()
 	_, err = token.GetKey(argKeyName)
 	if err == nil {
 		return errors.New("An object with that label already exists in the token")
