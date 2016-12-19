@@ -23,7 +23,7 @@ import (
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/p11token"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/pgptoken"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/p11token/pgptoken"
 	"github.com/howeyc/gopass"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/openpgp"

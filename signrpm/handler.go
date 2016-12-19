@@ -23,7 +23,7 @@ import (
 	"net/http"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/p11token"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/pgptoken"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/p11token/pgptoken"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/server"
 )
 
