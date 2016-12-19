@@ -41,8 +41,11 @@ func serveCmd(cmd *cobra.Command, args []string) error {
 	if currentConfig.Server == nil {
 		return errors.New("Missing server section in configuration file")
 	}
-	if currentConfig.Server.Key == "" {
-		return errors.New("Missing key option in server configuration file")
+	if currentConfig.Server.KeyFile == "" {
+		return errors.New("Missing keyfile option in server configuration file")
+	}
+	if currentConfig.Server.CertFile == "" {
+		return errors.New("Missing CertFile option in server configuration file")
 	}
 	if currentConfig.Clients == nil {
 		return errors.New("Missing clients section in configuration file")
@@ -51,7 +54,6 @@ func serveCmd(cmd *cobra.Command, args []string) error {
 		currentConfig.Server.Listen = ":8888"
 	}
 	needKeys := currentConfig.GetServedKeys()
-	needKeys = append(needKeys, currentConfig.Server.Key)
 	keyMap := make(map[string]*p11token.Key)
 	for _, keyName := range needKeys {
 		key, err := openKey(keyName)

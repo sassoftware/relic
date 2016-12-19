@@ -41,8 +41,9 @@ type KeyConfig struct {
 }
 
 type ServerConfig struct {
-	Listen string // Port to listen for TLS connections
-	Key    string // Name of key section to use for serving TLS
+	Listen   string // Port to listen for TLS connections
+	KeyFile  string // Path to TLS key file
+	CertFile string // Path to TLS certificate chain
 }
 
 type ClientConfig struct {

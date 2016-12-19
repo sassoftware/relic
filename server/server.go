@@ -20,10 +20,8 @@ import (
 	"context"
 	"crypto/sha256"
 	"crypto/tls"
-	"crypto/x509"
 	"encoding/hex"
 	"encoding/pem"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -163,31 +161,13 @@ func parseCertChain(path string) ([][]byte, error) {
 	return certs, nil
 }
 
-func makeTlsConfig(conf *config.Config, key *p11token.Key) (*tls.Config, error) {
-	if key.Certificate == "" {
-		return nil, fmt.Errorf("No certificates defined for key %s", key.Name)
-	}
-	certs, err := parseCertChain(key.Certificate)
+func makeTlsConfig(conf *config.Config) (*tls.Config, error) {
+	tlscert, err := tls.LoadX509KeyPair(conf.Server.CertFile, conf.Server.KeyFile)
 	if err != nil {
 		return nil, err
-	}
-	if len(certs) == 0 {
-		return nil, fmt.Errorf("Key %s certificate file did not contain any certificates", key.Certificate)
-	}
-	leaf, err := x509.ParseCertificate(certs[0])
-	if err != nil {
-		return nil, err
-	}
-	if !p11token.SameKey(key.Public(), leaf.PublicKey) {
-		return nil, errors.New("Certificate does not match private key in token")
-	}
-	cert := tls.Certificate{
-		Certificate: certs,
-		PrivateKey:  key,
-		Leaf:        leaf,
 	}
 	return &tls.Config{
-		Certificates:             []tls.Certificate{cert},
+		Certificates:             []tls.Certificate{tlscert},
 		PreferServerCipherSuites: true,
 		SessionTicketsDisabled:   true,
 		ClientAuth:               tls.RequireAnyClientCert,
@@ -200,7 +180,7 @@ func Serve(conf *config.Config, keyMap map[string]*p11token.Key) error {
 		Config: conf,
 		KeyMap: keyMap,
 	}
-	tconf, err := makeTlsConfig(conf, keyMap[conf.Server.Key])
+	tconf, err := makeTlsConfig(conf)
 	if err != nil {
 		return err
 	}
