@@ -18,7 +18,10 @@ package server
 
 import (
 	"fmt"
+	"io"
 	"net/http"
+	"os"
+	"path"
 )
 
 type Response interface {
@@ -55,4 +58,38 @@ func ErrorResponse(statusCode int) Response {
 var AccessDeniedResponse Response = &stringResponse{
 	StatusCode: http.StatusForbidden,
 	Body:       "Access denied\r\n",
+}
+
+type fileResponse struct {
+	name      string
+	file      *os.File
+	size      int64
+	deleteDir bool
+}
+
+func FileResponse(path string, deleteDir bool) (*fileResponse, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	stat, err := f.Stat()
+	if err != nil {
+		return nil, err
+	}
+	return &fileResponse{
+		name:      path,
+		file:      f,
+		size:      stat.Size(),
+		deleteDir: deleteDir,
+	}, nil
+}
+
+func (r *fileResponse) Write(writer http.ResponseWriter) {
+	writer.Header().Set("Content-Type", "application/octet-stream")
+	writer.Header().Set("Content-Length", fmt.Sprintf("%d", r.size))
+	writer.WriteHeader(http.StatusOK)
+	io.Copy(writer, r.file)
+	if r.deleteDir {
+		os.RemoveAll(path.Dir(r.name))
+	}
 }

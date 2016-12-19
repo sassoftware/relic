@@ -22,6 +22,7 @@ import (
 	"io/ioutil"
 	"strings"
 
+	"github.com/mattn/go-shellwords"
 	"gopkg.in/yaml.v2"
 )
 
@@ -32,11 +33,17 @@ type TokenConfig struct {
 	Pin      string // PIN to use, otherwise will be prompted (optional)
 }
 
+type ToolConfig struct {
+	Command string // Command template
+}
+
 type KeyConfig struct {
-	Token       string   // Token section to use for this key (required)
+	Token       string   // Token section to use for this key (linux)
+	Tool        string   // Tool section to use for this key (windows)
 	Label       string   // Select a key by label
 	Id          string   // Select a key by ID (hex notation)
 	Certificate string   // Path to certificate associated with this key
+	Key         string   // Name of key container (windows)
 	Roles       []string // List of user roles that can use this key
 }
 
@@ -53,6 +60,7 @@ type ClientConfig struct {
 
 type Config struct {
 	Tokens  map[string]*TokenConfig
+	Tools   map[string]*ToolConfig
 	Keys    map[string]*KeyConfig
 	Server  *ServerConfig
 	Clients map[string]*ClientConfig
@@ -116,4 +124,35 @@ func (config *Config) GetServedKeys() (keys []string) {
 		}
 	}
 	return
+}
+
+func (config *Config) GetToolCmd(keyName, path string) ([]string, error) {
+	if config.Keys == nil {
+		return nil, errors.New("No keys defined in configuration")
+	} else if config.Tools == nil {
+		return nil, errors.New("No tools defined in configuration")
+	}
+	keyConf, ok := config.Keys[keyName]
+	if !ok {
+		return nil, fmt.Errorf("Key \"%s\" not found in configuration", keyName)
+	} else if keyConf.Tool == "" {
+		return nil, fmt.Errorf("Key \"%s\" does not specify required value 'tool'", keyName)
+	}
+	toolConf, ok := config.Tools[keyConf.Tool]
+	if !ok {
+		return nil, fmt.Errorf("Tool \"%s\" not found in configuration", keyConf.Tool)
+	} else if toolConf.Command == "" {
+		return nil, fmt.Errorf("Tool \"%s\" does not specify required value 'command'", keyConf.Tool)
+	}
+	words, err := shellwords.Parse(toolConf.Command)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to parse tool commandline: %s", err)
+	}
+	for i, word := range words {
+		word = strings.Replace(word, "{file}", path, -1)
+		word = strings.Replace(word, "{certificate}", keyConf.Certificate, -1)
+		word = strings.Replace(word, "{key}", keyConf.Key, -1)
+		words[i] = word
+	}
+	return words, nil
 }

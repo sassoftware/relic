@@ -19,9 +19,8 @@ package cmdline
 import (
 	"errors"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/p11token"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/server"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/signrpm"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/windows/handler"
 	"github.com/spf13/cobra"
 )
 
@@ -54,16 +53,7 @@ func serveCmd(cmd *cobra.Command, args []string) error {
 	if currentConfig.Server.Listen == "" {
 		currentConfig.Server.Listen = ":8888"
 	}
-	needKeys := currentConfig.GetServedKeys()
-	keyMap := make(map[string]*p11token.Key)
-	for _, keyName := range needKeys {
-		key, err := openKey(keyName)
-		if err != nil {
-			return err
-		}
-		keyMap[keyName] = key
-	}
 	srv := server.New(currentConfig)
-	signrpm.AddSignRpmHandler(srv, keyMap)
+	handler.AddSignWinHandler(srv)
 	return srv.Serve()
 }
