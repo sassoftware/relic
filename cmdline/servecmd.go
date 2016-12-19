@@ -44,6 +44,9 @@ func serveCmd(cmd *cobra.Command, args []string) error {
 	if currentConfig.Server.Key == "" {
 		return errors.New("Missing key option in server configuration file")
 	}
+	if currentConfig.Clients == nil {
+		return errors.New("Missing clients section in configuration file")
+	}
 	if currentConfig.Server.Listen == "" {
 		currentConfig.Server.Listen = ":8888"
 	}

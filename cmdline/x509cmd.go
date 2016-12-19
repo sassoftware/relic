@@ -177,6 +177,7 @@ func makeCertificate(key *p11token.Key) (string, error) {
 	template.NotBefore = time.Now().Add(time.Hour * -24)
 	template.NotAfter = time.Now().Add(time.Hour * 24 * time.Duration(argExpireDays))
 	template.SubjectKeyId = key.GetId()
+	template.IsCA = true
 	template.BasicConstraintsValid = true
 	if err := setUsage(&template); err != nil {
 		return "", err

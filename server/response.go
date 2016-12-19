@@ -51,3 +51,8 @@ func ErrorResponse(statusCode int) Response {
 		Body:       http.StatusText(statusCode) + "\r\n",
 	}
 }
+
+var AccessDeniedResponse Response = &stringResponse{
+	StatusCode: http.StatusForbidden,
+	Body:       "Access denied\r\n",
+}

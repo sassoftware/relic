@@ -18,6 +18,7 @@ package cmdline
 
 import (
 	"errors"
+	"fmt"
 	"os"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/pgptoken"
@@ -75,7 +76,7 @@ func signRpmCmd(cmd *cobra.Command, args []string) (err error) {
 			return err
 		}
 		info.KeyName = argKeyName
-		info.LogTo(os.Stderr)
+		fmt.Fprintf(os.Stderr, "%s\n", info)
 	}
 	return nil
 }

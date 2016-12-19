@@ -17,9 +17,12 @@
 package server
 
 import (
+	"fmt"
 	"net/http"
 )
 
 func (handler *Handler) serveHome(request *http.Request) (Response, error) {
-	return ErrorResponse(http.StatusTeapot), nil
+	roles := request.Context().Value(ctxRoles).([]string)
+	data := fmt.Sprintf("I am a teapot\n\nRoles: %s\n", roles)
+	return StringResponse(http.StatusOK, data), nil
 }

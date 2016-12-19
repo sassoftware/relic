@@ -29,10 +29,12 @@ import (
 )
 
 type SigInfo struct {
-	Header    *rpmutils.RpmHeader
-	PublicKey *packet.PublicKey
-	Timestamp time.Time
-	KeyName   string
+	Header     *rpmutils.RpmHeader
+	PublicKey  *packet.PublicKey
+	Timestamp  time.Time
+	KeyName    string
+	ClientName string
+	ClientIP   string
 }
 
 func defaultOpts(opts *rpmutils.SignatureOptions) *rpmutils.SignatureOptions {
@@ -50,6 +52,8 @@ func defaultOpts(opts *rpmutils.SignatureOptions) *rpmutils.SignatureOptions {
 }
 
 type jsonInfo struct {
+	ClientIP    string    `json:"client_ip,omitempty"`
+	ClientName  string    `json:"client_name,omitempty"`
 	Fingerprint string    `json:"fingerprint"`
 	HeaderSig   []byte    `json:"header_sig"`
 	Md5         string    `json:"md5"`
@@ -70,6 +74,8 @@ func (info *SigInfo) Dump(stream io.Writer) {
 	jinfo.Md5 = fmt.Sprintf("%x", md5)
 	jinfo.Sha1, _ = info.Header.GetString(rpmutils.SIG_SHA1)
 	jinfo.Timestamp = info.Timestamp
+	jinfo.ClientIP = info.ClientIP
+	jinfo.ClientName = info.ClientName
 
 	enc := json.NewEncoder(stream)
 	enc.SetIndent("", "  ")
@@ -77,11 +83,15 @@ func (info *SigInfo) Dump(stream io.Writer) {
 	stream.Write([]byte{'\n'})
 }
 
-func (info *SigInfo) LogTo(stream io.Writer) {
+func (info *SigInfo) String() string {
 	nevra, _ := info.Header.GetNEVRA()
 	md5, _ := info.Header.GetBytes(rpmutils.SIG_MD5)
 	sha1, _ := info.Header.GetString(rpmutils.SIG_SHA1)
-	fmt.Fprintf(stream, "Signed %s using %s(%X) md5=%X sha1=%s\n", nevra, info.KeyName, info.PublicKey.Fingerprint, md5, sha1)
+	ret := fmt.Sprintf("Signed RPM: nevra=%s key=%s fp=%X md5=%X sha1=%s", nevra, info.KeyName, info.PublicKey.Fingerprint, md5, sha1)
+	if info.ClientIP != "" || info.ClientName != "" {
+		ret += fmt.Sprintf(" client=%s ip=%s", info.ClientName, info.ClientIP)
+	}
+	return ret
 }
 
 func SignRpmStream(stream io.Reader, key *packet.PrivateKey, opts *rpmutils.SignatureOptions) (*SigInfo, error) {

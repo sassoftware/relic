@@ -18,11 +18,9 @@ package server
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"net"
 	"net/http"
-	"os"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/pgptoken"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/signrpm"
@@ -37,10 +35,12 @@ func (handler *Handler) serveSignRpm(request *http.Request) (Response, error) {
 	if keyName == "" {
 		return StringResponse(http.StatusBadRequest, "'key' query parameter is required"), nil
 	}
-	key, ok := handler.KeyMap[keyName]
-	if !ok {
-		return StringResponse(http.StatusBadRequest, "Key not found or access denied"), nil
+	clientName := request.Context().Value(ctxClientName).(string)
+	if !handler.CheckKeyAccess(request.Context(), keyName) {
+		handler.Logf("Access denied: client %s (%s), key %s\n", clientName, remoteIP(request), keyName)
+		return AccessDeniedResponse, nil
 	}
+	key := handler.KeyMap[keyName]
 	packet, err := pgptoken.KeyFromToken(key)
 	info, err := signrpm.SignRpmStream(request.Body, packet, nil)
 	if err != nil {
@@ -49,11 +49,14 @@ func (handler *Handler) serveSignRpm(request *http.Request) (Response, error) {
 		} else if _, ok := err.(net.Error); ok {
 			return StringResponse(400, "error reading from socket"), nil
 		} else {
-			fmt.Fprintf(os.Stderr, "Error signing rpm: %s\n", err)
+			handler.Logf("Error signing rpm: %s\n", err)
 			return ErrorResponse(500), nil
 		}
 	}
-	info.LogTo(os.Stderr)
+	info.KeyName = keyName
+	info.ClientName = clientName
+	info.ClientIP = remoteIP(request)
+	handler.Logf("%s", info)
 	var buf bytes.Buffer
 	info.Dump(&buf)
 	return StringResponse(200, string(buf.Bytes())), nil

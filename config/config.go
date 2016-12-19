@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"strings"
 
 	"gopkg.in/yaml.v2"
 )
@@ -44,10 +45,16 @@ type ServerConfig struct {
 	Key    string // Name of key section to use for serving TLS
 }
 
+type ClientConfig struct {
+	Nickname string   // Name that appears in audit log entries
+	Roles    []string // List of roles that this client possesses
+}
+
 type Config struct {
-	Tokens map[string]*TokenConfig
-	Keys   map[string]*KeyConfig
-	Server *ServerConfig
+	Tokens  map[string]*TokenConfig
+	Keys    map[string]*KeyConfig
+	Server  *ServerConfig
+	Clients map[string]*ClientConfig
 }
 
 func ReadFile(path string) (*Config, error) {
@@ -60,6 +67,15 @@ func ReadFile(path string) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	normalized := make(map[string]*ClientConfig)
+	for fingerprint, client := range config.Clients {
+		if len(fingerprint) != 64 {
+			return nil, errors.New("Client keys must be hex-encoded SHA256 digests of the public key")
+		}
+		lower := strings.ToLower(fingerprint)
+		normalized[lower] = client
+	}
+	config.Clients = normalized
 	return config, nil
 }
 

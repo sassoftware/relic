@@ -17,15 +17,19 @@
 package server
 
 import (
+	"context"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/hex"
 	"encoding/pem"
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
-	"os"
 	"runtime"
+	"strings"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/p11token"
@@ -36,17 +40,30 @@ type Handler struct {
 	KeyMap map[string]*p11token.Key
 }
 
+type ctxKey int
+
+const (
+	ctxClientName ctxKey = iota
+	ctxRoles
+)
+
 func (handler *Handler) callHandler(request *http.Request) (response Response, err error) {
 	defer func() {
 		if caught := recover(); caught != nil {
 			const size = 64 << 10
 			buf := make([]byte, size)
 			buf = buf[:runtime.Stack(buf, false)]
-			fmt.Fprintf(os.Stderr, "Unhandled exception: %s\n%s\n", caught, buf)
+			handler.Logf("Unhandled exception from client %s: %s\n%s\n", remoteIP(request), caught, buf)
 			response = ErrorResponse(http.StatusInternalServerError)
 			err = nil
 		}
 	}()
+	ctx := request.Context()
+	ctx, errResponse := handler.getUserRoles(ctx, request)
+	if errResponse != nil {
+		return errResponse, nil
+	}
+	request = request.WithContext(ctx)
 	switch request.URL.Path {
 	case "/":
 		return handler.serveHome(request)
@@ -57,10 +74,69 @@ func (handler *Handler) callHandler(request *http.Request) (response Response, e
 	}
 }
 
+func (handler *Handler) getUserRoles(ctx context.Context, request *http.Request) (context.Context, Response) {
+	if request.TLS == nil {
+		return nil, StringResponse(http.StatusBadRequest, "Retry request using TLS")
+	}
+	if len(request.TLS.PeerCertificates) == 0 {
+		return nil, StringResponse(http.StatusBadRequest, "Invalid client certificate")
+	}
+	cert := request.TLS.PeerCertificates[0]
+	digest := sha256.Sum256(cert.RawSubjectPublicKeyInfo)
+	encoded := hex.EncodeToString(digest[:])
+	client, ok := handler.Config.Clients[encoded]
+	if !ok {
+		handler.Logf("Denied access to unknown client %s with fingerprint %s\n", remoteIP(request), encoded)
+		return nil, AccessDeniedResponse
+	}
+	ctx = context.WithValue(ctx, ctxClientName, client.Nickname)
+	ctx = context.WithValue(ctx, ctxRoles, client.Roles)
+	return ctx, nil
+}
+
+func (handler *Handler) CheckKeyAccess(ctx context.Context, keyName string) bool {
+	if handler.Config.Keys == nil {
+		return false
+	}
+	key, ok := handler.Config.Keys[keyName]
+	if !ok {
+		return false
+	}
+	clientRoles, ok := ctx.Value(ctxRoles).([]string)
+	if !ok {
+		return false
+	}
+	for _, keyRole := range key.Roles {
+		for _, clientRole := range clientRoles {
+			if keyRole == clientRole {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (handler *Handler) Logf(format string, args ...interface{}) {
+	log.Printf(format, args...)
+}
+
+func remoteIP(request *http.Request) string {
+	address := request.RemoteAddr
+	colon := strings.LastIndex(address, ":")
+	if colon < 0 {
+		return address
+	}
+	address = address[:colon]
+	if address[0] == '[' && address[len(address)-1] == ']' {
+		address = address[1 : len(address)-1]
+	}
+	return address
+}
+
 func (handler *Handler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	response, err := handler.callHandler(request)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unhandled exception: %s\n", err)
+		handler.Logf("Unhandled exception from client %s: %s\n", remoteIP(request), err)
 		response = ErrorResponse(http.StatusInternalServerError)
 	}
 	response.Write(writer)
@@ -96,7 +172,7 @@ func makeTlsConfig(conf *config.Config, key *p11token.Key) (*tls.Config, error) 
 		return nil, err
 	}
 	if len(certs) == 0 {
-		return nil, fmt.Errorf("Key %s certificate file did not contain any certificates")
+		return nil, fmt.Errorf("Key %s certificate file did not contain any certificates", key.Certificate)
 	}
 	leaf, err := x509.ParseCertificate(certs[0])
 	if err != nil {
@@ -114,6 +190,7 @@ func makeTlsConfig(conf *config.Config, key *p11token.Key) (*tls.Config, error) 
 		Certificates:             []tls.Certificate{cert},
 		PreferServerCipherSuites: true,
 		SessionTicketsDisabled:   true,
+		ClientAuth:               tls.RequireAnyClientCert,
 		MinVersion:               tls.VersionTLS12,
 	}, nil
 }
