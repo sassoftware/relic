@@ -136,6 +136,7 @@ func New(config *config.Config) *Server {
 		Handlers: make(map[string]Handler),
 	}
 	addHomeHandler(server)
+	addSignToolHandler(server)
 	return server
 }
 

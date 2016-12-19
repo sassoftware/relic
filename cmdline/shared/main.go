@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package cmdline
+package shared
 
 import (
 	"errors"
@@ -25,21 +25,18 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var argConfig string
+var CurrentConfig *config.Config
+
 var RootCmd = &cobra.Command{
-	Use: "relicwin",
+	Use: "relic",
 }
-
-var (
-	argConfig string
-)
-
-var currentConfig *config.Config
 
 func init() {
 	RootCmd.PersistentFlags().StringVarP(&argConfig, "config", "c", "", "Configuration file")
 }
 
-func initConfig() error {
+func InitConfig() error {
 	if argConfig == "" {
 		return errors.New("--config is required")
 	}
@@ -47,7 +44,7 @@ func initConfig() error {
 	if err != nil {
 		return err
 	}
-	currentConfig = config
+	CurrentConfig = config
 	return nil
 }
 

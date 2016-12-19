@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package handler
+package server
 
 import (
 	"errors"
@@ -25,32 +25,30 @@ import (
 	"os/exec"
 	"path"
 	"strings"
-
-	"gerrit-pdt.unx.sas.com/tools/relic.git/server"
 )
 
-type winSignHandler struct {
-	server *server.Server
+type toolSignHandler struct {
+	server *Server
 }
 
-func (h *winSignHandler) Handle(request *http.Request) (res server.Response, err error) {
+func (h *toolSignHandler) Handle(request *http.Request) (res Response, err error) {
 	if request.Method != "POST" {
-		return server.ErrorResponse(http.StatusMethodNotAllowed), nil
+		return ErrorResponse(http.StatusMethodNotAllowed), nil
 	}
 	query := request.URL.Query()
 	keyName := query.Get("key")
 	if keyName == "" {
-		return server.StringResponse(http.StatusBadRequest, "'key' query parameter is required"), nil
+		return StringResponse(http.StatusBadRequest, "'key' query parameter is required"), nil
 	}
 	filename := query.Get("filename")
 	exten := path.Ext(filename)
 	if exten == "" {
-		return server.StringResponse(http.StatusBadRequest, "'filename' query parameter is required"), nil
+		return StringResponse(http.StatusBadRequest, "'filename' query parameter is required"), nil
 	}
-	clientName := server.GetClientName(request)
+	clientName := GetClientName(request)
 	if !h.server.CheckKeyAccess(request, keyName) {
-		h.server.Logf("Access denied: client %s (%s), key %s\n", clientName, server.GetClientIP(request), keyName)
-		return server.AccessDeniedResponse, nil
+		h.server.Logf("Access denied: client %s (%s), key %s\n", clientName, GetClientIP(request), keyName)
+		return AccessDeniedResponse, nil
 	}
 	cleanName := "target" + exten
 	cmdline, err := h.server.Config.GetToolCmd(keyName, cleanName)
@@ -75,8 +73,8 @@ func (h *winSignHandler) Handle(request *http.Request) (res server.Response, err
 	if err != nil {
 		return nil, err
 	}
-	h.server.Logf("Signed windows package: filename=%s key=%s size=%d client=%s ip=%s", filename, keyName, size, clientName, server.GetClientIP(request))
-	return server.FileResponse(scratchPath, true)
+	h.server.Logf("Signed package: filename=%s key=%s size=%d client=%s ip=%s", filename, keyName, size, clientName, GetClientIP(request))
+	return FileResponse(scratchPath, true)
 }
 
 func spoolFile(request *http.Request, path string) (int64, error) {
@@ -99,7 +97,7 @@ func formatCmdline(cmdline []string) string {
 	return strings.Join(words, " ")
 }
 
-func signFile(server *server.Server, cmdline []string, scratchDir string) error {
+func signFile(server *Server, cmdline []string, scratchDir string) error {
 	proc := exec.Command(cmdline[0], cmdline[1:]...)
 	proc.Dir = scratchDir
 	output, err := proc.CombinedOutput()
@@ -110,6 +108,6 @@ func signFile(server *server.Server, cmdline []string, scratchDir string) error 
 	return nil
 }
 
-func AddSignWinHandler(server *server.Server) {
-	server.Handlers["/sign_win"] = &winSignHandler{server: server}
+func addSignToolHandler(server *Server) {
+	server.Handlers["/sign_tool"] = &toolSignHandler{server: server}
 }

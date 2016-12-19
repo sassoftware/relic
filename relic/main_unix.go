@@ -1,3 +1,5 @@
+// +build !windows
+
 /*
  * Copyright (c) SAS Institute Inc.
  *
@@ -16,8 +18,13 @@
 
 package main
 
-import "gerrit-pdt.unx.sas.com/tools/relic.git/cmdline"
+import (
+	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
+
+	_ "gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/servecmd"
+	_ "gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/token"
+)
 
 func main() {
-	cmdline.Main()
+	shared.Main()
 }

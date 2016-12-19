@@ -107,7 +107,7 @@ func (config *Config) GetKey(keyName string) (*KeyConfig, error) {
 	keyConf, ok := config.Keys[keyName]
 	if !ok {
 		return nil, fmt.Errorf("Key \"%s\" not found in configuration", keyName)
-	} else if keyConf.Token == "" {
+	} else if keyConf.Token == "" && keyConf.Tool == "" {
 		return nil, fmt.Errorf("Key \"%s\" does not specify required value 'token'", keyName)
 	} else {
 		return keyConf, nil
@@ -119,7 +119,7 @@ func (config *Config) GetServedKeys() (keys []string) {
 		return
 	}
 	for keyName, keyConf := range config.Keys {
-		if len(keyConf.Roles) > 0 {
+		if len(keyConf.Roles) > 0 && keyConf.Tool == "" {
 			keys = append(keys, keyName)
 		}
 	}

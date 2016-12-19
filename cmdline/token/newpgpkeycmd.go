@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package cmdline
+package token
 
 import (
 	"crypto"
@@ -27,6 +27,7 @@ import (
 	"strings"
 	"time"
 
+	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/p11token"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/openpgp"
@@ -49,7 +50,7 @@ var (
 )
 
 func init() {
-	RootCmd.AddCommand(NewPgpKeyCmd)
+	shared.RootCmd.AddCommand(NewPgpKeyCmd)
 	NewPgpKeyCmd.Flags().StringVarP(&argUserName, "name", "n", "", "Name of user identity")
 	NewPgpKeyCmd.Flags().StringVarP(&argUserComment, "comment", "C", "", "Comment of user identity")
 	NewPgpKeyCmd.Flags().StringVarP(&argUserEmail, "email", "E", "", "Email of user identity")

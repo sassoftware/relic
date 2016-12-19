@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package cmdline
+package token
 
 import (
 	"crypto/rand"
@@ -28,6 +28,7 @@ import (
 	"strings"
 	"time"
 
+	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/p11token"
 	"github.com/spf13/cobra"
 )
@@ -58,12 +59,12 @@ var (
 
 func init() {
 	ReqCmd.RunE = x509Cmd
-	RootCmd.AddCommand(ReqCmd)
+	shared.RootCmd.AddCommand(ReqCmd)
 	addSelectOrGenerateFlags(ReqCmd)
 	addCertFlags(ReqCmd)
 
 	SelfSignCmd.RunE = x509Cmd
-	RootCmd.AddCommand(SelfSignCmd)
+	shared.RootCmd.AddCommand(SelfSignCmd)
 	SelfSignCmd.Flags().StringVarP(&argKeyUsage, "key-usage", "U", "", "Key usage, one of: serverAuth clientAuth codeSigning emailProtection")
 	SelfSignCmd.Flags().UintVarP(&argExpireDays, "expire-days", "e", 36525, "Number of days before certificate expires")
 	addSelectOrGenerateFlags(SelfSignCmd)

@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
-package cmdline
+package token
 
 import (
 	"errors"
 	"fmt"
 	"os"
 
+	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/pgptoken"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/signrpm"
 	"github.com/spf13/cobra"
@@ -33,7 +34,7 @@ var SignRpmCmd = &cobra.Command{
 }
 
 func init() {
-	RootCmd.AddCommand(SignRpmCmd)
+	shared.RootCmd.AddCommand(SignRpmCmd)
 	SignRpmCmd.Flags().StringVarP(&argKeyName, "key", "k", "", "name of key section in config file to use")
 	SignRpmCmd.Flags().StringVarP(&argFile, "file", "f", "", "Input RPM file to sign")
 	SignRpmCmd.Flags().StringVarP(&argOutput, "output", "o", "", "Output RPM file")

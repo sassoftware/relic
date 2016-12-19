@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
-package cmdline
+package token
 
 import (
 	"errors"
 	"fmt"
 	"os"
 
+	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/p11token"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/pgptoken"
 	"github.com/howeyc/gopass"
@@ -35,7 +36,7 @@ var ImportPgpCmd = &cobra.Command{
 }
 
 func init() {
-	RootCmd.AddCommand(ImportPgpCmd)
+	shared.RootCmd.AddCommand(ImportPgpCmd)
 	ImportPgpCmd.Flags().StringVarP(&argKeyName, "key", "k", "", "Name of key section in config file to use")
 	ImportPgpCmd.Flags().StringVarP(&argFile, "file", "f", "", "PGP private key file to import (armored or binary)")
 }

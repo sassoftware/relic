@@ -14,14 +14,13 @@
  * limitations under the License.
  */
 
-package cmdline
+package servecmd
 
 import (
 	"errors"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/p11token"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/server"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/signrpm"
 	"github.com/spf13/cobra"
 )
 
@@ -31,39 +30,42 @@ var ServeCmd = &cobra.Command{
 	RunE:  serveCmd,
 }
 
+type InitHookFunc func(*server.Server) error
+
+var serveCmdInitHooks []InitHookFunc
+
+func AddHook(f InitHookFunc) {
+	serveCmdInitHooks = append(serveCmdInitHooks, f)
+}
+
 func init() {
-	RootCmd.AddCommand(ServeCmd)
+	shared.RootCmd.AddCommand(ServeCmd)
 }
 
 func serveCmd(cmd *cobra.Command, args []string) error {
-	if err := initConfig(); err != nil {
+	if err := shared.InitConfig(); err != nil {
 		return err
 	}
-	if currentConfig.Server == nil {
+	if shared.CurrentConfig.Server == nil {
 		return errors.New("Missing server section in configuration file")
 	}
-	if currentConfig.Server.KeyFile == "" {
+	if shared.CurrentConfig.Server.KeyFile == "" {
 		return errors.New("Missing keyfile option in server configuration file")
 	}
-	if currentConfig.Server.CertFile == "" {
+	if shared.CurrentConfig.Server.CertFile == "" {
 		return errors.New("Missing certfile option in server configuration file")
 	}
-	if currentConfig.Clients == nil {
+	if shared.CurrentConfig.Clients == nil {
 		return errors.New("Missing clients section in configuration file")
 	}
-	if currentConfig.Server.Listen == "" {
-		currentConfig.Server.Listen = ":8888"
+	if shared.CurrentConfig.Server.Listen == "" {
+		shared.CurrentConfig.Server.Listen = ":8888"
 	}
-	needKeys := currentConfig.GetServedKeys()
-	keyMap := make(map[string]*p11token.Key)
-	for _, keyName := range needKeys {
-		key, err := openKey(keyName)
-		if err != nil {
+	srv := server.New(shared.CurrentConfig)
+	for _, hook := range serveCmdInitHooks {
+		if err := hook(srv); err != nil {
 			return err
 		}
-		keyMap[keyName] = key
 	}
-	srv := server.New(currentConfig)
-	signrpm.AddSignRpmHandler(srv, keyMap)
 	return srv.Serve()
 }
