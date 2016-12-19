@@ -21,6 +21,7 @@ import (
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/p11token"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/server"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/signrpm"
 	"github.com/spf13/cobra"
 )
 
@@ -62,5 +63,7 @@ func serveCmd(cmd *cobra.Command, args []string) error {
 		}
 		keyMap[keyName] = key
 	}
-	return server.Serve(currentConfig, keyMap)
+	srv := server.New(currentConfig)
+	signrpm.AddSignRpmHandler(srv, keyMap)
+	return srv.Serve()
 }

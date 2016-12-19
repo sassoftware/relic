@@ -21,58 +21,47 @@ import (
 	"crypto/sha256"
 	"crypto/tls"
 	"encoding/hex"
-	"encoding/pem"
-	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"runtime"
-	"strings"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/p11token"
 )
 
-type Handler struct {
-	Config *config.Config
-	KeyMap map[string]*p11token.Key
+type Handler interface {
+	Handle(*http.Request) (Response, error)
 }
 
-type ctxKey int
+type Server struct {
+	Config   *config.Config
+	Handlers map[string]Handler
+}
 
-const (
-	ctxClientName ctxKey = iota
-	ctxRoles
-)
-
-func (handler *Handler) callHandler(request *http.Request) (response Response, err error) {
+func (s *Server) callHandler(request *http.Request) (response Response, err error) {
 	defer func() {
 		if caught := recover(); caught != nil {
 			const size = 64 << 10
 			buf := make([]byte, size)
 			buf = buf[:runtime.Stack(buf, false)]
-			handler.Logf("Unhandled exception from client %s: %s\n%s\n", remoteIP(request), caught, buf)
+			s.Logf("Unhandled exception from client %s: %s\n%s\n", GetClientIP(request), caught, buf)
 			response = ErrorResponse(http.StatusInternalServerError)
 			err = nil
 		}
 	}()
 	ctx := request.Context()
-	ctx, errResponse := handler.getUserRoles(ctx, request)
+	ctx, errResponse := s.getUserRoles(ctx, request)
 	if errResponse != nil {
 		return errResponse, nil
 	}
 	request = request.WithContext(ctx)
-	switch request.URL.Path {
-	case "/":
-		return handler.serveHome(request)
-	case "/sign_rpm":
-		return handler.serveSignRpm(request)
-	default:
+	handler, ok := s.Handlers[request.URL.Path]
+	if !ok {
 		return ErrorResponse(http.StatusNotFound), nil
 	}
+	return handler.Handle(request)
 }
 
-func (handler *Handler) getUserRoles(ctx context.Context, request *http.Request) (context.Context, Response) {
+func (s *Server) getUserRoles(ctx context.Context, request *http.Request) (context.Context, Response) {
 	if request.TLS == nil {
 		return nil, StringResponse(http.StatusBadRequest, "Retry request using TLS")
 	}
@@ -82,9 +71,9 @@ func (handler *Handler) getUserRoles(ctx context.Context, request *http.Request)
 	cert := request.TLS.PeerCertificates[0]
 	digest := sha256.Sum256(cert.RawSubjectPublicKeyInfo)
 	encoded := hex.EncodeToString(digest[:])
-	client, ok := handler.Config.Clients[encoded]
+	client, ok := s.Config.Clients[encoded]
 	if !ok {
-		handler.Logf("Denied access to unknown client %s with fingerprint %s\n", remoteIP(request), encoded)
+		s.Logf("Denied access to unknown client %s with fingerprint %s\n", GetClientIP(request), encoded)
 		return nil, AccessDeniedResponse
 	}
 	ctx = context.WithValue(ctx, ctxClientName, client.Nickname)
@@ -92,15 +81,15 @@ func (handler *Handler) getUserRoles(ctx context.Context, request *http.Request)
 	return ctx, nil
 }
 
-func (handler *Handler) CheckKeyAccess(ctx context.Context, keyName string) bool {
-	if handler.Config.Keys == nil {
+func (s *Server) CheckKeyAccess(request *http.Request, keyName string) bool {
+	if s.Config.Keys == nil {
 		return false
 	}
-	key, ok := handler.Config.Keys[keyName]
+	key, ok := s.Config.Keys[keyName]
 	if !ok {
 		return false
 	}
-	clientRoles, ok := ctx.Value(ctxRoles).([]string)
+	clientRoles := GetClientRoles(request)
 	if !ok {
 		return false
 	}
@@ -114,55 +103,21 @@ func (handler *Handler) CheckKeyAccess(ctx context.Context, keyName string) bool
 	return false
 }
 
-func (handler *Handler) Logf(format string, args ...interface{}) {
+func (s *Server) Logf(format string, args ...interface{}) {
 	log.Printf(format, args...)
 }
 
-func remoteIP(request *http.Request) string {
-	address := request.RemoteAddr
-	colon := strings.LastIndex(address, ":")
-	if colon < 0 {
-		return address
-	}
-	address = address[:colon]
-	if address[0] == '[' && address[len(address)-1] == ']' {
-		address = address[1 : len(address)-1]
-	}
-	return address
-}
-
-func (handler *Handler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
-	response, err := handler.callHandler(request)
+func (s *Server) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
+	response, err := s.callHandler(request)
 	if err != nil {
-		handler.Logf("Unhandled exception from client %s: %s\n", remoteIP(request), err)
+		s.Logf("Unhandled exception from client %s: %s\n", GetClientIP(request), err)
 		response = ErrorResponse(http.StatusInternalServerError)
 	}
 	response.Write(writer)
 }
 
-func parseCertChain(path string) ([][]byte, error) {
-	pemData, err := ioutil.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("unable to read certificate chain: %s", err)
-	}
-	certs := make([][]byte, 0)
-	for {
-		var block *pem.Block
-		block, pemData = pem.Decode(pemData)
-		if block == nil {
-			break
-		}
-		if block.Type == "CERTIFICATE" {
-			certs = append(certs, block.Bytes)
-		} else {
-			return nil, fmt.Errorf("Found unexpected %s block in certificate chain", block.Type)
-		}
-	}
-	return certs, nil
-}
-
-func makeTlsConfig(conf *config.Config) (*tls.Config, error) {
-	tlscert, err := tls.LoadX509KeyPair(conf.Server.CertFile, conf.Server.KeyFile)
+func (s *Server) makeTlsConfig() (*tls.Config, error) {
+	tlscert, err := tls.LoadX509KeyPair(s.Config.Server.CertFile, s.Config.Server.KeyFile)
 	if err != nil {
 		return nil, err
 	}
@@ -175,19 +130,24 @@ func makeTlsConfig(conf *config.Config) (*tls.Config, error) {
 	}, nil
 }
 
-func Serve(conf *config.Config, keyMap map[string]*p11token.Key) error {
-	handler := &Handler{
-		Config: conf,
-		KeyMap: keyMap,
+func New(config *config.Config) *Server {
+	server := &Server{
+		Config:   config,
+		Handlers: make(map[string]Handler),
 	}
-	tconf, err := makeTlsConfig(conf)
+	addHomeHandler(server)
+	return server
+}
+
+func (s *Server) Serve() error {
+	tconf, err := s.makeTlsConfig()
 	if err != nil {
 		return err
 	}
-	listener, err := tls.Listen("tcp", conf.Server.Listen, tconf)
+	listener, err := tls.Listen("tcp", s.Config.Server.Listen, tconf)
 	if err != nil {
 		return err
 	}
-	httpServer := &http.Server{Handler: handler}
+	httpServer := &http.Server{Handler: s}
 	return httpServer.Serve(listener)
 }

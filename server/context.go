@@ -17,18 +17,34 @@
 package server
 
 import (
-	"fmt"
 	"net/http"
+	"strings"
 )
 
-type homeHandler struct{}
+type ctxKey int
 
-func (homeHandler) Handle(request *http.Request) (Response, error) {
-	roles := request.Context().Value(ctxRoles).([]string)
-	data := fmt.Sprintf("I am a teapot\n\nRoles: %s\n", roles)
-	return StringResponse(http.StatusOK, data), nil
+const (
+	ctxClientName ctxKey = iota
+	ctxRoles
+)
+
+func GetClientRoles(request *http.Request) []string {
+	return request.Context().Value(ctxRoles).([]string)
 }
 
-func addHomeHandler(server *Server) {
-	server.Handlers["/"] = homeHandler{}
+func GetClientName(request *http.Request) string {
+	return request.Context().Value(ctxClientName).(string)
+}
+
+func GetClientIP(request *http.Request) string {
+	address := request.RemoteAddr
+	colon := strings.LastIndex(address, ":")
+	if colon < 0 {
+		return address
+	}
+	address = address[:colon]
+	if address[0] == '[' && address[len(address)-1] == ']' {
+		address = address[1 : len(address)-1]
+	}
+	return address
 }
