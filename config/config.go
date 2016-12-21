@@ -58,12 +58,20 @@ type ClientConfig struct {
 	Roles    []string // List of roles that this client possesses
 }
 
+type RemoteConfig struct {
+	Url      string // URL of remote server
+	KeyFile  string // Path to TLS client key file
+	CertFile string // Path to TLS client certificate
+	CaCert   string // Path to CA certificate
+}
+
 type Config struct {
 	Tokens  map[string]*TokenConfig
 	Tools   map[string]*ToolConfig
 	Keys    map[string]*KeyConfig
 	Server  *ServerConfig
 	Clients map[string]*ClientConfig
+	Remote  *RemoteConfig
 
 	path string
 }

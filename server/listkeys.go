@@ -17,12 +17,16 @@
 package server
 
 import (
-	"fmt"
 	"net/http"
 )
 
-func (*Server) serveHome(request *http.Request) (Response, error) {
-	roles := request.Context().Value(ctxRoles).([]string)
-	data := fmt.Sprintf("I am a teapot\n\nRoles: %s\n", roles)
-	return StringResponse(http.StatusOK, data), nil
+func (s *Server) serveListKeys(request *http.Request) (res Response, err error) {
+	if request.Method != "GET" {
+		return ErrorResponse(http.StatusMethodNotAllowed), nil
+	}
+	roles := GetClientRoles(request)
+	if roles == nil {
+		return AccessDeniedResponse, nil
+	}
+	return JsonResponse(roles)
 }

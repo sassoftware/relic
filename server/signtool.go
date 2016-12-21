@@ -27,11 +27,7 @@ import (
 	"strings"
 )
 
-type toolSignHandler struct {
-	server *Server
-}
-
-func (h *toolSignHandler) Handle(request *http.Request) (res Response, err error) {
+func (s *Server) serveSignTool(request *http.Request) (res Response, err error) {
 	if request.Method != "POST" {
 		return ErrorResponse(http.StatusMethodNotAllowed), nil
 	}
@@ -46,12 +42,12 @@ func (h *toolSignHandler) Handle(request *http.Request) (res Response, err error
 		return StringResponse(http.StatusBadRequest, "'filename' query parameter is required"), nil
 	}
 	clientName := GetClientName(request)
-	if !h.server.CheckKeyAccess(request, keyName) {
-		h.server.Logf("Access denied: client %s (%s), key %s\n", clientName, GetClientIP(request), keyName)
+	if !s.CheckKeyAccess(request, keyName) {
+		s.Logf("Access denied: client %s (%s), key %s\n", clientName, GetClientIP(request), keyName)
 		return AccessDeniedResponse, nil
 	}
 	cleanName := "target" + exten
-	cmdline, err := h.server.Config.GetToolCmd(keyName, cleanName)
+	cmdline, err := s.Config.GetToolCmd(keyName, cleanName)
 	if err != nil {
 		return nil, err
 	}
@@ -69,11 +65,11 @@ func (h *toolSignHandler) Handle(request *http.Request) (res Response, err error
 	if err != nil {
 		return nil, err
 	}
-	err = signFile(h.server, cmdline, scratchDir)
+	err = signFile(s, cmdline, scratchDir)
 	if err != nil {
 		return nil, err
 	}
-	h.server.Logf("Signed package: filename=%s key=%s size=%d client=%s ip=%s", filename, keyName, size, clientName, GetClientIP(request))
+	s.Logf("Signed package: filename=%s key=%s size=%d client=%s ip=%s", filename, keyName, size, clientName, GetClientIP(request))
 	return FileResponse(scratchPath, true)
 }
 
@@ -106,8 +102,4 @@ func signFile(server *Server, cmdline []string, scratchDir string) error {
 		return errors.New("Error invoking signing tool")
 	}
 	return nil
-}
-
-func addSignToolHandler(server *Server) {
-	server.Handlers["/sign_tool"] = &toolSignHandler{server: server}
 }

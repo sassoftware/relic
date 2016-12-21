@@ -29,12 +29,12 @@ import (
 )
 
 type SigInfo struct {
-	Header     *rpmutils.RpmHeader
-	PublicKey  *packet.PublicKey
-	Timestamp  time.Time
-	KeyName    string
-	ClientName string
-	ClientIP   string
+	Header      *rpmutils.RpmHeader
+	Fingerprint string
+	Timestamp   time.Time
+	KeyName     string
+	ClientName  string
+	ClientIP    string
 }
 
 func defaultOpts(opts *rpmutils.SignatureOptions) *rpmutils.SignatureOptions {
@@ -67,7 +67,7 @@ func (info *SigInfo) Dump(stream io.Writer) {
 	var jinfo jsonInfo
 	jinfo.HeaderSig, _ = info.Header.GetBytes(rpmutils.SIG_RSA)
 	jinfo.PayloadSig, _ = info.Header.GetBytes(rpmutils.SIG_PGP)
-	jinfo.Fingerprint = fmt.Sprintf("%X", info.PublicKey.Fingerprint)
+	jinfo.Fingerprint = info.Fingerprint
 	nevra, _ := info.Header.GetNEVRA()
 	jinfo.Nevra = nevra.String()
 	md5, _ := info.Header.GetBytes(rpmutils.SIG_MD5)
@@ -87,7 +87,7 @@ func (info *SigInfo) String() string {
 	nevra, _ := info.Header.GetNEVRA()
 	md5, _ := info.Header.GetBytes(rpmutils.SIG_MD5)
 	sha1, _ := info.Header.GetString(rpmutils.SIG_SHA1)
-	ret := fmt.Sprintf("Signed RPM: nevra=%s key=%s fp=%X md5=%X sha1=%s", nevra, info.KeyName, info.PublicKey.Fingerprint, md5, sha1)
+	ret := fmt.Sprintf("Signed RPM: nevra=%s key=%s fp=%s md5=%X sha1=%s", nevra, info.KeyName, info.Fingerprint, md5, sha1)
 	if info.ClientIP != "" || info.ClientName != "" {
 		ret += fmt.Sprintf(" client=%s ip=%s", info.ClientName, info.ClientIP)
 	}
@@ -100,7 +100,8 @@ func SignRpmStream(stream io.Reader, key *packet.PrivateKey, opts *rpmutils.Sign
 	if err != nil {
 		return nil, err
 	}
-	return &SigInfo{Header: header, PublicKey: &key.PublicKey, Timestamp: opts.CreationTime}, nil
+	fp := fmt.Sprintf("%X", key.PublicKey.Fingerprint)[:]
+	return &SigInfo{Header: header, Fingerprint: fp, Timestamp: opts.CreationTime}, nil
 }
 
 func SignRpmFile(infile *os.File, outpath string, key *packet.PrivateKey, opts *rpmutils.SignatureOptions) (*SigInfo, error) {
@@ -109,5 +110,19 @@ func SignRpmFile(infile *os.File, outpath string, key *packet.PrivateKey, opts *
 	if err != nil {
 		return nil, err
 	}
-	return &SigInfo{Header: header, PublicKey: &key.PublicKey, Timestamp: opts.CreationTime}, nil
+	fp := fmt.Sprintf("%X", key.PublicKey.Fingerprint)[:]
+	return &SigInfo{Header: header, Fingerprint: fp, Timestamp: opts.CreationTime}, nil
+}
+
+func SignRpmFileWithJson(infile *os.File, outpath string, blob []byte) (*SigInfo, error) {
+	var jinfo jsonInfo
+	err := json.Unmarshal(blob, &jinfo)
+	if err != nil {
+		return nil, err
+	}
+	header, err := rpmutils.RewriteWithSignatures(infile, outpath, jinfo.PayloadSig, jinfo.HeaderSig)
+	if err != nil {
+		return nil, err
+	}
+	return &SigInfo{Header: header, Fingerprint: jinfo.Fingerprint, Timestamp: jinfo.Timestamp}, nil
 }

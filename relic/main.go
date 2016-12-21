@@ -19,8 +19,8 @@ package main
 import (
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
 
+	_ "gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/remotecmd"
 	_ "gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/servecmd"
-	// token functions omitted
 )
 
 func main() {

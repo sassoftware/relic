@@ -1,3 +1,5 @@
+// +build !windows
+
 /*
  * Copyright (c) SAS Institute Inc.
  *
@@ -14,15 +16,8 @@
  * limitations under the License.
  */
 
-package server
+package main
 
 import (
-	"fmt"
-	"net/http"
+	_ "gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/token"
 )
-
-func (*Server) serveHome(request *http.Request) (Response, error) {
-	roles := request.Context().Value(ctxRoles).([]string)
-	data := fmt.Sprintf("I am a teapot\n\nRoles: %s\n", roles)
-	return StringResponse(http.StatusOK, data), nil
-}

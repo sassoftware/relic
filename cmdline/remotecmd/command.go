@@ -1,5 +1,3 @@
-// +build !windows
-
 /*
  * Copyright (c) SAS Institute Inc.
  *
@@ -16,15 +14,24 @@
  * limitations under the License.
  */
 
-package main
+package remotecmd
 
 import (
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
-
-	_ "gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/servecmd"
-	_ "gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/token"
+	"github.com/spf13/cobra"
 )
 
-func main() {
-	shared.Main()
+var RemoteCmd = &cobra.Command{
+	Use:   "remote",
+	Short: "Commands accessing a remote server",
+}
+
+var (
+	argKeyName string
+	argFile    string
+	argOutput  string
+)
+
+func init() {
+	shared.RootCmd.AddCommand(RemoteCmd)
 }

@@ -17,6 +17,7 @@
 package server
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -92,4 +93,23 @@ func (r *fileResponse) Write(writer http.ResponseWriter) {
 	if r.deleteDir {
 		os.RemoveAll(path.Dir(r.name))
 	}
+}
+
+type jsonResponse struct {
+	body []byte
+}
+
+func JsonResponse(data interface{}) (Response, error) {
+	blob, err := json.Marshal(data)
+	if err != nil {
+		return nil, err
+	}
+	return &jsonResponse{body: blob}, nil
+}
+
+func (r *jsonResponse) Write(writer http.ResponseWriter) {
+	writer.Header().Set("Content-Type", "application/json")
+	writer.Header().Set("Content-Length", fmt.Sprintf("%d", len(r.body)))
+	writer.WriteHeader(http.StatusOK)
+	writer.Write(r.body)
 }

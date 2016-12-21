@@ -28,13 +28,8 @@ import (
 	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
 )
 
-type Handler interface {
-	Handle(*http.Request) (Response, error)
-}
-
 type Server struct {
-	Config   *config.Config
-	Handlers map[string]Handler
+	Config *config.Config
 }
 
 func (s *Server) callHandler(request *http.Request) (response Response, err error) {
@@ -54,11 +49,18 @@ func (s *Server) callHandler(request *http.Request) (response Response, err erro
 		return errResponse, nil
 	}
 	request = request.WithContext(ctx)
-	handler, ok := s.Handlers[request.URL.Path]
-	if !ok {
+	switch request.URL.Path {
+	case "/":
+		return s.serveHome(request)
+	case "/list_keys":
+		return s.serveListKeys(request)
+	case "/sign_rpm":
+		return s.serveSignRpm(request)
+	case "/sign_tool":
+		return s.serveSignTool(request)
+	default:
 		return ErrorResponse(http.StatusNotFound), nil
 	}
-	return handler.Handle(request)
 }
 
 func (s *Server) getUserRoles(ctx context.Context, request *http.Request) (context.Context, Response) {
@@ -131,14 +133,7 @@ func (s *Server) makeTlsConfig() (*tls.Config, error) {
 }
 
 func New(config *config.Config) *Server {
-	server := &Server{
-		Config:   config,
-		Handlers: make(map[string]Handler),
-	}
-	addHomeHandler(server)
-	addSignToolHandler(server)
-	addSignRpmHandler(server)
-	return server
+	return &Server{Config: config}
 }
 
 func (s *Server) Serve() error {
