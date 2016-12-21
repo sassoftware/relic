@@ -137,6 +137,7 @@ func New(config *config.Config) *Server {
 	}
 	addHomeHandler(server)
 	addSignToolHandler(server)
+	addSignRpmHandler(server)
 	return server
 }
 

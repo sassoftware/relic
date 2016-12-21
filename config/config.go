@@ -64,6 +64,8 @@ type Config struct {
 	Keys    map[string]*KeyConfig
 	Server  *ServerConfig
 	Clients map[string]*ClientConfig
+
+	path string
 }
 
 func ReadFile(path string) (*Config, error) {
@@ -85,6 +87,7 @@ func ReadFile(path string) (*Config, error) {
 		normalized[lower] = client
 	}
 	config.Clients = normalized
+	config.path = path
 	return config, nil
 }
 
@@ -155,4 +158,8 @@ func (config *Config) GetToolCmd(keyName, path string) ([]string, error) {
 		words[i] = word
 	}
 	return words, nil
+}
+
+func (config *Config) Path() string {
+	return config.path
 }

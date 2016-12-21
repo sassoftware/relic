@@ -30,14 +30,6 @@ var ServeCmd = &cobra.Command{
 	RunE:  serveCmd,
 }
 
-type InitHookFunc func(*server.Server) error
-
-var serveCmdInitHooks []InitHookFunc
-
-func AddHook(f InitHookFunc) {
-	serveCmdInitHooks = append(serveCmdInitHooks, f)
-}
-
 func init() {
 	shared.RootCmd.AddCommand(ServeCmd)
 }
@@ -62,10 +54,5 @@ func serveCmd(cmd *cobra.Command, args []string) error {
 		shared.CurrentConfig.Server.Listen = ":8888"
 	}
 	srv := server.New(shared.CurrentConfig)
-	for _, hook := range serveCmdInitHooks {
-		if err := hook(srv); err != nil {
-			return err
-		}
-	}
 	return srv.Serve()
 }

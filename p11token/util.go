@@ -17,9 +17,11 @@
 package p11token
 
 import (
+	"crypto"
 	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/x509"
 	"encoding/hex"
 	"math/big"
 )
@@ -50,5 +52,16 @@ func SameKey(pub1, pub2 interface{}) bool {
 		return ok && key1.X.Cmp(key2.X) == 0 && key1.Y.Cmp(key2.Y) == 0
 	default:
 		return false
+	}
+}
+
+func X509SignatureAlgorithm(pub crypto.PublicKey) x509.SignatureAlgorithm {
+	switch pub.(type) {
+	case *rsa.PublicKey:
+		return x509.SHA256WithRSA
+	case *ecdsa.PublicKey:
+		return x509.ECDSAWithSHA256
+	default:
+		return x509.UnknownSignatureAlgorithm
 	}
 }

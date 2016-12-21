@@ -156,7 +156,7 @@ func makeRequest(key *p11token.Key) (string, error) {
 	template.Subject = subjName()
 	template.DNSNames = splitAndTrim(argDnsNames)
 	template.EmailAddresses = splitAndTrim(argEmailNames)
-	template.SignatureAlgorithm = key.X509SignatureAlgorithm()
+	template.SignatureAlgorithm = p11token.X509SignatureAlgorithm(key.Public())
 	csr, err := x509.CreateCertificateRequest(nil, &template, key)
 	if err != nil {
 		return "", err
@@ -174,7 +174,7 @@ func makeCertificate(key *p11token.Key) (string, error) {
 	template.Subject = subjName()
 	template.DNSNames = splitAndTrim(argDnsNames)
 	template.EmailAddresses = splitAndTrim(argEmailNames)
-	template.SignatureAlgorithm = key.X509SignatureAlgorithm()
+	template.SignatureAlgorithm = p11token.X509SignatureAlgorithm(key.Public())
 	template.NotBefore = time.Now().Add(time.Hour * -24)
 	template.NotAfter = time.Now().Add(time.Hour * 24 * time.Duration(argExpireDays))
 	template.SubjectKeyId = key.GetId()
