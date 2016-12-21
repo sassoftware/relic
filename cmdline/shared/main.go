@@ -25,7 +25,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var argConfig string
+var ArgConfig string
 var CurrentConfig *config.Config
 
 var RootCmd = &cobra.Command{
@@ -33,15 +33,23 @@ var RootCmd = &cobra.Command{
 }
 
 func init() {
-	RootCmd.PersistentFlags().StringVarP(&argConfig, "config", "c", "", "Configuration file")
+	RootCmd.PersistentFlags().StringVarP(&ArgConfig, "config", "c", "", "Configuration file")
 }
 
 func InitConfig() error {
-	if argConfig == "" {
-		return errors.New("--config is required")
+	usedDefault := false
+	if ArgConfig == "" {
+		ArgConfig = config.DefaultConfig()
+		if ArgConfig == "" {
+			return errors.New("--config not specified")
+		}
+		usedDefault = true
 	}
-	config, err := config.ReadFile(argConfig)
+	config, err := config.ReadFile(ArgConfig)
 	if err != nil {
+		if os.IsNotExist(err) && usedDefault {
+			return fmt.Errorf("--config not specified and default config at %s does not exist", ArgConfig)
+		}
 		return err
 	}
 	CurrentConfig = config

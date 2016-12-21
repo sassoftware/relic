@@ -14,21 +14,30 @@
  * limitations under the License.
  */
 
-package server
+package config
 
 import (
-	"net/http"
+	"os"
+	"path"
 )
 
-func (s *Server) serveListKeys(request *http.Request) (res Response, err error) {
-	if request.Method != "GET" {
-		return ErrorResponse(http.StatusMethodNotAllowed), nil
+func DefaultDir() string {
+	profile := os.Getenv("USERPROFILE")
+	if profile != "" {
+		// windows
+		return path.Join(profile, "relic")
 	}
-	keys := []string{}
-	for key, _ := range s.Config.Keys {
-		if s.CheckKeyAccess(request, key) {
-			keys = append(keys, key)
-		}
+	home := os.Getenv("HOME")
+	if home != "" {
+		return path.Join(home, ".config", "relic")
 	}
-	return JsonResponse(keys)
+	return ""
+}
+
+func DefaultConfig() string {
+	filepath := DefaultDir()
+	if filepath != "" {
+		filepath = path.Join(filepath, "relic.conf")
+	}
+	return filepath
 }

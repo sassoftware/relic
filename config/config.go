@@ -66,12 +66,12 @@ type RemoteConfig struct {
 }
 
 type Config struct {
-	Tokens  map[string]*TokenConfig
-	Tools   map[string]*ToolConfig
-	Keys    map[string]*KeyConfig
-	Server  *ServerConfig
-	Clients map[string]*ClientConfig
-	Remote  *RemoteConfig
+	Tokens  map[string]*TokenConfig  `,omitempty`
+	Tools   map[string]*ToolConfig   `,omitempty`
+	Keys    map[string]*KeyConfig    `,omitempty`
+	Server  *ServerConfig            `,omitempty`
+	Clients map[string]*ClientConfig `,omitempty`
+	Remote  *RemoteConfig            `,omitempty`
 
 	path string
 }

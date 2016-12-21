@@ -44,14 +44,9 @@ func signRpmRemote(cmd *cobra.Command, args []string) (err error) {
 	if argFile == "" || argKeyName == "" {
 		return errors.New("--file and --key are required")
 	}
-	var rpmfile *os.File
-	if argFile == "-" {
-		rpmfile = os.Stdin
-	} else {
-		rpmfile, err = os.Open(argFile)
-		if err != nil {
-			return err
-		}
+	rpmfile, err := os.Open(argFile)
+	if err != nil {
+		return err
 	}
 	values := url.Values{}
 	values.Add("key", argKeyName)
