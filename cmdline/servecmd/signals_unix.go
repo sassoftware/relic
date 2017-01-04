@@ -1,3 +1,5 @@
+// +build !windows
+
 /*
  * Copyright (c) SAS Institute Inc.
  *
@@ -14,16 +16,36 @@
  * limitations under the License.
  */
 
-package main
+package servecmd
 
 import (
-	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
+	"log"
+	"os"
+	"os/signal"
+	"syscall"
 
-	_ "gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/remotecmd"
-	_ "gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/servecmd"
-	_ "gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/token"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/server/daemon"
 )
 
-func main() {
-	shared.Main()
+func watchSignals(srv *daemon.Daemon) {
+	ch := make(chan os.Signal, 4)
+	signal.Notify(
+		ch,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGQUIT,
+		syscall.SIGUSR2,
+	)
+	already := false
+	for {
+		sig := <-ch
+		if (sig == syscall.SIGQUIT || sig == syscall.SIGUSR2) && !already {
+			log.Printf("Received signal %d; shutting down gracefully", sig)
+			srv.Close()
+			already = true
+		} else {
+			log.Printf("Received signal %d; shutting down immediately", sig)
+			os.Exit(0)
+		}
+	}
 }

@@ -1,3 +1,5 @@
+// +build !windows
+
 /*
  * Copyright (c) SAS Institute Inc.
  *
@@ -14,16 +16,8 @@
  * limitations under the License.
  */
 
-package main
+package servecmd
 
-import (
-	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
-
-	_ "gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/remotecmd"
-	_ "gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/servecmd"
-	_ "gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/token"
-)
-
-func main() {
-	shared.Main()
+func runIfService() bool {
+	return false
 }

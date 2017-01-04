@@ -1,0 +1,8 @@
+[Unit]
+Description=Relic package signing service
+
+[Socket]
+ListenStream=6300
+
+[Install]
+WantedBy=sockets.target

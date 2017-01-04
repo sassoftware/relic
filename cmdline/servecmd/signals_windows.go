@@ -14,16 +14,20 @@
  * limitations under the License.
  */
 
-package main
+package servecmd
 
 import (
-	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
+	"log"
+	"os"
+	"os/signal"
 
-	_ "gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/remotecmd"
-	_ "gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/servecmd"
-	_ "gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/token"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/server/daemon"
 )
 
-func main() {
-	shared.Main()
+func watchSignals(srv *daemon.Daemon) {
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, os.Interrupt)
+	sig := <-ch
+	log.Printf("Received signal %d; shutting down immediately", sig)
+	os.Exit(0)
 }

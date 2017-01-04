@@ -19,17 +19,19 @@ package server
 import (
 	"context"
 	"crypto/sha256"
-	"crypto/tls"
 	"encoding/hex"
+	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"runtime"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
 )
 
 type Server struct {
-	Config *config.Config
+	Config   *config.Config
+	ErrorLog *log.Logger
 }
 
 func (s *Server) callHandler(request *http.Request) (response Response, err error) {
@@ -106,7 +108,7 @@ func (s *Server) CheckKeyAccess(request *http.Request, keyName string) bool {
 }
 
 func (s *Server) Logf(format string, args ...interface{}) {
-	log.Printf(format, args...)
+	s.ErrorLog.Output(2, fmt.Sprintf(format, args...))
 }
 
 func (s *Server) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
@@ -118,33 +120,16 @@ func (s *Server) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	response.Write(writer)
 }
 
-func (s *Server) makeTlsConfig() (*tls.Config, error) {
-	tlscert, err := tls.LoadX509KeyPair(s.Config.Server.CertFile, s.Config.Server.KeyFile)
-	if err != nil {
-		return nil, err
+func New(config *config.Config) (*Server, error) {
+	var logger *log.Logger
+	if config.Server.LogFile != "" {
+		f, err := os.OpenFile(config.Server.LogFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open logfile: %s", err)
+		}
+		logger = log.New(f, "", log.Ldate|log.Ltime|log.Lmicroseconds)
+	} else {
+		logger = log.New(os.Stderr, "", 0)
 	}
-	return &tls.Config{
-		Certificates:             []tls.Certificate{tlscert},
-		PreferServerCipherSuites: true,
-		SessionTicketsDisabled:   true,
-		ClientAuth:               tls.RequireAnyClientCert,
-		MinVersion:               tls.VersionTLS12,
-	}, nil
-}
-
-func New(config *config.Config) *Server {
-	return &Server{Config: config}
-}
-
-func (s *Server) Serve() error {
-	tconf, err := s.makeTlsConfig()
-	if err != nil {
-		return err
-	}
-	listener, err := tls.Listen("tcp", s.Config.Server.Listen, tconf)
-	if err != nil {
-		return err
-	}
-	httpServer := &http.Server{Handler: s}
-	return httpServer.Serve(listener)
+	return &Server{Config: config, ErrorLog: logger}, nil
 }

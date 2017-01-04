@@ -14,16 +14,26 @@
  * limitations under the License.
  */
 
-package main
+package winservice
 
 import (
-	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
-
-	_ "gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/remotecmd"
-	_ "gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/servecmd"
-	_ "gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/token"
+	"golang.org/x/sys/windows/svc"
 )
 
-func main() {
-	shared.Main()
+var stateNames = map[svc.State]string{
+	svc.Stopped:         "stopped",
+	svc.StartPending:    "start pending",
+	svc.StopPending:     "stop pending",
+	svc.Running:         "running",
+	svc.ContinuePending: "continue pending",
+	svc.PausePending:    "pause pending",
+	svc.Paused:          "paused",
+}
+
+var commandNames = map[svc.Cmd]string{
+	svc.Stop:        "stop",
+	svc.Pause:       "pause",
+	svc.Continue:    "continue",
+	svc.Interrogate: "interrogate",
+	svc.Shutdown:    "shutdown",
 }

@@ -69,7 +69,8 @@ func (info *SigInfo) Dump(stream io.Writer) {
 	jinfo.PayloadSig, _ = info.Header.GetBytes(rpmutils.SIG_PGP)
 	jinfo.Fingerprint = info.Fingerprint
 	nevra, _ := info.Header.GetNEVRA()
-	jinfo.Nevra = nevra.String()
+	snevra := nevra.String()
+	jinfo.Nevra = snevra[:len(snevra)-4] // strip .rpm
 	md5, _ := info.Header.GetBytes(rpmutils.SIG_MD5)
 	jinfo.Md5 = fmt.Sprintf("%x", md5)
 	jinfo.Sha1, _ = info.Header.GetString(rpmutils.SIG_SHA1)
@@ -85,9 +86,11 @@ func (info *SigInfo) Dump(stream io.Writer) {
 
 func (info *SigInfo) String() string {
 	nevra, _ := info.Header.GetNEVRA()
+	snevra := nevra.String()
+	snevra = snevra[:len(snevra)-4] // strip .rpm
 	md5, _ := info.Header.GetBytes(rpmutils.SIG_MD5)
 	sha1, _ := info.Header.GetString(rpmutils.SIG_SHA1)
-	ret := fmt.Sprintf("Signed RPM: nevra=%s key=%s fp=%s md5=%X sha1=%s", nevra, info.KeyName, info.Fingerprint, md5, sha1)
+	ret := fmt.Sprintf("Signed RPM: nevra=%s key=%s fp=%s md5=%X sha1=%s", snevra, info.KeyName, info.Fingerprint, md5, sha1)
 	if info.ClientIP != "" || info.ClientName != "" {
 		ret += fmt.Sprintf(" client=%s ip=%s", info.ClientName, info.ClientIP)
 	}

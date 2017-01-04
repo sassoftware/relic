@@ -1,0 +1,66 @@
+---
+tokens:
+  # PKCS#11 tokens on which signing keys can be found
+  mytoken:
+    # Full path to provider library
+    provider: /usr/lib64/softhsm/libsofthsm.so
+    # Optional selectors to pick a token from those the provider offers
+    label: alpha
+    serial: 99999
+    # PIN is optional for command-line use, but required for servers
+    pin: 123456
+tools:
+  # Servers can also invoke a predefined command-line tool to sign packages
+  signtool:
+    # Template for tool command-line. Variables:
+    # - {file} - Path to the file to be signed
+    # - {key} - defined in the key section below
+    # - {certificate} - defined in the key section below
+    command: '"C:\\signtool.exe" sign /f {certificate} /csp myprovider /kc {key} {file}'
+keys:
+  # Two kinds of keys exist: token keys, and tool keys
+  my_token_key:
+    # Which token, defined above, to find the key on
+    token: mytoken
+    # Optional selectors to pick a key from those in the token
+    # CKA_LABEL:
+    label: "label"
+    # CKA_ID:
+    id: 00112233
+    # Path to a certificate file. This might be:
+    # - PGP public key (ascii-armored or binary)
+    # - X.509 certificate in PEM format, with optional certificate chain
+    certificate: ./keys/rsa1.pub
+    # List of user-roles that are permitted to use this key
+    roles: ['somegroup']
+  my_tool_key:
+    # Which tool, defined above, to use the key with
+    tool: mytool
+    # Arbitrary string to substitute for {key}
+    key: keyname
+    # Arbitrary string to substitute for {certificate}
+    certificate: c:/mycert.cer
+    # List of user-roles that are permitted to use this key
+    roles: ['somegroup']
+server:
+  # What port to listen on. Defaults to :6300.
+  # Socket activation via systemd is also supported, in which case this is ignored.
+  listen: ":6300"
+  # Private key for server TLS. PEM format, RSA or ECDSA
+  keyfile: /etc/relic/keys/server.key
+  # X.509 certificate for server TLS. PEM format. If a cert chain is needed it
+  # should follow the main cert.
+  certfile: /etc/relic/keys/server.key
+  # Optional logfile for server errors. If not set, then standard error is used
+  logfile: /var/log/relic/server.log
+clients:
+  # Authentication to the server is via client certificate. Certificates are
+  # identified by their fingerprint. Fingerprints can be obtained by using the
+  # "relic remote register" command on the client to generate the key, or by
+  # checking the server error log after attempting to connect.
+  E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855:
+    # Display name for this client
+    nickname: myuser
+    # List of roles this user possesses. Must contain at least one of the roles
+    # on a key for the user to access that key.
+    roles: ['somegroup']

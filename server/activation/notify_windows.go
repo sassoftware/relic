@@ -14,16 +14,8 @@
  * limitations under the License.
  */
 
-package main
+package activation
 
-import (
-	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
-
-	_ "gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/remotecmd"
-	_ "gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/servecmd"
-	_ "gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/token"
-)
-
-func main() {
-	shared.Main()
+func DaemonReady() error {
+	return nil
 }

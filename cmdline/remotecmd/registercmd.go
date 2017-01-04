@@ -69,10 +69,7 @@ func registerCmd(cmd *cobra.Command, args []string) error {
 	if fileExists(shared.ArgConfig) {
 		return fmt.Errorf("Config file %s already exists", shared.ArgConfig)
 	}
-	defaultDir := config.DefaultDir()
-	if defaultDir == "" {
-		return errors.New("Unable to determine default config location")
-	}
+	defaultDir := path.Dir(shared.ArgConfig)
 	keyPath := path.Join(defaultDir, "client.pem")
 	if fileExists(keyPath) {
 		return fmt.Errorf("Key file %s already exists", keyPath)

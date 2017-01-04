@@ -21,23 +21,19 @@ import (
 	"path"
 )
 
-func DefaultDir() string {
-	profile := os.Getenv("USERPROFILE")
+func DefaultConfig() string {
+	filepath := os.Getenv("RELIC_CFG")
+	if filepath != "" {
+		return filepath
+	}
+	profile := os.Getenv("APPDATA")
 	if profile != "" {
 		// windows
-		return path.Join(profile, "relic")
+		return path.Join(profile, "relic", "relic.yml")
 	}
 	home := os.Getenv("HOME")
 	if home != "" {
-		return path.Join(home, ".config", "relic")
+		return path.Join(home, ".config", "relic", "relic.yml")
 	}
 	return ""
-}
-
-func DefaultConfig() string {
-	filepath := DefaultDir()
-	if filepath != "" {
-		filepath = path.Join(filepath, "relic.conf")
-	}
-	return filepath
 }

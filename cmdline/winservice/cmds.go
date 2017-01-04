@@ -1,5 +1,3 @@
-// +build !windows
-
 /*
  * Copyright (c) SAS Institute Inc.
  *
@@ -16,8 +14,30 @@
  * limitations under the License.
  */
 
-package main
+package winservice
 
 import (
-	_ "gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/token"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/servecmd"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
+	"github.com/spf13/cobra"
 )
+
+var ServiceCmd = &cobra.Command{
+	Use:   "service",
+	Short: "Register as a Windows service",
+}
+
+var DebugCmd = &cobra.Command{
+	Use:   "debug",
+	Short: "Run the Windows service in command-line debug mode",
+	RunE:  debugCmd,
+}
+
+func init() {
+	shared.RootCmd.AddCommand(ServiceCmd)
+	ServiceCmd.AddCommand(DebugCmd)
+}
+
+func debugCmd(cmd *cobra.Command, args []string) error {
+	return servecmd.RunService(true)
+}

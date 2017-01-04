@@ -1,0 +1,50 @@
+hash: 8b11039af346973f322401822631e187789f06a58ea553e49c443152c36b3738
+updated: 2017-01-04T18:31:30.743183599Z
+imports:
+- name: github.com/braintree/manners
+  version: 82a8879fc5fd0381fa8b2d8033b19bf255252088
+- name: github.com/howeyc/gopass
+  version: f5387c492211eb133053880d23dfae62aa14123d
+- name: github.com/inconshreveable/mousetrap
+  version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
+- name: github.com/mattn/go-shellwords
+  version: 525bedee691b5a8df547cb5cf9f86b7fb1883e24
+- name: github.com/miekg/pkcs11
+  version: 2c6cdd29253e84b5f0f1bec7d77cce36f12d15bd
+- name: github.com/op/go-logging
+  version: 970db520ece77730c7e4724c61121037378659d9
+- name: github.com/sassoftware/go-rpmutils
+  version: afcdef956248da91085afdb4b5b6a4582b205ac8
+  subpackages:
+  - cpio
+  - fileutil
+- name: github.com/spf13/cobra
+  version: 1dd5ff2e11b6dca62fdcb275eb804b94607d8b06
+- name: github.com/spf13/pflag
+  version: 25f8b5b07aece3207895bf19f7ab517eb3b22a40
+- name: golang.org/x/crypto
+  version: f6b343c37ca80bfa8ea539da67a0b621f84fab1d
+  subpackages:
+  - openpgp
+  - openpgp/armor
+  - openpgp/packet
+  - ssh/terminal
+  - openpgp/errors
+  - openpgp/s2k
+  - cast5
+  - openpgp/elgamal
+- name: golang.org/x/sys
+  version: d75a52659825e75fff6158388dddc6a5b04f9ba5
+  subpackages:
+  - windows/svc
+  - windows/svc/debug
+  - windows/svc/eventlog
+  - windows/svc/mgr
+  - windows
+  - windows/registry
+  - unix
+- name: gopkg.in/yaml.v2
+  version: a5b47d31c556af34a302ce5d659e6fea44d90de0
+- name: xi2.org/x/xz
+  version: 19aeb13c4e7cb6bd3188dfede73840f33455425a
+testImports: []

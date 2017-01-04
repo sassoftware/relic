@@ -17,13 +17,5 @@
 package main
 
 import (
-	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
-
-	_ "gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/remotecmd"
-	_ "gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/servecmd"
-	_ "gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/token"
+	_ "gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/winservice"
 )
-
-func main() {
-	shared.Main()
-}

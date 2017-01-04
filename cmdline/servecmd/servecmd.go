@@ -20,7 +20,7 @@ import (
 	"errors"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/server"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/server/daemon"
 	"github.com/spf13/cobra"
 )
 
@@ -34,25 +34,37 @@ func init() {
 	shared.RootCmd.AddCommand(ServeCmd)
 }
 
-func serveCmd(cmd *cobra.Command, args []string) error {
+func MakeServer() (*daemon.Daemon, error) {
 	if err := shared.InitConfig(); err != nil {
-		return err
+		return nil, err
 	}
 	if shared.CurrentConfig.Server == nil {
-		return errors.New("Missing server section in configuration file")
+		return nil, errors.New("Missing server section in configuration file")
 	}
 	if shared.CurrentConfig.Server.KeyFile == "" {
-		return errors.New("Missing keyfile option in server configuration file")
+		return nil, errors.New("Missing keyfile option in server configuration file")
 	}
 	if shared.CurrentConfig.Server.CertFile == "" {
-		return errors.New("Missing certfile option in server configuration file")
+		return nil, errors.New("Missing certfile option in server configuration file")
 	}
 	if shared.CurrentConfig.Clients == nil {
-		return errors.New("Missing clients section in configuration file")
+		return nil, errors.New("Missing clients section in configuration file")
 	}
 	if shared.CurrentConfig.Server.Listen == "" {
-		shared.CurrentConfig.Server.Listen = ":8888"
+		shared.CurrentConfig.Server.Listen = ":6300"
 	}
-	srv := server.New(shared.CurrentConfig)
+	return daemon.New(shared.CurrentConfig)
+}
+
+func serveCmd(cmd *cobra.Command, args []string) error {
+	if runIfService() {
+		// windows service
+		return nil
+	}
+	srv, err := MakeServer()
+	if err != nil {
+		return err
+	}
+	go watchSignals(srv)
 	return srv.Serve()
 }
