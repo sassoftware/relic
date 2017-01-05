@@ -21,10 +21,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/servecmd"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
+	"github.com/howeyc/gopass"
 	"github.com/spf13/cobra"
+	"golang.org/x/sys/windows"
 	"golang.org/x/sys/windows/svc/eventlog"
 	"golang.org/x/sys/windows/svc/mgr"
 )
@@ -35,11 +38,17 @@ var InstallCmd = &cobra.Command{
 	RunE:  installCmd,
 }
 
-var argAuto bool
+var (
+	argManual   bool
+	argUser     string
+	argPassword string
+)
 
 func init() {
 	ServiceCmd.AddCommand(InstallCmd)
-	InstallCmd.Flags().BoolVarP(&argAuto, "automatic", "a", false, "Start service on boot")
+	InstallCmd.Flags().BoolVarP(&argManual, "manual", "m", false, "Don't start service on boot")
+	InstallCmd.Flags().StringVarP(&argUser, "user", "u", "", "Username to start service as, instead of the LOCAL SYSTEM account. If no domain is given then the local system will be provided.")
+	InstallCmd.Flags().StringVarP(&argPassword, "password", "p", "", "Password for the specified user. If not supplied then it is prompted.")
 }
 
 func findSelf() string {
@@ -95,7 +104,27 @@ func installCmd(cmd *cobra.Command, args []string) error {
 		DisplayName: servecmd.ServiceDisplayName,
 		Description: servecmd.ServiceDescription,
 	}
-	if argAuto {
+	if argUser != "" {
+		if strings.Index(argUser, "\\") < 0 && strings.Index(argUser, "@") < 0 {
+			domain, err := windows.ComputerName()
+			if err != nil || domain == "" {
+				return errors.New("Unable to determine computer name; supply a fully qualified user instead")
+			}
+			argUser = domain + "\\" + argUser
+			fmt.Fprintf(os.Stderr, "Changed user account to %s\n", argUser)
+		}
+		if argPassword == "" {
+			fmt.Fprintf(os.Stderr, "Password for account %s: ", argUser)
+			pwd, err := gopass.GetPasswd()
+			if err != nil {
+				return err
+			}
+			argPassword = string(pwd)
+		}
+		cfg.ServiceStartName = argUser
+		cfg.Password = argPassword
+	}
+	if !argManual {
 		cfg.StartType = mgr.StartAutomatic
 	}
 	// NB: these args get appended to the exe path, not passed as "service
@@ -111,6 +140,6 @@ func installCmd(cmd *cobra.Command, args []string) error {
 		svc.Delete()
 		return fmt.Errorf("SetupEventLogSource() failed: %s", err)
 	}
-	fmt.Fprintf(os.Stderr, "Installed service %s", name)
+	fmt.Fprintf(os.Stderr, "Installed service %s\n", name)
 	return nil
 }

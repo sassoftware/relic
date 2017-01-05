@@ -145,6 +145,6 @@ func uninstallService(s *mgr.Service) error {
 	if err != nil {
 		return fmt.Errorf("RemoveEventLogSource() failed: %s", err)
 	}
-	fmt.Fprintf(os.Stderr, "Removed service %s", s.Name)
+	fmt.Fprintf(os.Stderr, "Removed service %s\n", s.Name)
 	return nil
 }
