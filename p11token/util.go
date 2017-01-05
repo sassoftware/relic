@@ -17,9 +17,7 @@
 package p11token
 
 import (
-	"crypto/ecdsa"
 	"crypto/rand"
-	"crypto/rsa"
 	"encoding/hex"
 	"math/big"
 )
@@ -38,17 +36,4 @@ func parseKeyId(value string) ([]byte, error) {
 
 func bytesToBig(val []byte) *big.Int {
 	return new(big.Int).SetBytes(val)
-}
-
-func SameKey(pub1, pub2 interface{}) bool {
-	switch key1 := pub1.(type) {
-	case *rsa.PublicKey:
-		key2, ok := pub2.(*rsa.PublicKey)
-		return ok && key1.E == key2.E && key1.N.Cmp(key2.N) == 0
-	case *ecdsa.PublicKey:
-		key2, ok := pub2.(*ecdsa.PublicKey)
-		return ok && key1.X.Cmp(key2.X) == 0 && key1.Y.Cmp(key2.Y) == 0
-	default:
-		return false
-	}
 }

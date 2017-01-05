@@ -25,6 +25,7 @@ import (
 	"net/http"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/server"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/server/activation"
 	"github.com/braintree/manners"
@@ -37,7 +38,7 @@ type Daemon struct {
 }
 
 func makeTlsConfig(config *config.Config) (*tls.Config, error) {
-	tlscert, err := tls.LoadX509KeyPair(config.Server.CertFile, config.Server.KeyFile)
+	tlscert, err := x509tools.LoadX509KeyPair(config.Server.CertFile, config.Server.KeyFile)
 	if err != nil {
 		return nil, err
 	}

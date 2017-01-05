@@ -22,6 +22,7 @@ import (
 	"io"
 	"io/ioutil"
 
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/p11token"
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/armor"
@@ -57,7 +58,7 @@ func KeyFromToken(key *p11token.Key) (*packet.PrivateKey, error) {
 		Encrypted:  false,
 		PrivateKey: key,
 	}
-	if !p11token.SameKey(key.Public(), priv.PublicKey.PublicKey) {
+	if !x509tools.SameKey(key.Public(), priv.PublicKey.PublicKey) {
 		return nil, errors.New("Certificate does not match specified key in token")
 	}
 	return priv, nil

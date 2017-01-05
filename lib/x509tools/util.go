@@ -68,3 +68,22 @@ func SubjectKeyId(pub crypto.PublicKey) ([]byte, error) {
 	digest := sha256.Sum256(pki.BitString.Bytes)
 	return digest[:], nil
 }
+
+func SameKey(pub1, pub2 interface{}) bool {
+	if privkey, ok := pub1.(crypto.Signer); ok {
+		pub1 = privkey.Public()
+	}
+	if privkey, ok := pub2.(crypto.Signer); ok {
+		pub2 = privkey.Public()
+	}
+	switch key1 := pub1.(type) {
+	case *rsa.PublicKey:
+		key2, ok := pub2.(*rsa.PublicKey)
+		return ok && key1.E == key2.E && key1.N.Cmp(key2.N) == 0
+	case *ecdsa.PublicKey:
+		key2, ok := pub2.(*ecdsa.PublicKey)
+		return ok && key1.X.Cmp(key2.X) == 0 && key1.Y.Cmp(key2.Y) == 0
+	default:
+		return false
+	}
+}
