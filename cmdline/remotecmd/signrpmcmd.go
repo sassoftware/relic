@@ -23,7 +23,7 @@ import (
 	"net/url"
 	"os"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/signrpm"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/signrpm"
 	"github.com/spf13/cobra"
 )
 

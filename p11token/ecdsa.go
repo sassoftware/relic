@@ -24,6 +24,7 @@ import (
 	"errors"
 	"math/big"
 
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
 	"github.com/miekg/pkcs11"
 )
 
@@ -63,15 +64,15 @@ func (key *Key) toEcdsaKey() (crypto.PublicKey, error) {
 	if len(ecparams) == 0 || len(ecpoint) == 0 {
 		return nil, errors.New("Unable to retrieve ECDSA public key")
 	}
-	curve, err := curveByDer(ecparams)
+	curve, err := x509tools.CurveByDer(ecparams)
 	if err != nil {
 		return nil, err
 	}
-	x, y := derToPoint(curve.curve, ecpoint)
+	x, y := derToPoint(curve.Curve, ecpoint)
 	if x == nil || y == nil {
 		return nil, errors.New("Invalid elliptic curve point")
 	}
-	eckey := &ecdsa.PublicKey{Curve: curve.curve, X: x, Y: y}
+	eckey := &ecdsa.PublicKey{Curve: curve.Curve, X: x, Y: y}
 	return eckey, nil
 }
 
@@ -100,7 +101,7 @@ func (token *Token) importECDSA(label string, priv *ecdsa.PrivateKey) ([]byte, e
 	if keyId == nil {
 		return nil, errors.New("failed to make key ID")
 	}
-	curve, err := curveByCurve(priv.Curve)
+	curve, err := x509tools.CurveByCurve(priv.Curve)
 	if err != nil {
 		return nil, err
 	}
@@ -139,7 +140,7 @@ func (token *Token) importECDSA(label string, priv *ecdsa.PrivateKey) ([]byte, e
 }
 
 func (token *Token) generateECDSA(label string, bits uint) (keyId []byte, err error) {
-	curve, err := curveByBits(bits)
+	curve, err := x509tools.CurveByBits(bits)
 	if err != nil {
 		return nil, err
 	}

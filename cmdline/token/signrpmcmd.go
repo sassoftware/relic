@@ -22,8 +22,8 @@ import (
 	"os"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/signrpm"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/p11token/pgptoken"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/signrpm"
 	"github.com/spf13/cobra"
 )
 
