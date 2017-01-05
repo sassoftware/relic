@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path"
@@ -27,6 +28,7 @@ import (
 
 type Response interface {
 	Write(http.ResponseWriter)
+	Close()
 }
 
 type stringResponse struct {
@@ -41,6 +43,8 @@ func (response *stringResponse) Write(writer http.ResponseWriter) {
 	writer.WriteHeader(response.StatusCode)
 	writer.Write(body)
 }
+
+func (response *stringResponse) Close() {}
 
 func StringResponse(statusCode int, body string) Response {
 	return &stringResponse{
@@ -90,8 +94,19 @@ func (r *fileResponse) Write(writer http.ResponseWriter) {
 	writer.Header().Set("Content-Length", fmt.Sprintf("%d", r.size))
 	writer.WriteHeader(http.StatusOK)
 	io.Copy(writer, r.file)
+}
+
+func (r *fileResponse) Close() {
+	if r.file != nil {
+		r.file.Close()
+		r.file = nil
+	}
 	if r.deleteDir {
-		os.RemoveAll(path.Dir(r.name))
+		dir := path.Dir(r.name)
+		err := os.RemoveAll(dir)
+		if err != nil && !os.IsNotExist(err) {
+			log.Printf("error: failed to cleanup scratch directory %s: %s", dir, err)
+		}
 	}
 }
 
@@ -113,3 +128,5 @@ func (r *jsonResponse) Write(writer http.ResponseWriter) {
 	writer.WriteHeader(http.StatusOK)
 	writer.Write(r.body)
 }
+
+func (response *jsonResponse) Close() {}

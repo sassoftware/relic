@@ -117,6 +117,7 @@ func (s *Server) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 		s.Logf("Unhandled exception from client %s: %s\n", GetClientIP(request), err)
 		response = ErrorResponse(http.StatusInternalServerError)
 	}
+	defer response.Close()
 	response.Write(writer)
 }
 
