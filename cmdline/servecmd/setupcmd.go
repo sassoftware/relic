@@ -42,11 +42,13 @@ var SetupCmd = &cobra.Command{
 var (
 	argRsaBits   uint
 	argEcdsaBits uint
+	argSelfSign  bool
 )
 
 func init() {
 	SetupCmd.Flags().UintVar(&argRsaBits, "generate-rsa", 0, "Generate a RSA key of the specified bit size, if needed")
 	SetupCmd.Flags().UintVar(&argEcdsaBits, "generate-ecdsa", 0, "Generate an ECDSA key of the specified curve size, if needed")
+	SetupCmd.Flags().BoolVar(&argSelfSign, "self-sign", false, "Make and store a self-signed certificate instead of a request")
 	x509tools.AddRequestFlags(SetupCmd)
 	ServeCmd.AddCommand(SetupCmd)
 }
@@ -109,11 +111,11 @@ func setupCmd(cmd *cobra.Command, args []string) error {
 	if shared.CurrentConfig.Server.KeyFile == "" {
 		return errors.New("Missing keyfile option in server configuration file")
 	}
+	if argSelfSign && shared.CurrentConfig.Server.KeyFile == "" {
+		return errors.New("Missing certfile option in server configuration file")
+	}
 	if x509tools.ArgCommonName == "" {
 		return errors.New("--commonName is required")
-	}
-	if x509tools.ArgKeyUsage == "" {
-		x509tools.ArgKeyUsage = "serverAuth"
 	}
 	if x509tools.ArgDnsNames == "" && x509tools.ArgEmailNames == "" {
 		fmt.Fprintf(os.Stderr, "Subject alternate names is empty; appending %s\n", x509tools.ArgCommonName)
@@ -125,13 +127,24 @@ func setupCmd(cmd *cobra.Command, args []string) error {
 	}
 	signer, ok := key.(crypto.Signer)
 	if !ok {
-		fmt.Fprintf(os.Stderr, "Wtf is this: %#v\n", key)
-		panic("bluh")
+		panic("expected a signer")
 	}
-	req, err := x509tools.MakeRequest(rand.Reader, signer)
-	if err != nil {
-		return err
+	if argSelfSign {
+		x509tools.ArgExpireDays = 36525
+		cert, err := x509tools.MakeCertificate(rand.Reader, signer)
+		if err != nil {
+			return err
+		}
+		err = ioutil.WriteFile(shared.CurrentConfig.Server.CertFile, []byte(cert), 0600)
+		if err != nil {
+			return err
+		}
+	} else {
+		req, err := x509tools.MakeRequest(rand.Reader, signer)
+		if err != nil {
+			return err
+		}
+		os.Stdout.WriteString(req)
 	}
-	os.Stdout.WriteString(req)
 	return nil
 }

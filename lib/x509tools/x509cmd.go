@@ -30,7 +30,6 @@ import (
 )
 
 var (
-	ArgSelfSign           bool
 	ArgCountry            string
 	ArgOrganization       string
 	ArgOrganizationalUnit string
@@ -41,6 +40,7 @@ var (
 	ArgEmailNames         string
 	ArgKeyUsage           string
 	ArgExpireDays         uint
+	ArgCertAuthority      bool
 )
 
 func AddRequestFlags(cmd *cobra.Command) {
@@ -56,6 +56,7 @@ func AddRequestFlags(cmd *cobra.Command) {
 
 func AddCertFlags(cmd *cobra.Command) {
 	AddRequestFlags(cmd)
+	cmd.Flags().BoolVar(&ArgCertAuthority, "cert-authority", false, "If this certificate is an authority")
 	cmd.Flags().StringVarP(&ArgKeyUsage, "key-usage", "U", "", "Key usage, one of: serverAuth clientAuth codeSigning emailProtection")
 	cmd.Flags().UintVarP(&ArgExpireDays, "expire-days", "e", 36525, "Number of days before certificate expires")
 }
@@ -147,7 +148,7 @@ func MakeCertificate(rand io.Reader, key crypto.Signer) (string, error) {
 	template.SignatureAlgorithm = X509SignatureAlgorithm(key.Public())
 	template.NotBefore = time.Now().Add(time.Hour * -24)
 	template.NotAfter = time.Now().Add(time.Hour * 24 * time.Duration(ArgExpireDays))
-	template.IsCA = true
+	template.IsCA = ArgCertAuthority
 	template.BasicConstraintsValid = true
 	if err := setUsage(&template); err != nil {
 		return "", err
