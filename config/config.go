@@ -22,7 +22,6 @@ import (
 	"io/ioutil"
 	"strings"
 
-	"github.com/mattn/go-shellwords"
 	"gopkg.in/yaml.v2"
 )
 
@@ -45,6 +44,10 @@ type KeyConfig struct {
 	Certificate string   // Path to certificate associated with this key
 	Key         string   // Name of key container (windows)
 	Roles       []string // List of user roles that can use this key
+
+	name  string
+	token *TokenConfig
+	tool  *ToolConfig
 }
 
 type ServerConfig struct {
@@ -120,53 +123,17 @@ func (config *Config) GetKey(keyName string) (*KeyConfig, error) {
 	if !ok {
 		return nil, fmt.Errorf("Key \"%s\" not found in configuration", keyName)
 	} else if keyConf.Token == "" && keyConf.Tool == "" {
-		return nil, fmt.Errorf("Key \"%s\" does not specify required value 'token'", keyName)
+		return nil, fmt.Errorf("Key \"%s\" does not specify required value 'token' or 'tool'", keyName)
 	} else {
+		keyConf.name = keyName
+		if keyConf.Token != "" && config.Tokens != nil {
+			keyConf.token = config.Tokens[keyConf.Token]
+		}
+		if keyConf.Tool != "" && config.Tools != nil {
+			keyConf.tool = config.Tools[keyConf.Tool]
+		}
 		return keyConf, nil
 	}
-}
-
-func (config *Config) GetServedKeys() (keys []string) {
-	if config.Keys == nil {
-		return
-	}
-	for keyName, keyConf := range config.Keys {
-		if len(keyConf.Roles) > 0 && keyConf.Tool == "" {
-			keys = append(keys, keyName)
-		}
-	}
-	return
-}
-
-func (config *Config) GetToolCmd(keyName, path string) ([]string, error) {
-	if config.Keys == nil {
-		return nil, errors.New("No keys defined in configuration")
-	} else if config.Tools == nil {
-		return nil, errors.New("No tools defined in configuration")
-	}
-	keyConf, ok := config.Keys[keyName]
-	if !ok {
-		return nil, fmt.Errorf("Key \"%s\" not found in configuration", keyName)
-	} else if keyConf.Tool == "" {
-		return nil, fmt.Errorf("Key \"%s\" does not specify required value 'tool'", keyName)
-	}
-	toolConf, ok := config.Tools[keyConf.Tool]
-	if !ok {
-		return nil, fmt.Errorf("Tool \"%s\" not found in configuration", keyConf.Tool)
-	} else if toolConf.Command == "" {
-		return nil, fmt.Errorf("Tool \"%s\" does not specify required value 'command'", keyConf.Tool)
-	}
-	words, err := shellwords.Parse(toolConf.Command)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to parse tool commandline: %s", err)
-	}
-	for i, word := range words {
-		word = strings.Replace(word, "{file}", path, -1)
-		word = strings.Replace(word, "{certificate}", keyConf.Certificate, -1)
-		word = strings.Replace(word, "{key}", keyConf.Key, -1)
-		words[i] = word
-	}
-	return words, nil
 }
 
 func (config *Config) Path() string {

@@ -25,29 +25,13 @@ import (
 	"os/exec"
 	"path"
 	"strings"
+
+	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
 )
 
-func (s *Server) serveSignTool(request *http.Request) (res Response, err error) {
-	if request.Method != "POST" {
-		return ErrorResponse(http.StatusMethodNotAllowed), nil
-	}
-	query := request.URL.Query()
-	keyName := query.Get("key")
-	if keyName == "" {
-		return StringResponse(http.StatusBadRequest, "'key' query parameter is required"), nil
-	}
-	filename := query.Get("filename")
-	exten := path.Ext(filename)
-	if exten == "" {
-		return StringResponse(http.StatusBadRequest, "'filename' query parameter is required"), nil
-	}
-	clientName := GetClientName(request)
-	if !s.CheckKeyAccess(request, keyName) {
-		s.Logf("Access denied: client %s (%s), key %s\n", clientName, GetClientIP(request), keyName)
-		return AccessDeniedResponse, nil
-	}
-	cleanName := "target" + exten
-	cmdline, err := s.Config.GetToolCmd(keyName, cleanName)
+func (s *Server) signWithTool(keyConf *config.KeyConfig, request *http.Request, filename string) (Response, error) {
+	cleanName := "target" + path.Ext(filename)
+	cmdline, err := keyConf.GetToolCmd(cleanName)
 	if err != nil {
 		return nil, err
 	}
@@ -65,11 +49,14 @@ func (s *Server) serveSignTool(request *http.Request) (res Response, err error) 
 	if err != nil {
 		return nil, err
 	}
-	err = signFile(s, cmdline, scratchDir)
+	proc := exec.Command(cmdline[0], cmdline[1:]...)
+	proc.Dir = scratchDir
+	output, err := proc.CombinedOutput()
 	if err != nil {
-		return nil, err
+		s.Logf("Error invoking signing tool: %s\nCommand: %s\nOutput:\n%s\n\n", err, formatCmdline(cmdline), output)
+		return nil, errors.New("Error invoking signing tool")
 	}
-	s.Logf("Signed package: filename=%s key=%s size=%d client=%s ip=%s", filename, keyName, size, clientName, GetClientIP(request))
+	s.Logf("Signed package: filename=%s key=%s size=%d client=%s ip=%s", filename, keyConf.Name(), size, GetClientName(request), GetClientIP(request))
 	return FileResponse(scratchPath, true)
 }
 
@@ -91,15 +78,4 @@ func formatCmdline(cmdline []string) string {
 		words[i] = word
 	}
 	return strings.Join(words, " ")
-}
-
-func signFile(server *Server, cmdline []string, scratchDir string) error {
-	proc := exec.Command(cmdline[0], cmdline[1:]...)
-	proc.Dir = scratchDir
-	output, err := proc.CombinedOutput()
-	if err != nil {
-		server.Logf("Error invoking signing tool: %s\nCommand: %s\nOutput:\n%s\n\n", err, formatCmdline(cmdline), output)
-		return errors.New("Error invoking signing tool")
-	}
-	return nil
 }

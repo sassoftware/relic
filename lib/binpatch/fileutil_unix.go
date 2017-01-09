@@ -1,3 +1,5 @@
+// +build !windows
+
 /*
  * Copyright (c) SAS Institute Inc.
  *
@@ -14,21 +16,17 @@
  * limitations under the License.
  */
 
-package server
+package binpatch
 
 import (
-	"net/http"
+	"os"
+	"syscall"
 )
 
-func (s *Server) serveListKeys(request *http.Request) (res Response, err error) {
-	if request.Method != "GET" {
-		return ErrorResponse(http.StatusMethodNotAllowed), nil
+func hasLinks(info os.FileInfo) bool {
+	stat, ok := info.Sys().(*syscall.Stat_t)
+	if !ok {
+		return false
 	}
-	keys := []string{}
-	for key, _ := range s.Config.Keys {
-		if s.CheckKeyAccess(request, key) != nil {
-			keys = append(keys, key)
-		}
-	}
-	return JsonResponse(keys)
+	return stat.Nlink != 1
 }

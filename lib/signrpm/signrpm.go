@@ -51,21 +51,22 @@ func defaultOpts(opts *rpmutils.SignatureOptions) *rpmutils.SignatureOptions {
 	return &newOpts
 }
 
-type jsonInfo struct {
-	ClientIP           string    `json:"client_ip,omitempty"`
-	ClientName         string    `json:"client_name,omitempty"`
-	Fingerprint        string    `json:"fingerprint"`
-	HeaderSig          []byte    `json:"header_sig,omitempty"`
-	Md5                string    `json:"md5"`
-	Nevra              string    `json:"nevra"`
-	PatchReplaceLength int       `json:"patch_replace_length,omitempty"`
-	PayloadSig         []byte    `json:"payload_sig,omitempty"`
-	Sha1               string    `json:"sha1"`
-	Timestamp          time.Time `json:"timestamp"`
+type JsonInfo struct {
+	ClientIP    string    `json:"client_ip,omitempty"`
+	ClientName  string    `json:"client_name,omitempty"`
+	Fingerprint string    `json:"fingerprint"`
+	HeaderSig   []byte    `json:"header_sig,omitempty"`
+	Md5         string    `json:"md5"`
+	Nevra       string    `json:"nevra"`
+	PatchOffset uint64    `json:"patch_offset,omitempty"`
+	PatchLength uint64    `json:"patch_length,omitempty"`
+	PayloadSig  []byte    `json:"payload_sig,omitempty"`
+	Sha1        string    `json:"sha1"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
-func (info *SigInfo) fillJinfo() *jsonInfo {
-	jinfo := new(jsonInfo)
+func (info *SigInfo) fillJinfo() *JsonInfo {
+	jinfo := new(JsonInfo)
 	jinfo.Fingerprint = info.Fingerprint
 	nevra, _ := info.Header.GetNEVRA()
 	snevra := nevra.String()
@@ -83,10 +84,13 @@ func (info *SigInfo) Dump(stream io.Writer) {
 	jinfo := info.fillJinfo()
 	jinfo.HeaderSig, _ = info.Header.GetBytes(rpmutils.SIG_RSA)
 	jinfo.PayloadSig, _ = info.Header.GetBytes(rpmutils.SIG_PGP)
+	jinfo.Dump(stream)
+}
 
+func (jinfo *JsonInfo) Dump(stream io.Writer) {
 	enc := json.NewEncoder(stream)
 	enc.SetIndent("", "  ")
-	enc.Encode(&jinfo)
+	enc.Encode(jinfo)
 	stream.Write([]byte{'\n'})
 }
 
@@ -96,12 +100,21 @@ func (info *SigInfo) DumpPatch(stream io.Writer) error {
 		return err
 	}
 	jinfo := info.fillJinfo()
-	jinfo.PatchReplaceLength = info.Header.OriginalSignatureHeaderSize()
+	jinfo.PatchOffset = 0
+	jinfo.PatchLength = uint64(info.Header.OriginalSignatureHeaderSize())
 	enc := json.NewEncoder(stream)
 	enc.Encode(&jinfo)
 	stream.Write([]byte{0})
 	stream.Write(patch)
 	return nil
+}
+
+func LoadJson(blob []byte) (*JsonInfo, error) {
+	jinfo := new(JsonInfo)
+	if err := json.Unmarshal(blob, jinfo); err != nil {
+		return nil, err
+	}
+	return jinfo, nil
 }
 
 func (info *SigInfo) String() string {
@@ -138,8 +151,7 @@ func SignRpmFile(infile *os.File, outpath string, key *packet.PrivateKey, opts *
 }
 
 func SignRpmFileWithJson(infile *os.File, outpath string, blob []byte) (*SigInfo, error) {
-	var jinfo jsonInfo
-	err := json.Unmarshal(blob, &jinfo)
+	jinfo, err := LoadJson(blob)
 	if err != nil {
 		return nil, err
 	}

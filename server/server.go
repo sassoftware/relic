@@ -56,10 +56,8 @@ func (s *Server) callHandler(request *http.Request) (response Response, err erro
 		return s.serveHome(request)
 	case "/list_keys":
 		return s.serveListKeys(request)
-	case "/sign_rpm":
-		return s.serveSignRpm(request)
-	case "/sign_tool":
-		return s.serveSignTool(request)
+	case "/sign":
+		return s.serveSign(request)
 	default:
 		return ErrorResponse(http.StatusNotFound), nil
 	}
@@ -85,26 +83,20 @@ func (s *Server) getUserRoles(ctx context.Context, request *http.Request) (conte
 	return ctx, nil
 }
 
-func (s *Server) CheckKeyAccess(request *http.Request, keyName string) bool {
-	if s.Config.Keys == nil {
-		return false
-	}
-	key, ok := s.Config.Keys[keyName]
-	if !ok {
-		return false
+func (s *Server) CheckKeyAccess(request *http.Request, keyName string) *config.KeyConfig {
+	keyConf, err := s.Config.GetKey(keyName)
+	if err != nil {
+		return nil
 	}
 	clientRoles := GetClientRoles(request)
-	if !ok {
-		return false
-	}
-	for _, keyRole := range key.Roles {
+	for _, keyRole := range keyConf.Roles {
 		for _, clientRole := range clientRoles {
 			if keyRole == clientRole {
-				return true
+				return keyConf
 			}
 		}
 	}
-	return false
+	return nil
 }
 
 func (s *Server) Logf(format string, args ...interface{}) {
