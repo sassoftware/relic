@@ -79,7 +79,7 @@ func signCmd(cmd *cobra.Command, args []string) (err error) {
 		err = writeOutput(argOutput, response.Body)
 	}
 	if err == nil {
-		fmt.Fprintf(os.Stderr, "Signed %s", argFile)
+		fmt.Fprintf(os.Stderr, "Signed %s\n", argFile)
 	}
 	return
 }
