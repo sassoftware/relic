@@ -33,6 +33,21 @@ func (s *Server) serveSignRpm(request *http.Request) (res Response, err error) {
 	if keyName == "" {
 		return StringResponse(http.StatusBadRequest, "'key' query parameter is required"), nil
 	}
+	format := query.Get("format")
+	if format == "" {
+		format = "json"
+	}
+	var formatArg, ctype string
+	switch format {
+	case "json":
+		ctype = "application/json"
+		formatArg = "--json-output"
+	case "patch":
+		ctype = "application/x-binary-patch"
+		formatArg = "--patch"
+	default:
+		return StringResponse(http.StatusBadRequest, "'format' must be one of: json, patch"), nil
+	}
 	clientName := GetClientName(request)
 	if !s.CheckKeyAccess(request, keyName) {
 		s.Logf("Access denied: client %s (%s), key %s\n", clientName, GetClientIP(request), keyName)
@@ -40,7 +55,7 @@ func (s *Server) serveSignRpm(request *http.Request) (res Response, err error) {
 	}
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
-	proc := exec.CommandContext(request.Context(), os.Args[0], "--config", s.Config.Path(), "sign-rpm", "--key", keyName, "--file", "-", "--json-output")
+	proc := exec.CommandContext(request.Context(), os.Args[0], "--config", s.Config.Path(), "sign-rpm", "--key", keyName, "--file", "-", formatArg)
 	proc.Stdin = request.Body
 	proc.Stdout = &stdout
 	proc.Stderr = &stderr
@@ -50,5 +65,5 @@ func (s *Server) serveSignRpm(request *http.Request) (res Response, err error) {
 		return nil, errors.New("Error signing RPM")
 	}
 	s.Logf("%s", stderr.Bytes())
-	return StringResponse(http.StatusOK, string(stdout.Bytes())), nil
+	return BytesResponse(stdout.Bytes(), ctype), nil
 }

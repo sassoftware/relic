@@ -52,21 +52,20 @@ func defaultOpts(opts *rpmutils.SignatureOptions) *rpmutils.SignatureOptions {
 }
 
 type jsonInfo struct {
-	ClientIP    string    `json:"client_ip,omitempty"`
-	ClientName  string    `json:"client_name,omitempty"`
-	Fingerprint string    `json:"fingerprint"`
-	HeaderSig   []byte    `json:"header_sig"`
-	Md5         string    `json:"md5"`
-	Nevra       string    `json:"nevra"`
-	PayloadSig  []byte    `json:"payload_sig"`
-	Sha1        string    `json:"sha1"`
-	Timestamp   time.Time `json:"timestamp"`
+	ClientIP           string    `json:"client_ip,omitempty"`
+	ClientName         string    `json:"client_name,omitempty"`
+	Fingerprint        string    `json:"fingerprint"`
+	HeaderSig          []byte    `json:"header_sig,omitempty"`
+	Md5                string    `json:"md5"`
+	Nevra              string    `json:"nevra"`
+	PatchReplaceLength int       `json:"patch_replace_length,omitempty"`
+	PayloadSig         []byte    `json:"payload_sig,omitempty"`
+	Sha1               string    `json:"sha1"`
+	Timestamp          time.Time `json:"timestamp"`
 }
 
-func (info *SigInfo) Dump(stream io.Writer) {
-	var jinfo jsonInfo
-	jinfo.HeaderSig, _ = info.Header.GetBytes(rpmutils.SIG_RSA)
-	jinfo.PayloadSig, _ = info.Header.GetBytes(rpmutils.SIG_PGP)
+func (info *SigInfo) fillJinfo() *jsonInfo {
+	jinfo := new(jsonInfo)
 	jinfo.Fingerprint = info.Fingerprint
 	nevra, _ := info.Header.GetNEVRA()
 	snevra := nevra.String()
@@ -77,11 +76,32 @@ func (info *SigInfo) Dump(stream io.Writer) {
 	jinfo.Timestamp = info.Timestamp
 	jinfo.ClientIP = info.ClientIP
 	jinfo.ClientName = info.ClientName
+	return jinfo
+}
+
+func (info *SigInfo) Dump(stream io.Writer) {
+	jinfo := info.fillJinfo()
+	jinfo.HeaderSig, _ = info.Header.GetBytes(rpmutils.SIG_RSA)
+	jinfo.PayloadSig, _ = info.Header.GetBytes(rpmutils.SIG_PGP)
 
 	enc := json.NewEncoder(stream)
 	enc.SetIndent("", "  ")
 	enc.Encode(&jinfo)
 	stream.Write([]byte{'\n'})
+}
+
+func (info *SigInfo) DumpPatch(stream io.Writer) error {
+	patch, err := info.Header.DumpSignatureHeader(true)
+	if err != nil {
+		return err
+	}
+	jinfo := info.fillJinfo()
+	jinfo.PatchReplaceLength = info.Header.OriginalSignatureHeaderSize()
+	enc := json.NewEncoder(stream)
+	enc.Encode(&jinfo)
+	stream.Write([]byte{0})
+	stream.Write(patch)
+	return nil
 }
 
 func (info *SigInfo) String() string {

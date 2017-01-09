@@ -110,8 +110,13 @@ func (r *fileResponse) Close() {
 	}
 }
 
-type jsonResponse struct {
-	body []byte
+type bytesResponse struct {
+	body        []byte
+	contentType string
+}
+
+func BytesResponse(body []byte, contentType string) Response {
+	return &bytesResponse{body: body, contentType: contentType}
 }
 
 func JsonResponse(data interface{}) (Response, error) {
@@ -119,14 +124,14 @@ func JsonResponse(data interface{}) (Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &jsonResponse{body: blob}, nil
+	return &bytesResponse{body: blob, contentType: "application/json"}, nil
 }
 
-func (r *jsonResponse) Write(writer http.ResponseWriter) {
-	writer.Header().Set("Content-Type", "application/json")
+func (r *bytesResponse) Write(writer http.ResponseWriter) {
+	writer.Header().Set("Content-Type", r.contentType)
 	writer.Header().Set("Content-Length", fmt.Sprintf("%d", len(r.body)))
 	writer.WriteHeader(http.StatusOK)
 	writer.Write(r.body)
 }
 
-func (response *jsonResponse) Close() {}
+func (response *bytesResponse) Close() {}

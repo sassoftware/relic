@@ -31,6 +31,7 @@ import (
 var (
 	argFile      string
 	argJson      bool
+	argPatch     bool
 	argKeyName   string
 	argOutput    string
 	argTokenName string
