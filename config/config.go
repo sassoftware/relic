@@ -30,10 +30,12 @@ type TokenConfig struct {
 	Label    string // Select a token by label
 	Serial   string // Select a token by serial number
 	Pin      string // PIN to use, otherwise will be prompted (optional)
+	Timeout  int    // (server) Terminate command after N seconds (default 300)
 }
 
 type ToolConfig struct {
 	Command string // Command template
+	Timeout int    // (server) Terminate command after N seconds (default 300)
 }
 
 type KeyConfig struct {

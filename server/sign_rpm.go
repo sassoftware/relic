@@ -21,36 +21,29 @@ import (
 	"errors"
 	"net/http"
 	"os"
-	"os/exec"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/signrpm"
 )
 
 func (s *Server) signRpm(keyConf *config.KeyConfig, request *http.Request) (Response, error) {
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-	proc := exec.CommandContext(request.Context(),
+	cmdline := []string{
 		os.Args[0],
 		"sign-rpm",
 		"--config", s.Config.Path(),
 		"--key", keyConf.Name(),
 		"--file", "-",
-		"--patch")
-	proc.Stdin = request.Body
-	proc.Stdout = &stdout
-	proc.Stderr = &stderr
-	err := proc.Run()
-	if err != nil {
-		s.Logf("Error signing RPM: %s\nOutput:\n%s\n\n", err, stderr.Bytes())
-		return nil, errors.New("Error signing RPM")
+		"--patch",
 	}
-	blob := stdout.Bytes()
-	endOfJson := bytes.IndexByte(blob, 0)
+	stdout, response, err := s.invokeCommand(request, request.Body, "", false, keyConf.GetTimeout(), cmdline)
+	if response != nil || err != nil {
+		return response, err
+	}
+	endOfJson := bytes.IndexByte(stdout, 0)
 	if endOfJson < 0 {
 		return nil, errors.New("Did not find null terminator in sign-rpm output")
 	}
-	jinfo, err := signrpm.LoadJson(blob[:endOfJson])
+	jinfo, err := signrpm.LoadJson(stdout[:endOfJson])
 	if err != nil {
 		return nil, err
 	}
@@ -60,6 +53,6 @@ func (s *Server) signRpm(keyConf *config.KeyConfig, request *http.Request) (Resp
 		jinfo.Nevra, keyConf.Name(), jinfo.Fingerprint, jinfo.Md5, jinfo.Sha1, jinfo.ClientName, jinfo.ClientIP)
 	var buf bytes.Buffer
 	jinfo.Dump(&buf)
-	buf.Write(blob[endOfJson:])
+	buf.Write(stdout[endOfJson:])
 	return BytesResponse(buf.Bytes(), "application/x-binary-patch"), nil
 }

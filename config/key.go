@@ -19,9 +19,12 @@ package config
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/mattn/go-shellwords"
 )
+
+const defaultTimeout = time.Second * 300
 
 func (keyConf *KeyConfig) Name() string {
 	return keyConf.name
@@ -48,4 +51,14 @@ func (keyConf *KeyConfig) GetToolCmd(file string) ([]string, error) {
 		words[i] = word
 	}
 	return words, nil
+}
+
+func (keyConf *KeyConfig) GetTimeout() time.Duration {
+	if keyConf.token != nil && keyConf.token.Timeout != 0 {
+		return time.Second * time.Duration(keyConf.token.Timeout)
+	} else if keyConf.tool != nil && keyConf.tool.Timeout != 0 {
+		return time.Second * time.Duration(keyConf.tool.Timeout)
+	} else {
+		return defaultTimeout
+	}
 }

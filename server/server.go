@@ -34,7 +34,7 @@ type Server struct {
 	ErrorLog *log.Logger
 }
 
-func (s *Server) callHandler(request *http.Request) (response Response, err error) {
+func (s *Server) callHandler(request *http.Request, writer http.ResponseWriter) (response Response, err error) {
 	defer func() {
 		if caught := recover(); caught != nil {
 			const size = 64 << 10
@@ -50,6 +50,14 @@ func (s *Server) callHandler(request *http.Request) (response Response, err erro
 	if errResponse != nil {
 		return errResponse, nil
 	}
+	ctx, cancel := context.WithCancel(ctx)
+	closed := writer.(http.CloseNotifier).CloseNotify()
+	go func() {
+		if <-closed {
+			cancel()
+		}
+	}()
+
 	request = request.WithContext(ctx)
 	switch request.URL.Path {
 	case "/":
@@ -104,7 +112,7 @@ func (s *Server) Logf(format string, args ...interface{}) {
 }
 
 func (s *Server) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
-	response, err := s.callHandler(request)
+	response, err := s.callHandler(request, writer)
 	if err != nil {
 		s.Logf("Unhandled exception from client %s: %s\n", GetClientIP(request), err)
 		response = ErrorResponse(http.StatusInternalServerError)
