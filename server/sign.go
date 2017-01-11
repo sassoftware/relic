@@ -31,9 +31,10 @@ func (s *Server) serveSign(request *http.Request) (res Response, err error) {
 	if keyName == "" {
 		return StringResponse(http.StatusBadRequest, "'key' query parameter is required"), nil
 	}
+	sigType := query.Get("sigtype")
 	filename := query.Get("filename")
 	exten := path.Ext(filename)
-	if filename == "" || exten == "" {
+	if sigType == "" && (filename == "" || exten == "") {
 		return StringResponse(http.StatusBadRequest, "'filename' query parameter is required and must have a known extension"), nil
 	}
 	keyConf := s.CheckKeyAccess(request, keyName)
@@ -45,8 +46,13 @@ func (s *Server) serveSign(request *http.Request) (res Response, err error) {
 		return s.signWithTool(keyConf, request, filename)
 	} else if keyConf.Token == "" {
 		return nil, fmt.Errorf("Key %s needs a tool or token setting", keyName)
-	} else if exten == ".rpm" {
+	} else if sigType == "pgp" {
+		return s.signPgp(keyConf, request, filename)
+	} else if sigType == "rpm" || exten == ".rpm" {
 		return s.signRpm(keyConf, request)
+	} else if sigType != "" {
+		s.Logf("error: unknown sigtype: sigtype=%s key=%s client=%s ip=%s", sigType, keyName, GetClientName(request), GetClientIP(request))
+		return StringResponse(http.StatusBadRequest, "unknown sigtype"), nil
 	} else {
 		s.Logf("error: unknown filetype: filename=%s key=%s client=%s ip=%s", filename, keyName, GetClientName(request), GetClientIP(request))
 		return StringResponse(http.StatusBadRequest, "unknown filetype for key"), nil

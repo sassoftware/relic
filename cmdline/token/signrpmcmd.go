@@ -35,7 +35,7 @@ var SignRpmCmd = &cobra.Command{
 
 func init() {
 	shared.RootCmd.AddCommand(SignRpmCmd)
-	SignRpmCmd.Flags().StringVarP(&argKeyName, "key", "k", "", "name of key section in config file to use")
+	SignRpmCmd.Flags().StringVarP(&argKeyName, "key", "k", "", "Name of key section in config file to use")
 	SignRpmCmd.Flags().StringVarP(&argFile, "file", "f", "", "Input RPM file to sign")
 	SignRpmCmd.Flags().StringVarP(&argOutput, "output", "o", "", "Output RPM file")
 	SignRpmCmd.Flags().BoolVarP(&argJson, "json-output", "j", false, "Print signature tags instead of writing a RPM")

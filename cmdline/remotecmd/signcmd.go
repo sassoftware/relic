@@ -37,7 +37,7 @@ var SignCmd = &cobra.Command{
 
 func init() {
 	RemoteCmd.AddCommand(SignCmd)
-	SignCmd.Flags().StringVarP(&argKeyName, "key", "k", "", "name of key on remote server to use")
+	SignCmd.Flags().StringVarP(&argKeyName, "key", "k", "", "Name of key on remote server to use")
 	SignCmd.Flags().StringVarP(&argFile, "file", "f", "", "Input file to sign")
 	SignCmd.Flags().StringVarP(&argOutput, "output", "o", "", "Output file. Defaults to same as --file.")
 }
