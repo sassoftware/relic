@@ -17,19 +17,16 @@
 package token
 
 import (
-	"bytes"
-	"crypto"
 	"errors"
 	"io"
-	"io/ioutil"
 	"os"
 	"strings"
-	"time"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/p11token/pgptoken"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/openpgp/armor"
+	"golang.org/x/crypto/openpgp/clearsign"
 	"golang.org/x/crypto/openpgp/packet"
 )
 
@@ -41,10 +38,11 @@ var SignPgpCmd = &cobra.Command{
 }
 
 var (
-	argPgpUser     string
-	argPgpArmor    bool
-	argPgpNoArmor  bool
-	argPgpDetached bool
+	argPgpUser      string
+	argPgpArmor     bool
+	argPgpNoArmor   bool
+	argPgpDetached  bool
+	argPgpClearsign bool
 )
 
 func init() {
@@ -54,7 +52,8 @@ func init() {
 	SignPgpCmd.Flags().StringVarP(&argOutput, "output", "o", "", "Write output to file")
 	SignPgpCmd.Flags().BoolVarP(&argPgpArmor, "armor", "a", false, "Create ASCII armored output")
 	SignPgpCmd.Flags().BoolVar(&argPgpNoArmor, "no-armor", false, "Create binary output")
-	SignPgpCmd.Flags().BoolVarP(&argPgpDetached, "detach-sign", "b", false, "Create a detached signature (this must be set)")
+	SignPgpCmd.Flags().BoolVarP(&argPgpDetached, "detach-sign", "b", false, "Create a detached signature")
+	SignPgpCmd.Flags().BoolVar(&argPgpClearsign, "clearsign", false, "Create a cleartext signature")
 
 	SignPgpCmd.Flags().BoolP("sign", "s", false, "(ignored)")
 	SignPgpCmd.Flags().BoolP("verbose", "v", false, "(ignored)")
@@ -65,8 +64,8 @@ func init() {
 }
 
 func signPgpCmd(cmd *cobra.Command, args []string) (err error) {
-	if !argPgpDetached {
-		return errors.New("--sign or --detach-sign must be set")
+	if !argPgpDetached && !argPgpClearsign {
+		return errors.New("--detach-sign or --clearsign must be set")
 	}
 	if argKeyName == "" {
 		if argPgpUser == "" {
@@ -84,7 +83,7 @@ func signPgpCmd(cmd *cobra.Command, args []string) (err error) {
 	if err != nil {
 		return err
 	}
-	packet, err := pgptoken.KeyFromToken(key)
+	pkey, err := pgptoken.KeyFromToken(key)
 	if err != nil {
 		return err
 	}
@@ -99,51 +98,67 @@ func signPgpCmd(cmd *cobra.Command, args []string) (err error) {
 	} else {
 		return errors.New("Expected a single filename argument, or no arguments to read from standard input")
 	}
-	sigbytes, err := signStream(infile, packet)
-	if err != nil {
-		return err
-	}
-	if argPgpArmor && !argPgpNoArmor {
-		var buf bytes.Buffer
-		w, err := armor.Encode(&buf, "PGP SIGNATURE", map[string]string{"Version": "relic"})
-		_, err = w.Write(sigbytes)
-		if err != nil {
-			return err
-		}
-		err = w.Close()
-		if err != nil {
-			return err
-		}
-		buf.WriteRune('\n')
-		sigbytes = buf.Bytes()
-	}
+	var out io.WriteCloser
 	if argOutput == "" || argOutput == "-" {
-		_, err = os.Stdout.Write(sigbytes)
-		return err
+		out = os.Stdout
 	} else {
-		return ioutil.WriteFile(argOutput, sigbytes, 0666)
+		out, err = os.Create(argOutput)
+		if err != nil {
+			return err
+		}
+		defer out.Close()
 	}
+	config := &packet.Config{}
+	if argPgpClearsign {
+		w, err := clearsign.Encode(out, pkey, config)
+		if err != nil {
+			return err
+		}
+		if _, err := io.Copy(w, infile); err != nil {
+			return err
+		}
+		if err := w.Close(); err != nil {
+			return err
+		}
+		out.Write([]byte{'\n'})
+	} else {
+		w := out
+		doClose := false
+		if argPgpArmor && !argPgpNoArmor {
+			w, err = armor.Encode(w, "PGP SIGNATURE", map[string]string{"Version": "relic"})
+			if err != nil {
+				return err
+			}
+			doClose = true
+		}
+		if err := signStream(infile, w, pkey, config); err != nil {
+			return err
+		}
+		if doClose {
+			if err := w.Close(); err != nil {
+				return err
+			}
+			out.Write([]byte{'\n'})
+		}
+	}
+	return nil
 }
 
-func signStream(stream io.Reader, key *packet.PrivateKey) ([]byte, error) {
-	hash := crypto.SHA256
+func signStream(stream io.Reader, out io.Writer, key *packet.PrivateKey, config *packet.Config) error {
+	hash := config.Hash()
 	sig := &packet.Signature{
 		SigType:      packet.SigTypeBinary,
-		CreationTime: time.Now(),
+		CreationTime: config.Now(),
 		PubKeyAlgo:   key.PublicKey.PubKeyAlgo,
 		Hash:         hash,
 		IssuerKeyId:  &key.KeyId,
 	}
 	h := hash.New()
 	if _, err := io.Copy(h, stream); err != nil {
-		return nil, err
+		return err
 	}
 	if err := sig.Sign(h, key, nil); err != nil {
-		return nil, err
+		return err
 	}
-	var buf bytes.Buffer
-	if err := sig.Serialize(&buf); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
+	return sig.Serialize(out)
 }

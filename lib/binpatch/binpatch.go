@@ -21,9 +21,9 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"io/ioutil"
 	"os"
-	"path"
+
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/atomicfile"
 )
 
 type PatchInfo struct {
@@ -61,24 +61,15 @@ func (p *PatchInfo) Apply(infile *os.File, outpath string) error {
 		return p.applyInPlace(infile)
 	}
 	// write-rename
-	tempfile, err := ioutil.TempFile(path.Dir(outpath), path.Base(outpath))
+	out, err := atomicfile.New(outpath)
 	if err != nil {
 		return err
 	}
-	defer func() {
-		tempfile.Close()
-		os.Remove(tempfile.Name())
-	}()
-	if err := p.apply(infile, tempfile); err != nil {
+	defer out.Close()
+	if err := p.apply(infile, out); err != nil {
 		return err
 	}
-	tempfile.Chmod(0644)
-	tempfile.Close()
-	// rename can't overwrite on windows
-	if err := os.Remove(outpath); err != nil && !os.IsNotExist(err) {
-		return err
-	}
-	if err := os.Rename(tempfile.Name(), outpath); err != nil {
+	if err := out.Commit(); err != nil {
 		return err
 	}
 	return nil

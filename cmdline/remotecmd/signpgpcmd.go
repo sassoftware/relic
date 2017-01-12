@@ -18,6 +18,7 @@ package remotecmd
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"net/url"
 	"os"
@@ -25,6 +26,7 @@ import (
 	"strings"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/atomicfile"
 	"github.com/spf13/cobra"
 )
 
@@ -36,10 +38,11 @@ var SignPgpCmd = &cobra.Command{
 }
 
 var (
-	argPgpUser     string
-	argPgpArmor    bool
-	argPgpNoArmor  bool
-	argPgpDetached bool
+	argPgpUser      string
+	argPgpArmor     bool
+	argPgpNoArmor   bool
+	argPgpDetached  bool
+	argPgpClearsign bool
 )
 
 func init() {
@@ -50,6 +53,7 @@ func init() {
 	SignPgpCmd.Flags().BoolVarP(&argPgpArmor, "armor", "a", false, "Create ASCII armored output")
 	SignPgpCmd.Flags().BoolVar(&argPgpNoArmor, "no-armor", false, "Create binary output")
 	SignPgpCmd.Flags().BoolVarP(&argPgpDetached, "detach-sign", "b", false, "Create a detached signature (this must be set)")
+	SignPgpCmd.Flags().BoolVar(&argPgpClearsign, "clearsign", false, "Create a cleartext signature")
 
 	SignPgpCmd.Flags().BoolP("sign", "s", false, "(ignored)")
 	SignPgpCmd.Flags().BoolP("verbose", "v", false, "(ignored)")
@@ -60,8 +64,8 @@ func init() {
 }
 
 func signPgpCmd(cmd *cobra.Command, args []string) (err error) {
-	if !argPgpDetached {
-		return errors.New("--detach-sign must be set")
+	if !argPgpDetached && !argPgpClearsign {
+		return errors.New("--detach-sign or --clearsign must be set")
 	}
 	if argKeyName == "" {
 		if argPgpUser == "" {
@@ -99,18 +103,34 @@ func signPgpCmd(cmd *cobra.Command, args []string) (err error) {
 	if argPgpArmor && !argPgpNoArmor {
 		values.Add("armor", "1")
 	}
+	if argPgpClearsign {
+		values.Add("clearsign", "1")
+	}
 	response, err := callRemote("sign", "POST", &values, infile)
 	if err != nil {
 		return err
 	}
-	output := os.Stdout
+	output := io.Writer(os.Stdout)
 	if argOutput != "" && argOutput != "-" {
-		output, err = os.Create(argOutput)
+		var atomic *atomicfile.AtomicFile
+		atomic, err = atomicfile.New(argOutput)
 		if err != nil {
 			return err
 		}
-		defer output.Close()
+		defer func() {
+			if err == nil {
+				err = atomic.Commit()
+			} else {
+				atomic.Close()
+			}
+		}()
+		output = atomic
 	}
-	_, err = io.Copy(output, response.Body)
+	if _, err := io.Copy(output, response.Body); err != nil {
+		return err
+	}
+	if status := response.Trailer.Get("X-Status"); status != "" && status != "200" {
+		return fmt.Errorf("Signature failed with status %s", status)
+	}
 	return err
 }

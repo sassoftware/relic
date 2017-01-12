@@ -40,8 +40,7 @@ func (s *Server) callHandler(request *http.Request, writer http.ResponseWriter) 
 			const size = 64 << 10
 			buf := make([]byte, size)
 			buf = buf[:runtime.Stack(buf, false)]
-			s.Logf("Unhandled exception from client %s: %s\n%s\n", GetClientIP(request), caught, buf)
-			response = ErrorResponse(http.StatusInternalServerError)
+			response = s.LogError(request, caught, buf)
 			err = nil
 		}
 	}()
@@ -65,7 +64,7 @@ func (s *Server) callHandler(request *http.Request, writer http.ResponseWriter) 
 	case "/list_keys":
 		return s.serveListKeys(request)
 	case "/sign":
-		return s.serveSign(request)
+		return s.serveSign(request, writer)
 	default:
 		return ErrorResponse(http.StatusNotFound), nil
 	}
@@ -111,14 +110,24 @@ func (s *Server) Logf(format string, args ...interface{}) {
 	s.ErrorLog.Output(2, fmt.Sprintf(format, args...))
 }
 
+func (s *Server) LogError(request *http.Request, err interface{}, traceback []byte) Response {
+	sep := ""
+	if len(traceback) != 0 {
+		sep = "\n"
+	}
+	s.Logf("Unhandled exception from client %s: %s%s%s\n", GetClientIP(request), err, sep, traceback)
+	return ErrorResponse(http.StatusInternalServerError)
+}
+
 func (s *Server) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	response, err := s.callHandler(request, writer)
 	if err != nil {
-		s.Logf("Unhandled exception from client %s: %s\n", GetClientIP(request), err)
-		response = ErrorResponse(http.StatusInternalServerError)
+		response = s.LogError(request, err, nil)
 	}
-	defer response.Close()
-	response.Write(writer)
+	if response != nil {
+		defer response.Close()
+		response.Write(writer)
+	}
 }
 
 func New(config *config.Config) (*Server, error) {

@@ -55,7 +55,7 @@ func (s *Server) signWithTool(keyConf *config.KeyConfig, request *http.Request, 
 	} else if err != nil {
 		return nil, err
 	}
-	_, response, err := s.invokeCommand(request, nil, scratchDir, true, keyConf.GetTimeout(), cmdline)
+	_, response, err := s.invokeCommand(request, nil, nil, scratchDir, true, keyConf.GetTimeout(), cmdline)
 	if response != nil || err != nil {
 		return response, err
 	}
@@ -72,7 +72,7 @@ func spoolFile(request *http.Request, path string) (int64, error) {
 	return io.Copy(file, request.Body)
 }
 
-func (s *Server) invokeCommand(request *http.Request, stdin io.Reader, workDir string, combined bool, timeout time.Duration, cmdline []string) ([]byte, Response, error) {
+func (s *Server) invokeCommand(request *http.Request, stdin io.Reader, stdout io.Writer, workDir string, combined bool, timeout time.Duration, cmdline []string) ([]byte, Response, error) {
 	ctx, cancel := context.WithTimeout(request.Context(), timeout)
 	defer cancel()
 	hangup := &hangupDetector{r: stdin, cancel: cancel}
@@ -80,19 +80,23 @@ func (s *Server) invokeCommand(request *http.Request, stdin io.Reader, workDir s
 		stdin = hangup
 	}
 
-	var stdout, stderr bytes.Buffer
+	var stdoutbuf, stderr bytes.Buffer
 	proc := exec.CommandContext(ctx, cmdline[0], cmdline[1:]...)
 	proc.Dir = workDir
 	proc.Stdin = stdin
-	proc.Stdout = &stdout
+	if stdout == nil {
+		proc.Stdout = &stdoutbuf
+	} else {
+		proc.Stdout = stdout
+	}
 	proc.Stderr = &stderr
 	err := proc.Run()
 	if err == nil {
-		return stdout.Bytes(), nil, nil
+		return stdoutbuf.Bytes(), nil, nil
 	}
 	output := stderr.String()
 	if combined {
-		output = stdout.String() + output
+		output = stdoutbuf.String() + output
 	}
 	select {
 	case <-ctx.Done():

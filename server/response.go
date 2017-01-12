@@ -31,38 +31,61 @@ type Response interface {
 	Close()
 }
 
-type stringResponse struct {
-	StatusCode int
-	Body       string
+type bytesResponse struct {
+	StatusCode  int
+	ContentType string
+	Body        []byte
 }
 
-func (response *stringResponse) Write(writer http.ResponseWriter) {
-	body := []byte(response.Body)
-	writer.Header().Set("Content-Length", fmt.Sprintf("%d", len(body)))
-	writer.Header().Set("Content-Type", "text/plain")
-	writer.WriteHeader(response.StatusCode)
-	writer.Write(body)
+func (r *bytesResponse) Write(writer http.ResponseWriter) {
+	writer.Header().Set("Content-Length", fmt.Sprintf("%d", len(r.Body)))
+	writer.Header().Set("Content-Type", r.ContentType)
+	writer.WriteHeader(r.StatusCode)
+	writer.Write(r.Body)
 }
 
-func (response *stringResponse) Close() {}
+func (r *bytesResponse) Close() {}
+
+func BytesResponse(body []byte, contentType string) Response {
+	return &bytesResponse{
+		StatusCode:  http.StatusOK,
+		ContentType: contentType,
+		Body:        body,
+	}
+}
 
 func StringResponse(statusCode int, body string) Response {
-	return &stringResponse{
-		StatusCode: statusCode,
-		Body:       body + "\r\n",
+	return &bytesResponse{
+		StatusCode:  statusCode,
+		ContentType: "text/plain",
+		Body:        []byte(body + "\r\n"),
 	}
 }
 
 func ErrorResponse(statusCode int) Response {
-	return &stringResponse{
-		StatusCode: statusCode,
-		Body:       http.StatusText(statusCode) + "\r\n",
+	return &bytesResponse{
+		StatusCode:  statusCode,
+		ContentType: "text/plain",
+		Body:        []byte(http.StatusText(statusCode) + "\r\n"),
 	}
 }
 
-var AccessDeniedResponse Response = &stringResponse{
-	StatusCode: http.StatusForbidden,
-	Body:       "Access denied\r\n",
+var AccessDeniedResponse Response = &bytesResponse{
+	StatusCode:  http.StatusForbidden,
+	ContentType: "text/plain",
+	Body:        []byte("Access denied\r\n"),
+}
+
+func JsonResponse(data interface{}) (Response, error) {
+	blob, err := json.Marshal(data)
+	if err != nil {
+		return nil, err
+	}
+	return &bytesResponse{
+		StatusCode:  http.StatusOK,
+		ContentType: "application/json",
+		Body:        blob,
+	}, nil
 }
 
 type fileResponse struct {
@@ -109,29 +132,3 @@ func (r *fileResponse) Close() {
 		}
 	}
 }
-
-type bytesResponse struct {
-	body        []byte
-	contentType string
-}
-
-func BytesResponse(body []byte, contentType string) Response {
-	return &bytesResponse{body: body, contentType: contentType}
-}
-
-func JsonResponse(data interface{}) (Response, error) {
-	blob, err := json.Marshal(data)
-	if err != nil {
-		return nil, err
-	}
-	return &bytesResponse{body: blob, contentType: "application/json"}, nil
-}
-
-func (r *bytesResponse) Write(writer http.ResponseWriter) {
-	writer.Header().Set("Content-Type", r.contentType)
-	writer.Header().Set("Content-Length", fmt.Sprintf("%d", len(r.body)))
-	writer.WriteHeader(http.StatusOK)
-	writer.Write(r.body)
-}
-
-func (response *bytesResponse) Close() {}

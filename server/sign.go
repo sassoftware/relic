@@ -22,7 +22,7 @@ import (
 	"path"
 )
 
-func (s *Server) serveSign(request *http.Request) (res Response, err error) {
+func (s *Server) serveSign(request *http.Request, writer http.ResponseWriter) (res Response, err error) {
 	if request.Method != "POST" {
 		return ErrorResponse(http.StatusMethodNotAllowed), nil
 	}
@@ -47,7 +47,7 @@ func (s *Server) serveSign(request *http.Request) (res Response, err error) {
 	} else if keyConf.Token == "" {
 		return nil, fmt.Errorf("Key %s needs a tool or token setting", keyName)
 	} else if sigType == "pgp" {
-		return s.signPgp(keyConf, request, filename)
+		return s.signPgp(keyConf, request, filename, writer)
 	} else if sigType == "rpm" || exten == ".rpm" {
 		return s.signRpm(keyConf, request)
 	} else if sigType != "" {
