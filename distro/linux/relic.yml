@@ -53,6 +53,8 @@ server:
   certfile: /etc/relic/server/server.key
   # Optional logfile for server errors. If not set, then standard error is used
   logfile: /var/log/relic/server.log
+  # Maximum number of bytes to buffer in RAM (i.e. for PGP clearsign)
+  maxdocsize: 10000000
 clients:
   # Authentication to the server is via client certificate. Certificates are
   # identified by their fingerprint. Fingerprints can be obtained by using the

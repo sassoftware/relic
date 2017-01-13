@@ -18,7 +18,6 @@ package remotecmd
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"net/url"
 	"os"
@@ -119,6 +118,9 @@ func signPgpCmd(cmd *cobra.Command, args []string) (err error) {
 		}
 		defer func() {
 			if err == nil {
+				if infile != os.Stdin {
+					infile.Close() // windows file locking
+				}
 				err = atomic.Commit()
 			} else {
 				atomic.Close()
@@ -126,11 +128,6 @@ func signPgpCmd(cmd *cobra.Command, args []string) (err error) {
 		}()
 		output = atomic
 	}
-	if _, err := io.Copy(output, response.Body); err != nil {
-		return err
-	}
-	if status := response.Trailer.Get("X-Status"); status != "" && status != "200" {
-		return fmt.Errorf("Signature failed with status %s", status)
-	}
+	_, err = io.Copy(output, response.Body)
 	return err
 }

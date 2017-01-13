@@ -25,6 +25,8 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+const defaultMaxDocSize = 10000000
+
 type TokenConfig struct {
 	Provider string // Path to PKCS#11 provider module (required)
 	Label    string // Select a token by label
@@ -57,6 +59,8 @@ type ServerConfig struct {
 	KeyFile  string // Path to TLS key file
 	CertFile string // Path to TLS certificate chain
 	LogFile  string // Optional error log
+
+	MaxDocSize int64 // Largest request that will be spooled to RAM
 }
 
 type ClientConfig struct {
@@ -101,6 +105,9 @@ func ReadFile(path string) (*Config, error) {
 		normalized[lower] = client
 	}
 	config.Clients = normalized
+	if config.Server != nil && config.Server.MaxDocSize == 0 {
+		config.Server.MaxDocSize = defaultMaxDocSize
+	}
 	config.path = path
 	return config, nil
 }

@@ -64,7 +64,7 @@ func (s *Server) callHandler(request *http.Request, writer http.ResponseWriter) 
 	case "/list_keys":
 		return s.serveListKeys(request)
 	case "/sign":
-		return s.serveSign(request, writer)
+		return s.serveSign(request)
 	default:
 		return ErrorResponse(http.StatusNotFound), nil
 	}

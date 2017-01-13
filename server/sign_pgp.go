@@ -18,7 +18,6 @@ package server
 
 import (
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"strconv"
@@ -26,7 +25,7 @@ import (
 	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
 )
 
-func (s *Server) signPgp(keyConf *config.KeyConfig, request *http.Request, filename string, writer http.ResponseWriter) (Response, error) {
+func (s *Server) signPgp(keyConf *config.KeyConfig, request *http.Request, filename string) (Response, error) {
 	cmdline := []string{
 		os.Args[0],
 		"sign-pgp",
@@ -36,64 +35,24 @@ func (s *Server) signPgp(keyConf *config.KeyConfig, request *http.Request, filen
 	if n, _ := strconv.Atoi(request.URL.Query().Get("armor")); n != 0 {
 		cmdline = append(cmdline, "--armor")
 	}
-	var stdoutStream io.Writer
-	var counter *responseCounter
 	if n, _ := strconv.Atoi(request.URL.Query().Get("clearsign")); n != 0 {
-		// Normally it's best to spool the signature to a buffer to handle any
-		// errors that occur while signing because signatures are small, but
-		// clearsign repeats its original input so it makes more sense to
-		// stream it.
-		counter = &responseCounter{writer: writer}
-		stdoutStream = counter
-		writer.Header().Add("Trailer", "X-Status")
 		cmdline = append(cmdline, "--clearsign")
+		// clearsign passes its input through to the output and stdout is
+		// buffered, so check that the request isn't too big
+		if request.ContentLength < 0 {
+			s.Logf("Refused signature because content-length is missing: filename=%s key=%s client=%s ip=%s", filename, keyConf.Name(), GetClientName(request), GetClientIP(request))
+			return StringResponse(http.StatusLengthRequired, "Length Required\n\nContent-Length is required when using clearsign"), nil
+		} else if request.ContentLength > s.Config.Server.MaxDocSize {
+			s.Logf("Refused signature because content-length exceeds limit: filename=%s size=%d key=%s client=%s ip=%s", filename, request.ContentLength, keyConf.Name(), GetClientName(request), GetClientIP(request))
+			return StringResponse(http.StatusRequestEntityTooLarge, fmt.Sprintf("Request Entity Too Large\n\nRequest exceeds the configured maximum Content-Length of %d bytes", s.Config.Server.MaxDocSize)), nil
+		}
 	} else {
 		cmdline = append(cmdline, "--detach-sign")
 	}
-	stdoutBytes, response, err := s.invokeCommand(request, request.Body, stdoutStream, "", false, keyConf.GetTimeout(), cmdline)
+	stdout, response, err := s.invokeCommand(request, request.Body, "", false, keyConf.GetTimeout(), cmdline)
 	if response != nil || err != nil {
-		if counter.Count() == 0 {
-			// No headers sent yet so just handle this the normal way
-			return response, err
-		}
-		// Headers were sent so do the usual logging stuff but send the error
-		// status as a trailer. The error text will also get appended to the
-		// output stream as a last resort in case the client didn't notice.
-		if response == nil {
-			response = s.LogError(request, err, nil)
-		}
-		status := 500
-		if br, ok := response.(*bytesResponse); ok {
-			writer.Write(br.Body)
-			status = br.StatusCode
-		}
-		writer.Header().Set("X-Status", fmt.Sprintf("%d", status))
-		return nil, nil
+		return response, err
 	}
 	s.Logf("Signed PGP message: filename=%s key=%s client=%s ip=%s", filename, keyConf.Name(), GetClientName(request), GetClientIP(request))
-	if stdoutStream == nil {
-		return BytesResponse(stdoutBytes, "application/pgp-signature"), nil
-	} else {
-		writer.Header().Set("X-Status", "200")
-		return nil, nil
-	}
-}
-
-type responseCounter struct {
-	writer io.Writer
-	sent   uint64
-}
-
-func (rc *responseCounter) Write(d []byte) (int, error) {
-	n, err := rc.writer.Write(d)
-	rc.sent += uint64(n)
-	return n, err
-}
-
-func (rc *responseCounter) Count() uint64 {
-	if rc != nil {
-		return rc.sent
-	} else {
-		return 0
-	}
+	return BytesResponse(stdout, "application/pgp-signature"), nil
 }
