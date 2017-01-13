@@ -35,7 +35,10 @@ func (s *Server) signPgp(keyConf *config.KeyConfig, request *http.Request, filen
 	if n, _ := strconv.Atoi(request.URL.Query().Get("armor")); n != 0 {
 		cmdline = append(cmdline, "--armor")
 	}
-	if n, _ := strconv.Atoi(request.URL.Query().Get("clearsign")); n != 0 {
+	pgp := request.URL.Query().Get("pgp")
+	if pgp == "mini-clear" {
+		cmdline = append(cmdline, "--mini-clear")
+	} else if pgp == "clearsign" {
 		cmdline = append(cmdline, "--clearsign")
 		// clearsign passes its input through to the output and stdout is
 		// buffered, so check that the request isn't too big

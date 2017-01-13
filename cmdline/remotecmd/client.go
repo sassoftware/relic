@@ -98,12 +98,19 @@ func callRemote(endpoint, method string, query *url.Values, body interface{}) (*
 					return nil, err
 				}
 				request.ContentLength = stat.Size()
+			} else if file, ok := reader.(*bytes.Reader); ok {
+				request.ContentLength = int64(file.Len())
 			}
 			request.Body = ioutil.NopCloser(reader)
 		} else {
-			bodybytes, err := json.Marshal(body)
-			if err != nil {
-				return nil, err
+			var bodybytes []byte
+			if body, ok := body.([]byte); ok {
+				bodybytes = body
+			} else {
+				bodybytes, err = json.Marshal(body)
+				if err != nil {
+					return nil, err
+				}
 			}
 			request.ContentLength = int64(len(bodybytes))
 			request.Body = ioutil.NopCloser(bytes.NewReader(bodybytes))

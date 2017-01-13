@@ -17,8 +17,11 @@
 package remotecmd
 
 import (
+	"bytes"
 	"errors"
+	"fmt"
 	"io"
+	"io/ioutil"
 	"net/url"
 	"os"
 	"path"
@@ -26,8 +29,11 @@ import (
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/atomicfile"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/clearsign"
 	"github.com/spf13/cobra"
 )
+
+const maxStreamClearSignSize = 10000000
 
 var SignPgpCmd = &cobra.Command{
 	Use:   "sign-pgp",
@@ -94,6 +100,7 @@ func signPgpCmd(cmd *cobra.Command, args []string) (err error) {
 	} else {
 		return errors.New("Expected a single filename argument, or no arguments to read from standard input")
 	}
+	instream := io.ReadSeeker(infile)
 
 	values := url.Values{}
 	values.Add("key", argKeyName)
@@ -103,9 +110,21 @@ func signPgpCmd(cmd *cobra.Command, args []string) (err error) {
 		values.Add("armor", "1")
 	}
 	if argPgpClearsign {
-		values.Add("clearsign", "1")
+		// Ask the server to just produce the signature block, not the embedded document
+		values.Add("pgp", "mini-clear")
+		_, err := instream.Seek(0, 1)
+		if err != nil {
+			// not seekable so consume it all now
+			contents, err := ioutil.ReadAll(io.LimitReader(infile, maxStreamClearSignSize))
+			if err != nil {
+				return err
+			} else if len(contents) == maxStreamClearSignSize {
+				return errors.New("Input stream is too big, try writing it to file first")
+			}
+			instream = bytes.NewReader(contents)
+		}
 	}
-	response, err := callRemote("sign", "POST", &values, infile)
+	response, err := callRemote("sign", "POST", &values, instream)
 	if err != nil {
 		return err
 	}
@@ -128,6 +147,18 @@ func signPgpCmd(cmd *cobra.Command, args []string) (err error) {
 		}()
 		output = atomic
 	}
-	_, err = io.Copy(output, response.Body)
+	if argPgpClearsign {
+		// Reassemble clearsign from the local input file and the received signature block
+		sig, err2 := ioutil.ReadAll(response.Body)
+		if err2 != nil {
+			return err2
+		}
+		if _, err := instream.Seek(0, 0); err != nil {
+			return fmt.Errorf("failed to seek input stream: %s", err)
+		}
+		err = clearsign.MergeClearSign(output, sig, instream)
+	} else {
+		_, err = io.Copy(output, response.Body)
+	}
 	return err
 }
