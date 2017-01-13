@@ -30,6 +30,7 @@ import (
 	"os"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
+	"golang.org/x/net/http2"
 )
 
 func makeTlsConfig() (*tls.Config, error) {
@@ -80,10 +81,11 @@ func callRemote(endpoint, method string, query *url.Values, body interface{}) (*
 	if query != nil {
 		url.RawQuery = query.Encode()
 	}
-	client := &http.Client{Transport: &http.Transport{
-		TLSClientConfig:   tconf,
-		DisableKeepAlives: true,
-	}}
+	transport := &http.Transport{TLSClientConfig: tconf}
+	if err := http2.ConfigureTransport(transport); err != nil {
+		return nil, err
+	}
+	client := &http.Client{Transport: transport}
 	request := &http.Request{
 		Method: method,
 		URL:    url,

@@ -29,6 +29,7 @@ import (
 	"gerrit-pdt.unx.sas.com/tools/relic.git/server"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/server/activation"
 	"github.com/braintree/manners"
+	"golang.org/x/net/http2"
 )
 
 type Daemon struct {
@@ -76,8 +77,12 @@ func New(config *config.Config) (*Daemon, error) {
 		return nil, err
 	}
 	httpServer := &http.Server{
-		Handler:  srv,
-		ErrorLog: srv.ErrorLog,
+		Handler:   srv,
+		ErrorLog:  srv.ErrorLog,
+		TLSConfig: tconf,
+	}
+	if err := http2.ConfigureServer(httpServer, nil); err != nil {
+		return nil, err
 	}
 	graceful := manners.NewWithServer(httpServer)
 	return &Daemon{

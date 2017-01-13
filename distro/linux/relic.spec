@@ -1,5 +1,5 @@
 Name: relic
-Version: 1.1.0
+Version: 1.2.0
 Release: 1%{?dist}
 Summary: Secure package signing service
 License: Apache 2.0

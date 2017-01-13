@@ -51,6 +51,7 @@ func init() {
 	SignPgpCmd.Flags().StringVarP(&argKeyName, "key", "k", "", "Name of key section in config file to use")
 	SignPgpCmd.Flags().StringVarP(&argOutput, "output", "o", "", "Write output to file")
 	SignPgpCmd.Flags().BoolVarP(&argPgpArmor, "armor", "a", false, "Create ASCII armored output")
+	SignPgpCmd.Flags().BoolVarP(&argPgpTextMode, "textmode", "t", false, "Sign in CRLF canonical text form")
 	SignPgpCmd.Flags().BoolVar(&argPgpNoArmor, "no-armor", false, "Create binary output")
 	SignPgpCmd.Flags().BoolVarP(&argPgpDetached, "detach-sign", "b", false, "Create a detached signature")
 	SignPgpCmd.Flags().BoolVar(&argPgpClearsign, "clearsign", false, "Create a cleartext signature")
