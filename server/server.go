@@ -21,17 +21,20 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"runtime"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/server/diskmgr"
 )
 
 type Server struct {
 	Config   *config.Config
 	ErrorLog *log.Logger
+	DiskMgr  *diskmgr.Manager
 }
 
 func (s *Server) callHandler(request *http.Request, writer http.ResponseWriter) (response Response, err error) {
@@ -64,7 +67,7 @@ func (s *Server) callHandler(request *http.Request, writer http.ResponseWriter) 
 	case "/list_keys":
 		return s.serveListKeys(request)
 	case "/sign":
-		return s.serveSign(request)
+		return s.serveSign(request, writer)
 	default:
 		return ErrorResponse(http.StatusNotFound), nil
 	}
@@ -141,5 +144,18 @@ func New(config *config.Config) (*Server, error) {
 	} else {
 		logger = log.New(os.Stderr, "", 0)
 	}
-	return &Server{Config: config, ErrorLog: logger}, nil
+	usage := config.Server.MaxDiskUsage
+	if usage == 0 {
+		usage = 1000
+	}
+	diskLogger := logger
+	if !config.Server.DebugDiskUsage {
+		diskLogger = log.New(ioutil.Discard, "", 0)
+	}
+	mgr := diskmgr.New(uint64(usage)*1000000, diskLogger)
+	return &Server{
+		Config:   config,
+		ErrorLog: logger,
+		DiskMgr:  mgr,
+	}, nil
 }

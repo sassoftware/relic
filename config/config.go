@@ -60,7 +60,9 @@ type ServerConfig struct {
 	CertFile string // Path to TLS certificate chain
 	LogFile  string // Optional error log
 
-	MaxDocSize int64 // Largest request that will be spooled to RAM
+	MaxDocSize     int64 // Largest request that will be spooled to RAM
+	MaxDiskUsage   uint  // Max disk usage in megabytes
+	DebugDiskUsage bool
 }
 
 type ClientConfig struct {
@@ -108,6 +110,17 @@ func ReadFile(path string) (*Config, error) {
 	if config.Server != nil && config.Server.MaxDocSize == 0 {
 		config.Server.MaxDocSize = defaultMaxDocSize
 	}
+	if config.Keys != nil {
+		for keyName, keyConf := range config.Keys {
+			keyConf.name = keyName
+			if keyConf.Token != "" && config.Tokens != nil {
+				keyConf.token = config.Tokens[keyConf.Token]
+			}
+			if keyConf.Tool != "" && config.Tools != nil {
+				keyConf.tool = config.Tools[keyConf.Tool]
+			}
+		}
+	}
 	config.path = path
 	return config, nil
 }
@@ -134,13 +147,6 @@ func (config *Config) GetKey(keyName string) (*KeyConfig, error) {
 	} else if keyConf.Token == "" && keyConf.Tool == "" {
 		return nil, fmt.Errorf("Key \"%s\" does not specify required value 'token' or 'tool'", keyName)
 	} else {
-		keyConf.name = keyName
-		if keyConf.Token != "" && config.Tokens != nil {
-			keyConf.token = config.Tokens[keyConf.Token]
-		}
-		if keyConf.Tool != "" && config.Tools != nil {
-			keyConf.tool = config.Tools[keyConf.Tool]
-		}
 		return keyConf, nil
 	}
 }

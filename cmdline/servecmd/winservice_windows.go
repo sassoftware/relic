@@ -18,6 +18,7 @@ package servecmd
 
 import (
 	"fmt"
+	"strings"
 
 	"golang.org/x/sys/windows/svc"
 	"golang.org/x/sys/windows/svc/debug"
@@ -126,7 +127,12 @@ func (e eventLogger) Write(d []byte) (int, error) {
 	if n > 0 && d[n-1] == '\n' {
 		d = d[:n-1]
 	}
-	e.elog.Info(1, string(d))
+	msg := string(d)
+	if strings.HasPrefix(msg, "error") {
+		e.elog.Error(1, string(d))
+	} else {
+		e.elog.Info(1, string(d))
+	}
 	return n, nil
 }
 

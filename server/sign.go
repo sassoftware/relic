@@ -22,7 +22,7 @@ import (
 	"path"
 )
 
-func (s *Server) serveSign(request *http.Request) (res Response, err error) {
+func (s *Server) serveSign(request *http.Request, writer http.ResponseWriter) (res Response, err error) {
 	if request.Method != "POST" {
 		return ErrorResponse(http.StatusMethodNotAllowed), nil
 	}
@@ -43,7 +43,7 @@ func (s *Server) serveSign(request *http.Request) (res Response, err error) {
 		return AccessDeniedResponse, nil
 	}
 	if keyConf.Tool != "" {
-		return s.signWithTool(keyConf, request, filename)
+		return s.signWithTool(keyConf, request, filename, writer)
 	} else if keyConf.Token == "" {
 		return nil, fmt.Errorf("Key %s needs a tool or token setting", keyName)
 	} else if sigType == "pgp" {

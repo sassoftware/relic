@@ -19,11 +19,7 @@ package server
 import (
 	"encoding/json"
 	"fmt"
-	"io"
-	"log"
 	"net/http"
-	"os"
-	"path"
 )
 
 type Response interface {
@@ -86,49 +82,4 @@ func JsonResponse(data interface{}) (Response, error) {
 		ContentType: "application/json",
 		Body:        blob,
 	}, nil
-}
-
-type fileResponse struct {
-	name      string
-	file      *os.File
-	size      int64
-	deleteDir bool
-}
-
-func FileResponse(path string, deleteDir bool) (*fileResponse, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	stat, err := f.Stat()
-	if err != nil {
-		return nil, err
-	}
-	return &fileResponse{
-		name:      path,
-		file:      f,
-		size:      stat.Size(),
-		deleteDir: deleteDir,
-	}, nil
-}
-
-func (r *fileResponse) Write(writer http.ResponseWriter) {
-	writer.Header().Set("Content-Type", "application/octet-stream")
-	writer.Header().Set("Content-Length", fmt.Sprintf("%d", r.size))
-	writer.WriteHeader(http.StatusOK)
-	io.Copy(writer, r.file)
-}
-
-func (r *fileResponse) Close() {
-	if r.file != nil {
-		r.file.Close()
-		r.file = nil
-	}
-	if r.deleteDir {
-		dir := path.Dir(r.name)
-		err := os.RemoveAll(dir)
-		if err != nil && !os.IsNotExist(err) {
-			log.Printf("error: failed to cleanup scratch directory %s: %s", dir, err)
-		}
-	}
 }

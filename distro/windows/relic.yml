@@ -28,6 +28,10 @@ server:
   certfile: "C:/Program Files/relic/server/server.crt"
   # Optional logfile for server errors. If not set, then the Windows event log is used
   #logfile: "C:/Program Files/relic/relic.log"
+  # How many MB of scratch space is available for signatures
+  maxdiskusage: 1000
+  # If true, log all disk reservations
+  #debugdiskusage: true
 clients:
   # Authentication to the server is via client certificate. Certificates are
   # identified by their fingerprint. Fingerprints can be obtained by using the
