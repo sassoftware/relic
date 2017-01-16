@@ -30,6 +30,7 @@ import (
 	"os"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
 	"golang.org/x/net/http2"
 )
 
@@ -86,9 +87,11 @@ func callRemote(endpoint, method string, query *url.Values, body interface{}) (*
 		return nil, err
 	}
 	client := &http.Client{Transport: transport}
+	agent := fmt.Sprintf("relic/%s", config.Version)
 	request := &http.Request{
 		Method: method,
 		URL:    url,
+		Header: http.Header{"User-Agent": []string{agent}},
 	}
 	if body != nil {
 		if reader, ok := body.(io.Reader); ok {

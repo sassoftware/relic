@@ -39,8 +39,8 @@ type Manager struct {
 
 // an unfulfilled request for disk space
 type request struct {
-	ready  chan error
-	cancel chan bool
+	ready  chan<- error
+	cancel <-chan bool
 	size   uint64
 	info   interface{}
 	reqId  ReqId // filled by manager

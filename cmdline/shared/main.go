@@ -27,13 +27,31 @@ import (
 
 var ArgConfig string
 var CurrentConfig *config.Config
+var argVersion bool
 
 var RootCmd = &cobra.Command{
-	Use: "relic",
+	Use:              "relic",
+	PersistentPreRun: showVersion,
+	RunE:             bailUnlessVersion,
 }
 
 func init() {
 	RootCmd.PersistentFlags().StringVarP(&ArgConfig, "config", "c", "", "Configuration file")
+	RootCmd.PersistentFlags().BoolVar(&argVersion, "version", false, "Show version and exit")
+}
+
+func showVersion(cmd *cobra.Command, args []string) {
+	if argVersion {
+		fmt.Printf("relic version %s\n", config.Version)
+		os.Exit(0)
+	}
+}
+
+func bailUnlessVersion(cmd *cobra.Command, args []string) error {
+	if !argVersion {
+		return errors.New("Expected a command")
+	}
+	return nil
 }
 
 func InitConfig() error {

@@ -27,6 +27,8 @@ import (
 
 const defaultMaxDocSize = 10000000
 
+var Version = "unknown" // set this at link time
+
 type TokenConfig struct {
 	Provider string // Path to PKCS#11 provider module (required)
 	Label    string // Select a token by label
