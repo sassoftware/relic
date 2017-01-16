@@ -21,7 +21,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -109,6 +108,15 @@ func (s *Server) CheckKeyAccess(request *http.Request, keyName string) *config.K
 	return nil
 }
 
+func (s *Server) SetLogger(logger *log.Logger) {
+	s.ErrorLog = logger
+	if s.Config.Server.DebugDiskUsage {
+		s.DiskMgr.SetLogger(logger)
+	} else {
+		s.DiskMgr.SetLogger(nil)
+	}
+}
+
 func (s *Server) Logf(format string, args ...interface{}) {
 	s.ErrorLog.Output(2, fmt.Sprintf(format, args...))
 }
@@ -148,14 +156,8 @@ func New(config *config.Config) (*Server, error) {
 	if usage == 0 {
 		usage = 1000
 	}
-	diskLogger := logger
-	if !config.Server.DebugDiskUsage {
-		diskLogger = log.New(ioutil.Discard, "", 0)
-	}
-	mgr := diskmgr.New(uint64(usage)*1000000, diskLogger)
-	return &Server{
-		Config:   config,
-		ErrorLog: logger,
-		DiskMgr:  mgr,
-	}, nil
+	mgr := diskmgr.New(uint64(usage) * 1000000)
+	s := &Server{Config: config, DiskMgr: mgr}
+	s.SetLogger(logger)
+	return s, nil
 }

@@ -20,7 +20,9 @@ import (
 	"container/list"
 	"context"
 	"errors"
+	"fmt"
 	"log"
+	"sync"
 )
 
 type ReqId uint
@@ -34,7 +36,9 @@ type Manager struct {
 	reqIdCounter ReqId
 	pending      list.List
 	active       map[ReqId]*allocation
-	logger       *log.Logger
+
+	mu     sync.Mutex
+	logger *log.Logger
 }
 
 // an unfulfilled request for disk space
@@ -52,16 +56,29 @@ type allocation struct {
 	info interface{}
 }
 
-func New(size uint64, logger *log.Logger) *Manager {
+func New(size uint64) *Manager {
 	m := &Manager{
 		total:   size,
 		free:    size,
 		request: make(chan request),
 		release: make(chan ReqId),
-		logger:  logger,
 	}
 	go m.Loop()
 	return m
+}
+
+func (m *Manager) SetLogger(logger *log.Logger) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.logger = logger
+}
+
+func (m *Manager) logf(format string, args ...interface{}) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.logger != nil {
+		m.logger.Output(2, fmt.Sprintf(format, args...))
+	}
 }
 
 func (m *Manager) Request(ctx context.Context, size uint64, info interface{}) (CancelFunc, error) {
@@ -95,7 +112,7 @@ func (m *Manager) Loop() {
 			} else if req.size <= m.total {
 				// save for later
 				m.pending.PushBack(&req)
-				m.logger.Printf("disk: postponed %d bytes for %s", req.size, req.info)
+				m.logf("disk: postponed %d bytes for %s", req.size, req.info)
 			} else {
 				// this will never work
 				req.ready <- ErrTooBig
@@ -118,19 +135,19 @@ func (m *Manager) finishAlloc(req request) {
 	m.free -= req.size
 	m.active[req.reqId] = &allocation{req.size, req.info}
 	req.ready <- nil
-	m.logger.Printf("disk: allocated %d bytes to %s", req.size, req.info)
+	m.logf("disk: allocated %d bytes for %s", req.size, req.info)
 }
 
 func (m *Manager) releaseById(reqId ReqId) {
 	if alloc := m.active[reqId]; alloc != nil {
-		m.logger.Printf("disk: cancelled allocation of %d bytes for %s", alloc.size, alloc.info)
+		m.logf("disk: freed %d bytes for %s", alloc.size, alloc.info)
 		m.free += alloc.size
 		delete(m.active, reqId)
 	}
 	for e := m.pending.Front(); e != nil; e = e.Next() {
 		req := e.Value.(*request)
 		if req.reqId == reqId {
-			m.logger.Printf("disk: cancelled pending request %d bytes for %s", req.size, req.info)
+			m.logf("disk: cancelled pending request %d bytes for %s", req.size, req.info)
 			m.pending.Remove(e)
 			break
 		}

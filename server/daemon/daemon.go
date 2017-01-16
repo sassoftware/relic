@@ -94,7 +94,7 @@ func New(config *config.Config) (*Daemon, error) {
 
 func (d *Daemon) SetOutput(w io.Writer) {
 	logger := log.New(w, "", 0)
-	d.server.ErrorLog = logger
+	d.server.SetLogger(logger)
 	d.graceful.ErrorLog = logger
 }
 
