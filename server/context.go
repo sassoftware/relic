@@ -29,11 +29,21 @@ const (
 )
 
 func GetClientRoles(request *http.Request) []string {
-	return request.Context().Value(ctxRoles).([]string)
+	roles := request.Context().Value(ctxRoles)
+	if roles == nil {
+		return nil
+	} else {
+		return roles.([]string)
+	}
 }
 
 func GetClientName(request *http.Request) string {
-	return request.Context().Value(ctxClientName).(string)
+	name := request.Context().Value(ctxClientName)
+	if name == nil {
+		return ""
+	} else {
+		return name.(string)
+	}
 }
 
 func GetClientIP(request *http.Request) string {

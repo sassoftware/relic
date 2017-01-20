@@ -39,6 +39,7 @@ type Manager struct {
 
 	mu     sync.Mutex
 	logger *log.Logger
+	debug  bool
 }
 
 // an unfulfilled request for disk space
@@ -73,10 +74,16 @@ func (m *Manager) SetLogger(logger *log.Logger) {
 	m.logger = logger
 }
 
+func (m *Manager) SetDebug(debug bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.debug = debug
+}
+
 func (m *Manager) logf(format string, args ...interface{}) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if m.logger != nil {
+	if m.debug && m.logger != nil {
 		m.logger.Output(2, fmt.Sprintf(format, args...))
 	}
 }

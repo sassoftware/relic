@@ -31,7 +31,7 @@ import (
 
 func (s *Server) allocScratch(keyConf *config.KeyConfig, request *http.Request, filename string) (diskmgr.CancelFunc, Response, error) {
 	if request.ContentLength < 0 {
-		s.Logf("Refused signature because content-length is missing: filename=%s key=%s client=%s ip=%s", filename, keyConf.Name(), GetClientName(request), GetClientIP(request))
+		s.Logr(request, "error: missing content-length: filename=%s key=%s", filename, keyConf.Name())
 		return nil, StringResponse(http.StatusLengthRequired, "Length Required\n\nContent-Length is required when using clearsign"), nil
 	}
 	allocate := uint64(request.ContentLength) * 2
@@ -53,7 +53,7 @@ func (s *Server) allocScratch(keyConf *config.KeyConfig, request *http.Request, 
 	default:
 		return nil, nil, err
 	}
-	s.Logf("%s: filename=%s allocation=%d key=%s client=%s ip=%s", why, filename, allocate, keyConf.Name(), GetClientName(request), GetClientIP(request))
+	s.Logr(request, "%s: filename=%s allocation=%d key=%s", why, filename, allocate, keyConf.Name())
 	return nil, StringResponse(status, "Disk allocation error\n\n"+why), nil
 }
 
@@ -74,13 +74,13 @@ func (s *Server) signWithTool(keyConf *config.KeyConfig, request *http.Request, 
 	}
 	defer func() {
 		if err := os.RemoveAll(scratchDir); err != nil {
-			s.Logf("error: failed to clean up scratch directory: %s", err)
+			s.Logr(request, "error: failed to clean up scratch directory: %s", err)
 		}
 	}()
 	scratchPath := path.Join(scratchDir, cleanName)
 	size, err := spoolFile(request, scratchPath)
 	if err == io.ErrUnexpectedEOF {
-		s.Logf("client hung up while spooling input file: client=%s ip=%s", GetClientName(request), GetClientIP(request))
+		s.Logr(request, "client hung up while spooling input file")
 		return ErrorResponse(http.StatusBadRequest), nil
 	} else if err != nil {
 		return nil, err
@@ -89,7 +89,7 @@ func (s *Server) signWithTool(keyConf *config.KeyConfig, request *http.Request, 
 	if response != nil || err != nil {
 		return response, err
 	}
-	s.Logf("Signed package: filename=%s key=%s size=%d client=%s ip=%s", filename, keyConf.Name(), size, GetClientName(request), GetClientIP(request))
+	s.Logr(request, "Signed package: filename=%s key=%s size=%d", filename, keyConf.Name(), size)
 	return nil, sendFile(writer, scratchPath)
 }
 

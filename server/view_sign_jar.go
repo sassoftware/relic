@@ -43,6 +43,6 @@ func (s *Server) signJar(keyConf *config.KeyConfig, request *http.Request, filen
 	if response != nil || err != nil {
 		return response, err
 	}
-	s.Logf("Signed jar manifest: filename=%s key=%s size=%d client=%s ip=%s", filename, keyConf.Name(), stdin.Size(), GetClientName(request), GetClientIP(request))
+	s.Logr(request, "signed jar manifest: filename=%s key=%s size=%d", filename, keyConf.Name(), stdin.Size())
 	return BytesResponse(stdout, "application/pkcs7-mime"), nil
 }

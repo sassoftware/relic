@@ -49,8 +49,8 @@ func (s *Server) signRpm(keyConf *config.KeyConfig, request *http.Request) (Resp
 	}
 	jinfo.ClientName = GetClientName(request)
 	jinfo.ClientIP = GetClientIP(request)
-	s.Logf("Signed package: nevra=%s key=%s fp=%s md5=%s sha1=%s client=%s ip=%s",
-		jinfo.Nevra, keyConf.Name(), jinfo.Fingerprint, jinfo.Md5, jinfo.Sha1, jinfo.ClientName, jinfo.ClientIP)
+	s.Logr(request, "Signed package: nevra=%s key=%s fp=%s md5=%s sha1=%s",
+		jinfo.Nevra, keyConf.Name(), jinfo.Fingerprint, jinfo.Md5, jinfo.Sha1)
 	var buf bytes.Buffer
 	jinfo.Dump(&buf)
 	buf.Write(stdout[endOfJson:])

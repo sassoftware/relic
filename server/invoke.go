@@ -19,7 +19,6 @@ package server
 import (
 	"bytes"
 	"context"
-	"errors"
 	"io"
 	"net/http"
 	"os/exec"
@@ -52,15 +51,15 @@ func (s *Server) invokeCommand(request *http.Request, stdin io.Reader, workDir s
 	select {
 	case <-ctx.Done():
 		if ctx.Err() == context.DeadlineExceeded {
-			s.Logf("error: command timed out after %d seconds\nclient=%s ip=%s\nCommand: %s\nOutput:\n%s\n\n",
-				timeout/time.Second, GetClientName(request), GetClientIP(request), formatCmdline(cmdline), output)
+			s.Logr(request, "error: command timed out after %d seconds\nCommand: %s\nOutput:\n%s\n\n",
+				timeout/time.Second, formatCmdline(cmdline), output)
 		} else {
-			s.Logf("client hung up during signing operation: client=%s ip=%s", GetClientName(request), GetClientIP(request))
+			s.Logr(request, "client hung up during signing operation")
 		}
 		return nil, StringResponse(http.StatusGatewayTimeout, "Signing command timed out"), nil
 	default:
-		s.Logf("Error invoking signing tool: %s\nCommand: %s\nOutput:\n%s\n\n", err, formatCmdline(cmdline), output)
-		return nil, nil, errors.New("Error invoking signing tool")
+		s.Logr(request, "error: invoking signing tool: %s\nCommand: %s\nOutput:\n%s\n\n", err, formatCmdline(cmdline), output)
+		return nil, ErrorResponse(http.StatusInternalServerError), nil
 	}
 }
 

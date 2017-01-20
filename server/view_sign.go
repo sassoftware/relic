@@ -39,7 +39,7 @@ func (s *Server) serveSign(request *http.Request, writer http.ResponseWriter) (r
 	}
 	keyConf := s.CheckKeyAccess(request, keyName)
 	if keyConf == nil {
-		s.Logf("Access denied: client %s (%s), key %s\n", GetClientName(request), GetClientIP(request), keyName)
+		s.Logr(request, "access denied to key %s\n", keyName)
 		return AccessDeniedResponse, nil
 	}
 	if keyConf.Tool != "" {
@@ -53,10 +53,10 @@ func (s *Server) serveSign(request *http.Request, writer http.ResponseWriter) (r
 	} else if sigType == "jar-manifest" {
 		return s.signJar(keyConf, request, filename)
 	} else if sigType != "" {
-		s.Logf("error: unknown sigtype: sigtype=%s key=%s client=%s ip=%s", sigType, keyName, GetClientName(request), GetClientIP(request))
+		s.Logr(request, "error: unknown sigtype: sigtype=%s key=%s", sigType, keyName)
 		return StringResponse(http.StatusBadRequest, "unknown sigtype"), nil
 	} else {
-		s.Logf("error: unknown filetype: filename=%s key=%s client=%s ip=%s", filename, keyName, GetClientName(request), GetClientIP(request))
+		s.Logr(request, "error: unknown filetype: filename=%s key=%s", filename, keyName)
 		return StringResponse(http.StatusBadRequest, "unknown filetype for key"), nil
 	}
 }

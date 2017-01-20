@@ -43,10 +43,10 @@ func (s *Server) signPgp(keyConf *config.KeyConfig, request *http.Request, filen
 		// clearsign passes its input through to the output and stdout is
 		// buffered, so check that the request isn't too big
 		if request.ContentLength < 0 {
-			s.Logf("Refused signature because content-length is missing: filename=%s key=%s client=%s ip=%s", filename, keyConf.Name(), GetClientName(request), GetClientIP(request))
+			s.Logr(request, "error: missing content-length: filename=%s key=%s", filename, keyConf.Name())
 			return StringResponse(http.StatusLengthRequired, "Length Required\n\nContent-Length is required when using clearsign"), nil
 		} else if request.ContentLength > s.Config.Server.MaxDocSize {
-			s.Logf("Refused signature because content-length exceeds limit: filename=%s size=%d key=%s client=%s ip=%s", filename, request.ContentLength, keyConf.Name(), GetClientName(request), GetClientIP(request))
+			s.Logr(request, "error: content-length exceeds limit: filename=%s size=%d limit=%d key=%s", filename, request.ContentLength, s.Config.Server.MaxDocSize, keyConf.Name())
 			return StringResponse(http.StatusRequestEntityTooLarge, fmt.Sprintf("Request Entity Too Large\n\nRequest exceeds the configured maximum Content-Length of %d bytes", s.Config.Server.MaxDocSize)), nil
 		}
 	} else {
@@ -56,6 +56,6 @@ func (s *Server) signPgp(keyConf *config.KeyConfig, request *http.Request, filen
 	if response != nil || err != nil {
 		return response, err
 	}
-	s.Logf("Signed PGP message: filename=%s key=%s client=%s ip=%s", filename, keyConf.Name(), GetClientName(request), GetClientIP(request))
+	s.Logr(request, "Signed PGP message: filename=%s key=%s", filename, keyConf.Name())
 	return BytesResponse(stdout, "application/pgp-signature"), nil
 }

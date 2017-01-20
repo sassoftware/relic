@@ -57,7 +57,7 @@ func init() {
 	SignPgpCmd.Flags().StringVarP(&argOutput, "output", "o", "", "Write output to file")
 	SignPgpCmd.Flags().BoolVarP(&argPgpArmor, "armor", "a", false, "Create ASCII armored output")
 	SignPgpCmd.Flags().BoolVar(&argPgpNoArmor, "no-armor", false, "Create binary output")
-	SignPgpCmd.Flags().BoolVarP(&argPgpDetached, "detach-sign", "b", false, "Create a detached signature (this must be set)")
+	SignPgpCmd.Flags().BoolVarP(&argPgpDetached, "detach-sign", "b", false, "Create a detached signature")
 	SignPgpCmd.Flags().BoolVar(&argPgpClearsign, "clearsign", false, "Create a cleartext signature")
 
 	SignPgpCmd.Flags().BoolP("sign", "s", false, "(ignored)")

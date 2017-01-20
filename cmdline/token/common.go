@@ -19,6 +19,7 @@ package token
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -48,7 +49,9 @@ func (pinPrompt) WriteString(value string) {
 func (pinPrompt) GetPin(tokenName string) (string, error) {
 	fmt.Fprintf(os.Stderr, "PIN for token %s: ", tokenName)
 	pin, err := gopass.GetPasswd()
-	if err != nil {
+	if err == io.EOF {
+		return "", errors.New("EOF while asking for PIN")
+	} else if err != nil {
 		return "", err
 	}
 	return string(pin), nil

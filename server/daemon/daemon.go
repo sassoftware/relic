@@ -47,7 +47,7 @@ func makeTlsConfig(config *config.Config) (*tls.Config, error) {
 		Certificates:             []tls.Certificate{tlscert},
 		PreferServerCipherSuites: true,
 		SessionTicketsDisabled:   true,
-		ClientAuth:               tls.RequireAnyClientCert,
+		ClientAuth:               tls.RequestClientCert,
 		MinVersion:               tls.VersionTLS12,
 	}, nil
 }
@@ -63,8 +63,8 @@ func getListener(laddr string, tconf *tls.Config) (net.Listener, error) {
 	return listener, err
 }
 
-func New(config *config.Config) (*Daemon, error) {
-	srv, err := server.New(config)
+func New(config *config.Config, force bool) (*Daemon, error) {
+	srv, err := server.New(config, force)
 	if err != nil {
 		return nil, err
 	}
@@ -105,4 +105,5 @@ func (d *Daemon) Serve() error {
 
 func (d *Daemon) Close() {
 	d.graceful.Close()
+	d.server.Close()
 }

@@ -34,9 +34,11 @@ type Server struct {
 	Config   *config.Config
 	ErrorLog *log.Logger
 	DiskMgr  *diskmgr.Manager
+	Closed   <-chan bool
+	closeCh  chan<- bool
 }
 
-func (s *Server) callHandler(request *http.Request, writer http.ResponseWriter) (response Response, err error) {
+func (s *Server) callHandler(request *http.Request, lw *loggingWriter) (response Response, err error) {
 	defer func() {
 		if caught := recover(); caught != nil {
 			const size = 64 << 10
@@ -52,43 +54,45 @@ func (s *Server) callHandler(request *http.Request, writer http.ResponseWriter) 
 		return errResponse, nil
 	}
 	ctx, cancel := context.WithCancel(ctx)
-	closed := writer.(http.CloseNotifier).CloseNotify()
+	closed := lw.CloseNotify()
 	go func() {
 		if <-closed {
 			cancel()
 		}
 	}()
-
 	request = request.WithContext(ctx)
+	lw.r = request
+	if request.URL.Path == "/health" {
+		// this view is the only one allowed without a client cert
+		return s.serveHealth(request)
+	} else if GetClientName(request) == "" {
+		return AccessDeniedResponse, nil
+	}
 	switch request.URL.Path {
 	case "/":
 		return s.serveHome(request)
 	case "/list_keys":
 		return s.serveListKeys(request)
 	case "/sign":
-		return s.serveSign(request, writer)
+		return s.serveSign(request, lw)
 	default:
 		return ErrorResponse(http.StatusNotFound), nil
 	}
 }
 
 func (s *Server) getUserRoles(ctx context.Context, request *http.Request) (context.Context, Response) {
-	if request.TLS == nil {
-		return nil, StringResponse(http.StatusBadRequest, "Retry request using TLS")
+	if request.TLS != nil && len(request.TLS.PeerCertificates) != 0 {
+		cert := request.TLS.PeerCertificates[0]
+		digest := sha256.Sum256(cert.RawSubjectPublicKeyInfo)
+		encoded := hex.EncodeToString(digest[:])
+		client, ok := s.Config.Clients[encoded]
+		if !ok {
+			s.Logr(request, "access denied: unknown fingerprint %s\n", encoded)
+			return nil, AccessDeniedResponse
+		}
+		ctx = context.WithValue(ctx, ctxClientName, client.Nickname)
+		ctx = context.WithValue(ctx, ctxRoles, client.Roles)
 	}
-	if len(request.TLS.PeerCertificates) == 0 {
-		return nil, StringResponse(http.StatusBadRequest, "Invalid client certificate")
-	}
-	cert := request.TLS.PeerCertificates[0]
-	digest := sha256.Sum256(cert.RawSubjectPublicKeyInfo)
-	encoded := hex.EncodeToString(digest[:])
-	client, ok := s.Config.Clients[encoded]
-	if !ok {
-		s.Logf("Denied access to unknown client %s with fingerprint %s\n", GetClientIP(request), encoded)
-		return nil, AccessDeniedResponse
-	}
-	ctx = context.WithValue(ctx, ctxClientName, client.Nickname)
-	ctx = context.WithValue(ctx, ctxRoles, client.Roles)
 	return ctx, nil
 }
 
@@ -107,41 +111,27 @@ func (s *Server) CheckKeyAccess(request *http.Request, keyName string) *config.K
 	}
 	return nil
 }
-
-func (s *Server) SetLogger(logger *log.Logger) {
-	s.ErrorLog = logger
-	if s.Config.Server.DebugDiskUsage {
-		s.DiskMgr.SetLogger(logger)
-	} else {
-		s.DiskMgr.SetLogger(nil)
-	}
-}
-
-func (s *Server) Logf(format string, args ...interface{}) {
-	s.ErrorLog.Output(2, fmt.Sprintf(format, args...))
-}
-
-func (s *Server) LogError(request *http.Request, err interface{}, traceback []byte) Response {
-	sep := ""
-	if len(traceback) != 0 {
-		sep = "\n"
-	}
-	s.Logf("Unhandled exception from client %s: %s%s%s\n", GetClientIP(request), err, sep, traceback)
-	return ErrorResponse(http.StatusInternalServerError)
-}
-
 func (s *Server) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
-	response, err := s.callHandler(request, writer)
+	lw := &loggingWriter{writer, s, request, false}
+	response, err := s.callHandler(request, lw)
 	if err != nil {
-		response = s.LogError(request, err, nil)
+		response = s.LogError(lw.r, err, nil)
 	}
 	if response != nil {
 		defer response.Close()
-		response.Write(writer)
+		response.Write(lw)
 	}
 }
 
-func New(config *config.Config) (*Server, error) {
+func (s *Server) Close() error {
+	if s.closeCh != nil {
+		close(s.closeCh)
+		s.closeCh = nil
+	}
+	return nil
+}
+
+func New(config *config.Config, force bool) (*Server, error) {
 	var logger *log.Logger
 	if config.Server.LogFile != "" {
 		f, err := os.OpenFile(config.Server.LogFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
@@ -157,7 +147,17 @@ func New(config *config.Config) (*Server, error) {
 		usage = 1000
 	}
 	mgr := diskmgr.New(uint64(usage) * 1000000)
-	s := &Server{Config: config, DiskMgr: mgr}
+	mgr.SetDebug(config.Server.DebugDiskUsage)
+	closed := make(chan bool)
+	s := &Server{
+		Config:  config,
+		DiskMgr: mgr,
+		Closed:  closed,
+		closeCh: closed,
+	}
 	s.SetLogger(logger)
+	if err := s.startHealthCheck(force); err != nil {
+		return nil, err
+	}
 	return s, nil
 }
