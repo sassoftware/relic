@@ -87,11 +87,10 @@ func callRemote(endpoint, method string, query *url.Values, body interface{}) (*
 		return nil, err
 	}
 	client := &http.Client{Transport: transport}
-	agent := fmt.Sprintf("relic/%s", config.Version)
 	request := &http.Request{
 		Method: method,
 		URL:    url,
-		Header: http.Header{"User-Agent": []string{agent}},
+		Header: http.Header{"User-Agent": []string{config.UserAgent}},
 	}
 	if body != nil {
 		if reader, ok := body.(io.Reader); ok {

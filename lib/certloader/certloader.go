@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package x509tools
+package certloader
 
 import (
 	"bytes"
@@ -25,30 +25,36 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"strings"
 
-	"github.com/fullsailor/pkcs7"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs7"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
 )
 
-// Parse a private key from a blob of PEM data
-func ParsePEMPrivateKey(pemData []byte) (crypto.PrivateKey, error) {
-	var keyBlock *pem.Block
+const asn1Magic = 0x30 // weak but good enough?
+var pkcs7SignedData = []byte{0x06, 0x09, 0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x01, 0x07, 0x02}
+
+// Parse a private key from a blob of PEM or DER data
+func ParsePrivateKey(pemData []byte) (crypto.PrivateKey, error) {
+	if len(pemData) >= 1 && pemData[0] == asn1Magic {
+		// already DER form
+		return parsePrivateKey(pemData)
+	}
 	for {
+		var keyBlock *pem.Block
 		keyBlock, pemData = pem.Decode(pemData)
 		if keyBlock == nil {
 			return nil, errors.New("failed to find any private keys in PEM data")
-		}
-		if keyBlock.Type == "PRIVATE KEY" || strings.HasSuffix(keyBlock.Type, " PRIVATE KEY") {
-			return ParsePrivateKey(keyBlock.Bytes)
+		} else if keyBlock.Type == "PRIVATE KEY" || strings.HasSuffix(keyBlock.Type, " PRIVATE KEY") {
+			return parsePrivateKey(keyBlock.Bytes)
 		}
 	}
 }
 
 // Parse a private key from a DER block
 // See crypto/tls.parsePrivateKey
-func ParsePrivateKey(der []byte) (crypto.PrivateKey, error) {
+func parsePrivateKey(der []byte) (crypto.PrivateKey, error) {
 	if key, err := x509.ParsePKCS1PrivateKey(der); err == nil {
 		return key, nil
 	}
@@ -67,11 +73,43 @@ func ParsePrivateKey(der []byte) (crypto.PrivateKey, error) {
 	return nil, errors.New("tls: failed to parse private key")
 }
 
+// Parse a list of certificates, PEM or DER, X509 or PKCS#7
+func ParseCertificates(pemData []byte) ([]*x509.Certificate, error) {
+	if len(pemData) >= 1 && pemData[0] == asn1Magic {
+		// already in DER form
+		return parseCertificates(pemData)
+	}
+	var certs []*x509.Certificate
+	for {
+		var block *pem.Block
+		block, pemData = pem.Decode(pemData)
+		if block == nil {
+			break
+		} else if block.Type == "CERTIFICATE" || block.Type == "PKCS7" {
+			newcerts, err := parseCertificates(block.Bytes)
+			if err != nil {
+				return nil, err
+			}
+			certs = append(certs, newcerts...)
+		}
+	}
+	if len(certs) == 0 {
+		return nil, errors.New("failed to find any certificates in PEM file")
+	}
+	return certs, nil
+}
+
+// Parse certificates from DER
+func parseCertificates(der []byte) ([]*x509.Certificate, error) {
+	if bytes.Contains(der[:32], pkcs7SignedData) {
+		return pkcs7.ParseCertificates(der)
+	} else {
+		return x509.ParseCertificates(der)
+	}
+}
+
 // Extends the tls version of this function by parsing p7b files
 func LoadX509KeyPair(certFile, keyFile string) (tls.Certificate, error) {
-	if !strings.HasSuffix(certFile, ".p7b") {
-		return tls.LoadX509KeyPair(certFile, keyFile)
-	}
 	var tcert tls.Certificate
 	keyblob, err := ioutil.ReadFile(keyFile)
 	if err != nil {
@@ -81,34 +119,16 @@ func LoadX509KeyPair(certFile, keyFile string) (tls.Certificate, error) {
 	if err != nil {
 		return tcert, err
 	}
-	key, err := ParsePEMPrivateKey(keyblob)
+	key, err := ParsePrivateKey(keyblob)
 	if err != nil {
 		return tcert, err
 	}
 	tcert.PrivateKey = key
-	if bytes.Equal(certblob[:5], []byte("-----")) {
-		pemdata := certblob
-		found := false
-		for {
-			var block *pem.Block
-			block, pemdata = pem.Decode(pemdata)
-			if block == nil {
-				break
-			} else if block.Type == "CERTIFICATE" {
-				found = true
-				certblob = block.Bytes
-				break
-			}
-		}
-		if !found {
-			return tcert, fmt.Errorf("No certificate block found in %s", certFile)
-		}
-	}
-	p7b, err := pkcs7.Parse(certblob)
+	certs, err := ParseCertificates(certblob)
 	if err != nil {
-		return tcert, fmt.Errorf("Unable to parse p7b certificate chain: %s", err)
+		return tcert, err
 	}
-	for i, cert := range p7b.Certificates {
+	for i, cert := range certs {
 		if i == 0 {
 			tcert.Leaf = cert
 		} else if bytes.Equal(cert.RawSubject, cert.RawIssuer) {
@@ -118,9 +138,9 @@ func LoadX509KeyPair(certFile, keyFile string) (tls.Certificate, error) {
 		tcert.Certificate = append(tcert.Certificate, cert.Raw)
 	}
 	if tcert.Leaf == nil {
-		return tcert, errors.New("No certificates found in PKCS#7 chain")
+		return tcert, errors.New("No certificates found in chain")
 	}
-	if !SameKey(tcert.Leaf.PublicKey, key) {
+	if !x509tools.SameKey(tcert.Leaf.PublicKey, key) {
 		return tcert, errors.New("Private key does not match certificate")
 	}
 	return tcert, nil

@@ -29,6 +29,7 @@ import (
 	"math/big"
 )
 
+// Make a random 12 byte big.Int
 func MakeSerial() *big.Int {
 	blob := make([]byte, 12)
 	if n, err := rand.Reader.Read(blob); err != nil || n != len(blob) {
@@ -37,6 +38,7 @@ func MakeSerial() *big.Int {
 	return new(big.Int).SetBytes(blob)
 }
 
+// Choose a X509 signature algorithm suitable for the specified public key
 func X509SignatureAlgorithm(pub crypto.PublicKey) x509.SignatureAlgorithm {
 	switch pub.(type) {
 	case *rsa.PublicKey:
@@ -53,6 +55,7 @@ type pkixPublicKey struct {
 	BitString asn1.BitString
 }
 
+// Calculcate subject key identifier from a public key per RFC 3280
 func SubjectKeyId(pub crypto.PublicKey) ([]byte, error) {
 	der, err := x509.MarshalPKIXPublicKey(pub)
 	if err != nil {
@@ -69,6 +72,7 @@ func SubjectKeyId(pub crypto.PublicKey) ([]byte, error) {
 	return digest[:], nil
 }
 
+// Test whether two public or private keys are equal
 func SameKey(pub1, pub2 interface{}) bool {
 	if privkey, ok := pub1.(crypto.Signer); ok {
 		pub1 = privkey.Public()

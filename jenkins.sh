@@ -11,7 +11,7 @@ go get -u -v github.com/Masterminds/glide
 module=$(cd checkout && glide name 2>/dev/null)
 version=$(cd checkout && git describe --tags |sed -e 's/-\([0-9]*\).*/.\1/')
 [ -n "$version" ] || { echo Unable to determine version; exit 1; }
-ldflags="-X ${module}.config.Version=$version"
+ldflags="-X ${module}/config.Version=$version"
 echo "Version: $version"
 mkdir -p $GOPATH/src/$(dirname $module)
 ln -sfn $WORKDIR/checkout $GOPATH/src/$module

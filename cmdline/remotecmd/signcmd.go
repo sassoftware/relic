@@ -24,6 +24,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"strings"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/binpatch"
 	"github.com/spf13/cobra"
@@ -35,11 +36,16 @@ var SignCmd = &cobra.Command{
 	RunE:  signCmd,
 }
 
+var (
+	argKeyAlias string
+)
+
 func init() {
 	RemoteCmd.AddCommand(SignCmd)
 	SignCmd.Flags().StringVarP(&argKeyName, "key", "k", "", "Name of key on remote server to use")
 	SignCmd.Flags().StringVarP(&argFile, "file", "f", "", "Input file to sign")
 	SignCmd.Flags().StringVarP(&argOutput, "output", "o", "", "Output file. Defaults to same as --file.")
+	SignCmd.Flags().StringVar(&argKeyAlias, "key-alias", "RELIC", "Alias to use for signed manifests (JAR only)")
 }
 
 func signCmd(cmd *cobra.Command, args []string) (err error) {
@@ -48,6 +54,10 @@ func signCmd(cmd *cobra.Command, args []string) (err error) {
 	}
 	if argOutput == "" {
 		argOutput = argFile
+	}
+	exten := strings.ToLower(path.Ext(argFile))
+	if exten == ".jar" {
+		return signJar()
 	}
 	// open for writing so in-place patch works
 	infile, err := os.OpenFile(argFile, os.O_RDWR, 0)

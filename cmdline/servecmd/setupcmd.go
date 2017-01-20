@@ -29,6 +29,7 @@ import (
 	"os"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
 	"github.com/spf13/cobra"
 )
@@ -57,7 +58,7 @@ func readKey(path string) (crypto.PrivateKey, error) {
 	if pemData, err := ioutil.ReadFile(path); err != nil {
 		return nil, err
 	} else {
-		return x509tools.ParsePEMPrivateKey(pemData)
+		return certloader.ParsePrivateKey(pemData)
 	}
 }
 

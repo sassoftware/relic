@@ -128,24 +128,12 @@ func signPgpCmd(cmd *cobra.Command, args []string) (err error) {
 	if err != nil {
 		return err
 	}
-	output := io.Writer(os.Stdout)
-	if argOutput != "" && argOutput != "-" {
-		var atomic *atomicfile.AtomicFile
-		atomic, err = atomicfile.New(argOutput)
-		if err != nil {
-			return err
-		}
-		defer func() {
-			if err == nil {
-				if infile != os.Stdin {
-					infile.Close() // windows file locking
-				}
-				err = atomic.Commit()
-			} else {
-				atomic.Close()
-			}
-		}()
-		output = atomic
+	if argOutput == "" {
+		argOutput = "-"
+	}
+	output, err := atomicfile.WriteAny(argOutput)
+	if err != nil {
+		return err
 	}
 	if argPgpClearsign {
 		// Reassemble clearsign from the local input file and the received signature block
@@ -160,5 +148,8 @@ func signPgpCmd(cmd *cobra.Command, args []string) (err error) {
 	} else {
 		_, err = io.Copy(output, response.Body)
 	}
-	return err
+	if infile != os.Stdin {
+		infile.Close() // windows file locking
+	}
+	return output.Commit()
 }

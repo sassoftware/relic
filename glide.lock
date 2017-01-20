@@ -1,10 +1,8 @@
 hash: 8b11039af346973f322401822631e187789f06a58ea553e49c443152c36b3738
-updated: 2017-01-16T22:22:22.575478911Z
+updated: 2017-01-20T16:00:35.283899492Z
 imports:
 - name: github.com/braintree/manners
   version: 82a8879fc5fd0381fa8b2d8033b19bf255252088
-- name: github.com/fullsailor/pkcs7
-  version: cedaa6c8ea14493515fcf950eabba5eb1530c349
 - name: github.com/howeyc/gopass
   version: bf9dde6d0d2c004a008c27aaee91170c786f6db8
 - name: github.com/inconshreveable/mousetrap
@@ -21,11 +19,11 @@ imports:
   - cpio
   - fileutil
 - name: github.com/spf13/cobra
-  version: 1dd5ff2e11b6dca62fdcb275eb804b94607d8b06
+  version: dc208f4211e7f6df7ec8cb62640f57d3e154910d
 - name: github.com/spf13/pflag
-  version: 51268031d79952516489a9f8aa34e9709b98d946
+  version: a232f6d9f87afaaa08bafaff5da685f974b83313
 - name: golang.org/x/crypto
-  version: 13d9f6188e639cb843a0568d05540a4cec71cc14
+  version: b8a2a83acfe6e6770b75de42d5ff4c67596675c0
   subpackages:
   - openpgp
   - openpgp/armor

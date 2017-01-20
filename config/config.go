@@ -28,6 +28,8 @@ import (
 const defaultMaxDocSize = 10000000
 
 var Version = "unknown" // set this at link time
+var UserAgent = "relic/" + Version
+var Author = "SAS Institute Inc."
 
 type TokenConfig struct {
 	Provider string // Path to PKCS#11 provider module (required)

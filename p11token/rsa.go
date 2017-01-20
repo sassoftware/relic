@@ -22,14 +22,9 @@ import (
 	"errors"
 	"math/big"
 
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
 	"github.com/miekg/pkcs11"
 )
-
-var hashPrefixes = map[crypto.Hash][]byte{
-	crypto.SHA256: {0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01, 0x05, 0x00, 0x04, 0x20},
-	crypto.SHA384: {0x30, 0x41, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x02, 0x05, 0x00, 0x04, 0x30},
-	crypto.SHA512: {0x30, 0x51, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x03, 0x05, 0x00, 0x04, 0x40},
-}
 
 func (key *Key) toRsaKey() (crypto.PublicKey, error) {
 	modulus := key.token.getAttribute(key.pub, pkcs11.CKA_MODULUS)
@@ -49,11 +44,11 @@ func (key *Key) signRSA(digest []byte, opts crypto.SignerOpts) ([]byte, error) {
 	} else if _, ok := opts.(*rsa.PSSOptions); ok {
 		return nil, errors.New("RSA-PSS not implemented")
 	} else {
-		prefixed, ok := hashPrefixes[opts.HashFunc()]
+		var ok bool
+		digest, ok = x509tools.MarshalDigest(opts.HashFunc(), digest)
 		if !ok {
 			return nil, errors.New("unsupported hash function")
 		}
-		digest = append(prefixed, digest...)
 		mech = pkcs11.NewMechanism(pkcs11.CKM_RSA_PKCS, nil)
 	}
 	err := key.token.ctx.SignInit(key.token.sh, []*pkcs11.Mechanism{mech}, key.priv)

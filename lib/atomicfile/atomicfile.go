@@ -18,29 +18,35 @@ package atomicfile
 
 import (
 	"errors"
+	"io"
 	"io/ioutil"
 	"os"
 	"path"
 )
 
-type AtomicFile struct {
+type AtomicFile interface {
+	io.WriteCloser
+	Commit() error
+}
+
+type atomicFile struct {
 	name     string
 	tempfile *os.File
 }
 
-func New(name string) (*AtomicFile, error) {
+func New(name string) (AtomicFile, error) {
 	tempfile, err := ioutil.TempFile(path.Dir(name), path.Base(name)+".tmp")
 	if err != nil {
 		return nil, err
 	}
-	return &AtomicFile{name, tempfile}, nil
+	return &atomicFile{name, tempfile}, nil
 }
 
-func (f *AtomicFile) Write(d []byte) (int, error) {
+func (f *atomicFile) Write(d []byte) (int, error) {
 	return f.tempfile.Write(d)
 }
 
-func (f *AtomicFile) Close() error {
+func (f *atomicFile) Close() error {
 	if f.tempfile == nil {
 		return nil
 	}
@@ -50,7 +56,7 @@ func (f *AtomicFile) Close() error {
 	return nil
 }
 
-func (f *AtomicFile) Commit() error {
+func (f *atomicFile) Commit() error {
 	if f.tempfile == nil {
 		return errors.New("file is closed")
 	}
