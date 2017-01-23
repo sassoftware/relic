@@ -17,22 +17,26 @@
 package remotecmd
 
 import (
-	"bytes"
+	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math/rand"
+	"net"
 	"net/http"
 	"net/url"
-	"os"
+	"strings"
+	"time"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
 	"golang.org/x/net/http2"
 )
+
+const connectTimeout = time.Second * 15
 
 func makeTlsConfig() (*tls.Config, error) {
 	err := shared.InitConfig()
@@ -65,7 +69,7 @@ func makeTlsConfig() (*tls.Config, error) {
 	}, nil
 }
 
-func callRemote(endpoint, method string, query *url.Values, body interface{}) (*http.Response, error) {
+func callRemote(endpoint, method string, query *url.Values, body io.ReadSeeker) (*http.Response, error) {
 	tconf, err := makeTlsConfig()
 	if err != nil {
 		return nil, err
@@ -82,50 +86,97 @@ func callRemote(endpoint, method string, query *url.Values, body interface{}) (*
 	if query != nil {
 		url.RawQuery = query.Encode()
 	}
-	transport := &http.Transport{TLSClientConfig: tconf}
-	if err := http2.ConfigureTransport(transport); err != nil {
-		return nil, err
-	}
-	client := &http.Client{Transport: transport}
 	request := &http.Request{
 		Method: method,
 		URL:    url,
 		Header: http.Header{"User-Agent": []string{config.UserAgent}},
 	}
 	if body != nil {
-		if reader, ok := body.(io.Reader); ok {
-			if file, ok := reader.(*os.File); ok {
-				stat, err := file.Stat()
-				if err != nil {
-					return nil, err
-				}
-				request.ContentLength = stat.Size()
-			} else if file, ok := reader.(*bytes.Reader); ok {
-				request.ContentLength = int64(file.Len())
-			}
-			request.Body = ioutil.NopCloser(reader)
-		} else {
-			var bodybytes []byte
-			if body, ok := body.([]byte); ok {
-				bodybytes = body
-			} else {
-				bodybytes, err = json.Marshal(body)
-				if err != nil {
-					return nil, err
-				}
-			}
-			request.ContentLength = int64(len(bodybytes))
-			request.Body = ioutil.NopCloser(bytes.NewReader(bodybytes))
-			request.Header.Set("Content-Type", "application/json")
+		size, err := body.Seek(0, io.SeekEnd)
+		if err != nil {
+			return nil, fmt.Errorf("failed to seek input file: %s", err)
 		}
+		request.ContentLength = size
 	}
-	response, err := client.Do(request)
+	response, err := doRequest(tconf, request, body)
 	if err != nil {
 		return nil, err
-	}
-	if response.StatusCode >= 300 {
+	} else if response.StatusCode >= 300 {
 		bodybytes, _ := ioutil.ReadAll(response.Body)
 		return nil, fmt.Errorf("HTTP error for %s: %s\n%s", url, response.Status, bodybytes)
 	}
 	return response, nil
+}
+
+func splitHostPort(u *url.URL) (host, port string, err error) {
+	s := u.Host
+	hasPort := strings.LastIndex(s, ":") > strings.LastIndex(s, "]")
+	if !hasPort {
+		switch u.Scheme {
+		case "http":
+			s += ":80"
+		case "https":
+			s += ":443"
+		default:
+			return "", "", fmt.Errorf("unsupported scheme: %s", u.Scheme)
+		}
+	}
+	return net.SplitHostPort(s)
+}
+
+func doRequest(tconf *tls.Config, req *http.Request, bodyFile io.ReadSeeker) (response *http.Response, err error) {
+	host, port, err := splitHostPort(req.URL)
+	if err != nil {
+		return nil, err
+	}
+	ips, err := net.LookupIP(host)
+	if err != nil {
+		return nil, err
+	}
+	dialer := &net.Dialer{Timeout: connectTimeout}
+	transport := &http.Transport{TLSClientConfig: tconf}
+	if err := http2.ConfigureTransport(transport); err != nil {
+		return nil, err
+	}
+	client := &http.Client{Transport: transport}
+	s := rand.New(rand.NewSource(time.Now().UnixNano()))
+	order := s.Perm(len(ips))
+	var ip net.IP
+	for i, j := range order {
+		ip = ips[j]
+		ipaddr := fmt.Sprintf("[%s]:%s", ip.String(), port)
+		dialContext := func(ctx context.Context, network, ignoreAddr string) (net.Conn, error) {
+			return dialer.DialContext(ctx, network, ipaddr)
+		}
+		transport.DialContext = dialContext
+		if bodyFile != nil {
+			if _, err := bodyFile.Seek(0, 0); err != nil {
+				return nil, fmt.Errorf("unable to rewind request body file: %s", err)
+			}
+			req.Body = ioutil.NopCloser(bodyFile)
+		}
+		response, err = client.Do(req)
+		if err2, ok := err.(temporary); ok && err2.Temporary() {
+			fmt.Printf("%s\nunable to connect to %s; trying next server\n", err, ip)
+			continue
+		} else if err2 == nil {
+			switch response.StatusCode {
+			case http.StatusGatewayTimeout,
+				http.StatusBadGateway,
+				http.StatusServiceUnavailable,
+				http.StatusInsufficientStorage:
+				fmt.Printf("HTTP error for %s: %s\nunable to connect to %s; trying next server\n", req.URL, response.Status, ip)
+				continue
+			}
+		}
+		if i != 0 {
+			fmt.Printf("successfully contacted %s\n", ip)
+		}
+		return
+	}
+	return
+}
+
+type temporary interface {
+	Temporary() bool
 }

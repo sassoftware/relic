@@ -67,6 +67,8 @@ func (s *Server) callHandler(request *http.Request, lw *loggingWriter) (response
 		return s.serveHealth(request)
 	} else if GetClientName(request) == "" {
 		return AccessDeniedResponse, nil
+	} else if !s.Healthy(request) {
+		return ErrorResponse(http.StatusServiceUnavailable), nil
 	}
 	switch request.URL.Path {
 	case "/":
@@ -90,7 +92,11 @@ func (s *Server) getUserRoles(ctx context.Context, request *http.Request) (conte
 			s.Logr(request, "access denied: unknown fingerprint %s\n", encoded)
 			return nil, AccessDeniedResponse
 		}
-		ctx = context.WithValue(ctx, ctxClientName, client.Nickname)
+		name := client.Nickname
+		if name == "" {
+			name = encoded[:12]
+		}
+		ctx = context.WithValue(ctx, ctxClientName, name)
 		ctx = context.WithValue(ctx, ctxRoles, client.Roles)
 	}
 	return ctx, nil

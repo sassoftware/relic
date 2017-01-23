@@ -45,7 +45,7 @@ func (s *Server) allocScratch(keyConf *config.KeyConfig, request *http.Request, 
 	switch err {
 	case diskmgr.ErrTooBig:
 		why = "error: request exceeded available scratch space"
-		status = http.StatusBadRequest
+		status = http.StatusInsufficientStorage
 	case context.Canceled:
 		why = "client hung up waiting for available scratch space"
 	case context.DeadlineExceeded:

@@ -110,18 +110,26 @@ func (s *Server) pingOne(keyConf *config.KeyConfig) bool {
 	return false
 }
 
+func (s *Server) Healthy(request *http.Request) bool {
+	healthMu.Lock()
+	defer healthMu.Unlock()
+	if time.Since(healthLastPing) > 3*HealthCheckInterval {
+		if request != nil {
+			s.Logr(request, "error: health check AWOL for %d seconds", time.Since(healthLastPing)/time.Second)
+		}
+		return false
+	} else {
+		return healthStatus
+	}
+}
+
 func (s *Server) serveHealth(request *http.Request) (res Response, err error) {
 	if request.Method != "GET" {
 		return ErrorResponse(http.StatusMethodNotAllowed), nil
 	}
-	healthMu.Lock()
-	defer healthMu.Unlock()
-	if time.Since(healthLastPing) > 3*HealthCheckInterval {
-		s.Logr(request, "error: health check AWOL for %d seconds", time.Since(healthLastPing)/time.Second)
-		return StringResponse(http.StatusInternalServerError, "ERROR"), nil
-	} else if healthStatus {
+	if s.Healthy(request) {
 		return StringResponse(http.StatusOK, "OK"), nil
 	} else {
-		return StringResponse(http.StatusInternalServerError, "ERROR"), nil
+		return ErrorResponse(http.StatusServiceUnavailable), nil
 	}
 }

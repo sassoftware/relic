@@ -132,6 +132,7 @@ func setupCmd(cmd *cobra.Command, args []string) error {
 	}
 	if argSelfSign {
 		x509tools.ArgExpireDays = 36525
+		x509tools.ArgCertAuthority = true
 		cert, err := x509tools.MakeCertificate(rand.Reader, signer)
 		if err != nil {
 			return err
