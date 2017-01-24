@@ -77,6 +77,8 @@ func (s *Server) callHandler(request *http.Request, lw *loggingWriter) (response
 		return s.serveListKeys(request)
 	case "/sign":
 		return s.serveSign(request, lw)
+	case "/directory":
+		return s.serveDirectory()
 	default:
 		return ErrorResponse(http.StatusNotFound), nil
 	}

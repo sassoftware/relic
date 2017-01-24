@@ -67,6 +67,11 @@ type ServerConfig struct {
 	MaxDocSize     int64 // Largest request that will be spooled to RAM
 	MaxDiskUsage   uint  // Max disk usage in megabytes
 	DebugDiskUsage bool
+
+	// URLs to all servers in the cluster. If a client uses DirectoryUrl to
+	// point to this server (or a load balancer), then we will give them these
+	// URLs as a means to distribute load without needing a middle-box.
+	Siblings []string
 }
 
 type ClientConfig struct {
@@ -75,10 +80,11 @@ type ClientConfig struct {
 }
 
 type RemoteConfig struct {
-	Url      string // URL of remote server
-	KeyFile  string // Path to TLS client key file
-	CertFile string // Path to TLS client certificate
-	CaCert   string // Path to CA certificate
+	Url          string // URL of remote server
+	DirectoryUrl string // URL of directory server
+	KeyFile      string // Path to TLS client key file
+	CertFile     string // Path to TLS client certificate
+	CaCert       string // Path to CA certificate
 }
 
 type Config struct {

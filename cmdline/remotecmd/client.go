@@ -17,14 +17,12 @@
 package remotecmd
 
 import (
-	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"math/rand"
 	"net"
 	"net/http"
 	"net/url"
@@ -46,8 +44,8 @@ func makeTlsConfig() (*tls.Config, error) {
 	config := shared.CurrentConfig
 	if config.Remote == nil {
 		return nil, errors.New("Missing remote section in config file")
-	} else if config.Remote.Url == "" {
-		return nil, errors.New("url is a required setting in 'remote' section of configuration")
+	} else if config.Remote.Url == "" && config.Remote.DirectoryUrl == "" {
+		return nil, errors.New("url or DirectoryUrl must be set in 'remote' section of configuration")
 	} else if config.Remote.CertFile == "" || config.Remote.KeyFile == "" || config.Remote.CaCert == "" {
 		return nil, errors.New("certfile, keyfile, and cacert are required settings in 'remote' section of configuration")
 	}
@@ -70,42 +68,37 @@ func makeTlsConfig() (*tls.Config, error) {
 }
 
 func callRemote(endpoint, method string, query *url.Values, body io.ReadSeeker) (*http.Response, error) {
-	tconf, err := makeTlsConfig()
-	if err != nil {
+	if err := shared.InitConfig(); err != nil {
 		return nil, err
 	}
-	url, err := url.Parse(shared.CurrentConfig.Remote.Url)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to parse remote URL: %s", err)
-	}
-	eurl, err := url.Parse(endpoint)
-	if err != nil {
-		return nil, err
-	}
-	url = url.ResolveReference(eurl)
-	if query != nil {
-		url.RawQuery = query.Encode()
-	}
-	request := &http.Request{
-		Method: method,
-		URL:    url,
-		Header: http.Header{"User-Agent": []string{config.UserAgent}},
-	}
-	if body != nil {
-		size, err := body.Seek(0, io.SeekEnd)
+	bases := []string{shared.CurrentConfig.Remote.Url}
+	if dirurl := shared.CurrentConfig.Remote.DirectoryUrl; dirurl != "" {
+		newBases, err := getDirectory(dirurl)
 		if err != nil {
-			return nil, fmt.Errorf("failed to seek input file: %s", err)
+			return nil, err
+		} else if len(newBases) > 0 {
+			fmt.Println("new bases:", newBases)
+			bases = newBases
 		}
-		request.ContentLength = size
 	}
-	response, err := doRequest(tconf, request, body)
+	return doRequest(bases, endpoint, method, query, body)
+}
+
+func getDirectory(dirurl string) ([]string, error) {
+	response, err := doRequest([]string{dirurl}, "directory", "GET", nil, nil)
 	if err != nil {
 		return nil, err
-	} else if response.StatusCode >= 300 {
-		bodybytes, _ := ioutil.ReadAll(response.Body)
-		return nil, fmt.Errorf("HTTP error for %s: %s\n%s", url, response.Status, bodybytes)
 	}
-	return response, nil
+	bodybytes, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return nil, err
+	}
+	text := strings.Trim(string(bodybytes), "\r\n")
+	if len(text) > 0 {
+		return strings.Split(text, "\r\n"), nil
+	} else {
+		return nil, nil
+	}
 }
 
 func splitHostPort(u *url.URL) (host, port string, err error) {
@@ -124,59 +117,94 @@ func splitHostPort(u *url.URL) (host, port string, err error) {
 	return net.SplitHostPort(s)
 }
 
-func doRequest(tconf *tls.Config, req *http.Request, bodyFile io.ReadSeeker) (response *http.Response, err error) {
-	host, port, err := splitHostPort(req.URL)
+func buildRequest(base, endpoint, method string, query *url.Values, bodyFile io.ReadSeeker) (*http.Request, error) {
+	eurl, err := url.Parse(endpoint)
 	if err != nil {
 		return nil, err
 	}
-	ips, err := net.LookupIP(host)
+	url, err := url.Parse(base)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to parse remote URL: %s", err)
+	}
+	url = url.ResolveReference(eurl)
+	if query != nil {
+		url.RawQuery = query.Encode()
+	}
+	request := &http.Request{
+		Method: method,
+		URL:    url,
+		Header: http.Header{"User-Agent": []string{config.UserAgent}},
+	}
+	if bodyFile != nil {
+		size, err := bodyFile.Seek(0, io.SeekEnd)
+		if err != nil {
+			return nil, fmt.Errorf("failed to seek input file: %s", err)
+		}
+		request.ContentLength = size
+		bodyFile.Seek(0, io.SeekStart)
+		request.Body = ioutil.NopCloser(bodyFile)
+	}
+	return request, nil
+}
+
+func doRequest(bases []string, endpoint, method string, query *url.Values, bodyFile io.ReadSeeker) (response *http.Response, err error) {
+	tconf, err := makeTlsConfig()
 	if err != nil {
 		return nil, err
 	}
 	dialer := &net.Dialer{Timeout: connectTimeout}
-	transport := &http.Transport{TLSClientConfig: tconf}
+	transport := &http.Transport{TLSClientConfig: tconf, DialContext: dialer.DialContext}
 	if err := http2.ConfigureTransport(transport); err != nil {
 		return nil, err
 	}
 	client := &http.Client{Transport: transport}
-	s := rand.New(rand.NewSource(time.Now().UnixNano()))
-	order := s.Perm(len(ips))
-	var ip net.IP
-	for i, j := range order {
-		ip = ips[j]
-		ipaddr := fmt.Sprintf("[%s]:%s", ip.String(), port)
-		dialContext := func(ctx context.Context, network, ignoreAddr string) (net.Conn, error) {
-			return dialer.DialContext(ctx, network, ipaddr)
+
+	for i, base := range bases {
+		var request *http.Request
+		request, err = buildRequest(base, endpoint, method, query, bodyFile)
+		if err != nil {
+			return nil, err
 		}
-		transport.DialContext = dialContext
-		if bodyFile != nil {
-			if _, err := bodyFile.Seek(0, 0); err != nil {
-				return nil, fmt.Errorf("unable to rewind request body file: %s", err)
-			}
-			req.Body = ioutil.NopCloser(bodyFile)
+		response, err = client.Do(request)
+		if err == nil && response.StatusCode >= 300 {
+			body, _ := ioutil.ReadAll(response.Body)
+			err = ResponseError{method, request.URL.String(), response.StatusCode, string(body)}
 		}
-		response, err = client.Do(req)
 		if err2, ok := err.(temporary); ok && err2.Temporary() {
-			fmt.Printf("%s\nunable to connect to %s; trying next server\n", err, ip)
-			continue
-		} else if err2 == nil {
-			switch response.StatusCode {
-			case http.StatusGatewayTimeout,
-				http.StatusBadGateway,
-				http.StatusServiceUnavailable,
-				http.StatusInsufficientStorage:
-				fmt.Printf("HTTP error for %s: %s\nunable to connect to %s; trying next server\n", req.URL, response.Status, ip)
-				continue
+			fmt.Printf("%s\nunable to connect to %s; trying next server\n", err, request.URL)
+		} else {
+			if err == nil && i != 0 {
+				fmt.Printf("successfully contacted %s\n", request.URL)
 			}
+			return
 		}
-		if i != 0 {
-			fmt.Printf("successfully contacted %s\n", ip)
-		}
-		return
 	}
 	return
 }
 
 type temporary interface {
 	Temporary() bool
+}
+
+type ResponseError struct {
+	Method     string
+	Url        string
+	StatusCode int
+	BodyText   string
+}
+
+func (e ResponseError) Error() string {
+	return fmt.Sprintf("HTTP error: %s %s: %s\n%s", e.Method, e.Url, e.StatusCode, e.BodyText)
+}
+
+func (e ResponseError) Temporary() bool {
+	switch e.StatusCode {
+	case http.StatusGatewayTimeout,
+		http.StatusBadGateway,
+		http.StatusServiceUnavailable,
+		http.StatusInsufficientStorage:
+		return true
+	default:
+		return false
+	}
 }
