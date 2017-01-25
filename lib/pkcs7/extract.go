@@ -24,7 +24,7 @@ import (
 )
 
 func ParseCertificates(der []byte) ([]*x509.Certificate, error) {
-	var psd pkcs7SignedData
+	var psd ContentInfoSignedData
 	_, err := asn1.Unmarshal(der, &psd)
 	if err != nil {
 		return nil, fmt.Errorf("pkcs7: %s", err)
@@ -41,13 +41,15 @@ func ParseCertificates(der []byte) ([]*x509.Certificate, error) {
 }
 
 func ExtractAndDetach(der []byte) (pkcs, content []byte, err error) {
-	var psd pkcs7SignedData
+	var psd ContentInfoSignedData
 	_, err = asn1.Unmarshal(der, &psd)
 	if err != nil {
 		return nil, nil, fmt.Errorf("pkcs7: %s", err)
 	}
-	content = psd.Content.ContentInfo.Content
-	psd.Content.ContentInfo.Content = nil
+	if err := psd.Content.ContentInfo.Unmarshal(&content); err != nil {
+		return nil, nil, fmt.Errorf("pkcs7: %s", err)
+	}
+	psd.Content.ContentInfo, _ = NewContentInfo(psd.Content.ContentInfo.ContentType, nil)
 	pkcs, err = asn1.Marshal(psd)
 	return pkcs, content, err
 }

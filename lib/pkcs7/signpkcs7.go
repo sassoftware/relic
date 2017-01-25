@@ -32,14 +32,19 @@ import (
 func SignData(content []byte, privKey crypto.Signer, certs []*x509.Certificate, opts crypto.SignerOpts) ([]byte, error) {
 	hash := opts.HashFunc().New()
 	hash.Write(content)
-	return signData(content, hash.Sum(nil), privKey, certs, opts)
+	cinfo, err := NewContentInfo(OidData, content)
+	if err != nil {
+		return nil, err
+	}
+	return signData(cinfo, hash.Sum(nil), privKey, certs, opts)
 }
 
 func SignDetached(digest []byte, privKey crypto.Signer, certs []*x509.Certificate, opts crypto.SignerOpts) ([]byte, error) {
-	return signData(nil, digest, privKey, certs, opts)
+	cinfo, _ := NewContentInfo(OidData, nil)
+	return signData(cinfo, digest, privKey, certs, opts)
 }
 
-func signData(content, digest []byte, privKey crypto.Signer, certs []*x509.Certificate, opts crypto.SignerOpts) ([]byte, error) {
+func signData(cinfo ContentInfo, digest []byte, privKey crypto.Signer, certs []*x509.Certificate, opts crypto.SignerOpts) ([]byte, error) {
 	digestAlg, ok := x509tools.PkixDigestAlgorithm(opts.HashFunc())
 	if !ok {
 		return nil, errors.New("pkcs7: unsupported digest algorithm")
@@ -59,20 +64,17 @@ func signData(content, digest []byte, privKey crypto.Signer, certs []*x509.Certi
 	if err != nil {
 		return nil, err
 	}
-	psd := pkcs7SignedData{
-		ContentType: oidSignedData,
-		Content: signedData{
+	psd := ContentInfoSignedData{
+		ContentType: OidSignedData,
+		Content: SignedData{
 			Version:                    1,
 			DigestAlgorithmIdentifiers: []pkix.AlgorithmIdentifier{digestAlg},
-			ContentInfo: contentInfo{
-				ContentType: oidData,
-				Content:     content,
-			},
-			Certificates: marshalCertificates(certs),
-			CRLs:         nil,
-			SignerInfos: []signerInfo{signerInfo{
+			ContentInfo:                cinfo,
+			Certificates:               MarshalCertificates(certs),
+			CRLs:                       nil,
+			SignerInfos: []SignerInfo{SignerInfo{
 				Version: 1,
-				IssuerAndSerialNumber: issuerAndSerial{
+				IssuerAndSerialNumber: IssuerAndSerial{
 					IssuerName:   asn1.RawValue{FullBytes: certs[0].RawIssuer},
 					SerialNumber: certs[0].SerialNumber,
 				},
@@ -85,12 +87,12 @@ func signData(content, digest []byte, privKey crypto.Signer, certs []*x509.Certi
 	return asn1.Marshal(psd)
 }
 
-func marshalCertificates(certs []*x509.Certificate) rawCertificates {
+func MarshalCertificates(certs []*x509.Certificate) RawCertificates {
 	var buf bytes.Buffer
 	for _, cert := range certs {
 		buf.Write(cert.Raw)
 	}
 	val := asn1.RawValue{Bytes: buf.Bytes(), Class: 2, Tag: 0, IsCompound: true}
 	b, _ := asn1.Marshal(val)
-	return rawCertificates{Raw: b}
+	return RawCertificates{Raw: b}
 }

@@ -23,52 +23,112 @@ import (
 )
 
 var (
-	oidData                   = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 7, 1}
-	oidSignedData             = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 7, 2}
-	oidAttributeContentType   = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 9, 3}
-	oidAttributeMessageDigest = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 9, 4}
-	oidAttributeSigningTime   = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 9, 5}
+	OidData                   = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 7, 1}
+	OidSignedData             = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 7, 2}
+	OidAttributeContentType   = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 9, 3}
+	OidAttributeMessageDigest = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 9, 4}
+	OidAttributeSigningTime   = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 9, 5}
 )
 
-type contentInfo struct {
+type ContentInfo struct {
+	Raw         asn1.RawContent
 	ContentType asn1.ObjectIdentifier
-	Content     []byte `asn1:"explicit,optional,tag:0"`
 }
 
-type pkcs7SignedData struct {
+type contentInfo2 struct {
 	ContentType asn1.ObjectIdentifier
-	Content     signedData `asn1:"explicit,optional,tag:0"`
+	Value       asn1.RawValue
 }
 
-type signedData struct {
+type contentInfoBytes struct {
+	ContentType asn1.ObjectIdentifier
+	Value       []byte `asn1:"explicit,optional,tag:0"`
+}
+
+func NewContentInfo(contentType asn1.ObjectIdentifier, data interface{}) (ci ContentInfo, err error) {
+	if data == nil {
+		return ContentInfo{ContentType: contentType}, nil
+	}
+	// There's no way to just encode the struct with the asn1.RawValue directly
+	// while also supporting the ability to not emit the 2nd field for the nil
+	// case, so instead this stupid dance of encoding it with the field then
+	// stuffing it into Raw is necessary...
+	encoded, err := asn1.Marshal(data)
+	if err != nil {
+		return ContentInfo{}, err
+	}
+	ci2 := contentInfo2{
+		ContentType: contentType,
+		Value: asn1.RawValue{
+			Class:      asn1.ClassContextSpecific,
+			Tag:        0,
+			IsCompound: true,
+			Bytes:      encoded,
+		},
+	}
+	ciblob, err := asn1.Marshal(ci2)
+	if err != nil {
+		return ContentInfo{}, nil
+	}
+	return ContentInfo{Raw: ciblob}, nil
+}
+
+func (ci ContentInfo) Unmarshal(dest interface{}) (err error) {
+	// First re-decode the contentinfo but this time with the second field
+	var ci2 contentInfo2
+	_, err = asn1.Unmarshal(ci.Raw, &ci2)
+	if err == nil {
+		// Now decode the raw value in the second field
+		_, err = asn1.Unmarshal(ci2.Value.Bytes, dest)
+	}
+	return
+}
+
+func (ci ContentInfo) UnmarshalBytes() ([]byte, error) {
+	// Unambigious way to unmarshal bytes if they are there or return nil if
+	// they were left out (i.e. detached signature)
+	var ci2 contentInfoBytes
+	if _, err := asn1.Unmarshal(ci.Raw, &ci2); err != nil {
+		return nil, err
+	} else {
+		return ci2.Value, nil
+	}
+}
+
+type ContentInfoSignedData struct {
+	ContentType asn1.ObjectIdentifier
+	Content     SignedData `asn1:"explicit,optional,tag:0"`
+}
+
+type SignedData struct {
 	Version                    int                        `asn1:"default:1"`
 	DigestAlgorithmIdentifiers []pkix.AlgorithmIdentifier `asn1:"set"`
-	ContentInfo                contentInfo                ``
-	Certificates               rawCertificates            `asn1:"optional,tag:0"`
+	ContentInfo                ContentInfo                ``
+	Certificates               RawCertificates            `asn1:"optional,tag:0"`
 	CRLs                       []pkix.CertificateList     `asn1:"optional,tag:1"`
-	SignerInfos                []signerInfo               `asn1:"set"`
+	SignerInfos                []SignerInfo               `asn1:"set"`
 }
 
-type rawCertificates struct {
+type RawCertificates struct {
 	Raw asn1.RawContent
 }
 
-type attribute struct {
+type Attribute struct {
 	Type  asn1.ObjectIdentifier
 	Value asn1.RawValue `asn1:"set"`
 }
 
-type signerInfo struct {
+type SignerInfo struct {
 	Version                   int                      `asn1:"default:1"`
-	IssuerAndSerialNumber     issuerAndSerial          ``
+	IssuerAndSerialNumber     IssuerAndSerial          ``
 	DigestAlgorithm           pkix.AlgorithmIdentifier ``
-	AuthenticatedAttributes   []attribute              `asn1:"optional,tag:0"`
+	AuthenticatedAttributes   []Attribute              `asn1:"optional,tag:0"`
 	DigestEncryptionAlgorithm pkix.AlgorithmIdentifier ``
 	EncryptedDigest           []byte                   ``
-	UnauthenticatedAttributes []attribute              `asn1:"optional,tag:1"`
+	UnauthenticatedAttributes []Attribute              `asn1:"optional,tag:1"`
 }
 
-type issuerAndSerial struct {
+type IssuerAndSerial struct {
 	IssuerName   asn1.RawValue
 	SerialNumber *big.Int
 }
