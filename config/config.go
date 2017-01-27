@@ -52,6 +52,7 @@ type KeyConfig struct {
 	Certificate string   // Path to certificate associated with this key
 	Key         string   // Name of key container (windows)
 	Roles       []string // List of user roles that can use this key
+	Timestamp   bool     // If true, attach a timestamped countersignature when possible
 
 	name  string
 	token *TokenConfig
@@ -87,13 +88,20 @@ type RemoteConfig struct {
 	CaCert       string // Path to CA certificate
 }
 
+type TimestampConfig struct {
+	Urls    []string // List of timestamp server URLs
+	Timeout int      // Connect timeout in seconds
+	CaCert  string   // Path to CA certificate
+}
+
 type Config struct {
-	Tokens  map[string]*TokenConfig  `,omitempty`
-	Tools   map[string]*ToolConfig   `,omitempty`
-	Keys    map[string]*KeyConfig    `,omitempty`
-	Server  *ServerConfig            `,omitempty`
-	Clients map[string]*ClientConfig `,omitempty`
-	Remote  *RemoteConfig            `,omitempty`
+	Tokens    map[string]*TokenConfig  `,omitempty`
+	Tools     map[string]*ToolConfig   `,omitempty`
+	Keys      map[string]*KeyConfig    `,omitempty`
+	Server    *ServerConfig            `,omitempty`
+	Clients   map[string]*ClientConfig `,omitempty`
+	Remote    *RemoteConfig            `,omitempty`
+	Timestamp *TimestampConfig         `,omitempty`
 
 	path string
 }
@@ -163,4 +171,15 @@ func (config *Config) GetKey(keyName string) (*KeyConfig, error) {
 
 func (config *Config) Path() string {
 	return config.path
+}
+
+func (config *Config) GetTimestampConfig() (*TimestampConfig, error) {
+	tconf := config.Timestamp
+	if tconf == nil {
+		return nil, errors.New("No timestamp section exists in the configuration")
+	} else if len(tconf.Urls) == 0 {
+		return nil, errors.New("No timestamp urls are defined in the configuration")
+	} else {
+		return tconf, nil
+	}
 }

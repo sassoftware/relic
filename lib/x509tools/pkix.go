@@ -22,6 +22,8 @@ import (
 	"crypto/rsa"
 	"crypto/x509/pkix"
 	"encoding/asn1"
+	"fmt"
+	"strings"
 )
 
 var (
@@ -60,6 +62,15 @@ func PkixDigestAlgorithm(hash crypto.Hash) (alg pkix.AlgorithmIdentifier, ok boo
 	return
 }
 
+func PkixDigestToHash(alg pkix.AlgorithmIdentifier) (hash crypto.Hash, ok bool) {
+	for hash, oid := range HashOids {
+		if alg.Algorithm.Equal(oid) {
+			return hash, true
+		}
+	}
+	return 0, false
+}
+
 // Convert a crypto.PublicKey to a X.509 AlgorithmIdentifier
 func PkixPublicKeyAlgorithm(pub crypto.PublicKey) (alg pkix.AlgorithmIdentifier, ok bool) {
 	switch pub.(type) {
@@ -92,4 +103,57 @@ func MarshalDigest(hash crypto.Hash, digest []byte) (der []byte, ok bool) {
 		return nil, false
 	}
 	return der, true
+}
+
+func FormatRDNSequence(seq pkix.RDNSequence) string {
+	formatted := make([]string, 0, len(seq))
+	for _, rdn := range seq {
+		elems := make([]string, 0, len(rdn))
+		for _, att := range rdn {
+			val, ok := att.Value.(string)
+			if !ok {
+				continue
+			}
+			var attname string
+			t := att.Type
+			if len(t) == 4 && t[0] == 2 && t[1] == 5 && t[2] == 4 {
+				switch t[3] {
+				case 3:
+					attname = "CN"
+				case 5:
+					attname = "serialNumber"
+				case 6:
+					attname = "C"
+				case 7:
+					attname = "L"
+				case 8:
+					attname = "ST"
+				case 9:
+					attname = "street"
+				case 10:
+					attname = "O"
+				case 11:
+					attname = "OU"
+				case 13:
+					attname = "description"
+				case 17:
+					attname = "postalCode"
+				}
+			}
+			var elem string
+			if attname == "" {
+				elem = fmt.Sprintf("%s=%s", att.Type, val)
+			} else {
+				elem = fmt.Sprintf("%s=%s", attname, val)
+			}
+			elems = append(elems, elem)
+		}
+		rdnf := strings.Join(elems, "+")
+		formatted = append(formatted, rdnf)
+	}
+	if len(formatted) == 0 {
+		return ""
+	} else {
+		return "/" + strings.Join(formatted, "/") + "/"
+	}
 }

@@ -57,7 +57,6 @@ func ParseManifest(manifest []byte) (files *FilesMap, err error) {
 			}
 			idx := bytes.IndexRune(line, ':')
 			if idx < 0 {
-				fmt.Printf("%#v\n", string(section))
 				return nil, errors.New("jar manifest is malformed")
 			}
 			key := strings.TrimSpace(string(line[:idx]))

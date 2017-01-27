@@ -46,7 +46,8 @@ func ExtractAndDetach(der []byte) (pkcs, content []byte, err error) {
 	if err != nil {
 		return nil, nil, fmt.Errorf("pkcs7: %s", err)
 	}
-	if err := psd.Content.ContentInfo.Unmarshal(&content); err != nil {
+	content, err = psd.Content.ContentInfo.Bytes()
+	if err != nil {
 		return nil, nil, fmt.Errorf("pkcs7: %s", err)
 	}
 	psd.Content.ContentInfo, _ = NewContentInfo(psd.Content.ContentInfo.ContentType, nil)

@@ -25,7 +25,6 @@ import (
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/atomicfile"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs7"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/signjar"
 	"github.com/spf13/cobra"
 )
@@ -98,9 +97,7 @@ func signJarCmd(cmd *cobra.Command, args []string) (err error) {
 	if err != nil {
 		return err
 	}
-	d := hash.New()
-	d.Write(sigfile)
-	pkcs, err := pkcs7.SignDetached(d.Sum(nil), key, certs, hash)
+	pkcs, err := signAndTimestamp(sigfile, key, certs, hash, true)
 	if err != nil {
 		return err
 	}
@@ -154,21 +151,13 @@ func signJarManifestCmd(cmd *cobra.Command, args []string) (err error) {
 	if err != nil {
 		return err
 	}
-	var pkcs []byte
-	if argSignFileOutput != "" {
-		d := hash.New()
-		d.Write(sigfile)
-		pkcs, err = pkcs7.SignDetached(d.Sum(nil), key, certs, hash)
-		if err != nil {
-			return err
-		}
+	detach := argSignFileOutput != ""
+	pkcs, err := signAndTimestamp(sigfile, key, certs, hash, detach)
+	if err != nil {
+		return err
+	}
+	if detach {
 		if err := ioutil.WriteFile(argSignFileOutput, sigfile, 0666); err != nil {
-			return err
-		}
-	} else {
-		// only useful for server so there's a single blob to send back
-		pkcs, err = pkcs7.SignData(sigfile, key, certs, hash)
-		if err != nil {
 			return err
 		}
 	}

@@ -19,6 +19,7 @@ package pkcs7
 import (
 	"crypto/x509/pkix"
 	"encoding/asn1"
+	"fmt"
 	"math/big"
 )
 
@@ -33,66 +34,6 @@ var (
 type ContentInfo struct {
 	Raw         asn1.RawContent
 	ContentType asn1.ObjectIdentifier
-}
-
-type contentInfo2 struct {
-	ContentType asn1.ObjectIdentifier
-	Value       asn1.RawValue
-}
-
-type contentInfoBytes struct {
-	ContentType asn1.ObjectIdentifier
-	Value       []byte `asn1:"explicit,optional,tag:0"`
-}
-
-func NewContentInfo(contentType asn1.ObjectIdentifier, data interface{}) (ci ContentInfo, err error) {
-	if data == nil {
-		return ContentInfo{ContentType: contentType}, nil
-	}
-	// There's no way to just encode the struct with the asn1.RawValue directly
-	// while also supporting the ability to not emit the 2nd field for the nil
-	// case, so instead this stupid dance of encoding it with the field then
-	// stuffing it into Raw is necessary...
-	encoded, err := asn1.Marshal(data)
-	if err != nil {
-		return ContentInfo{}, err
-	}
-	ci2 := contentInfo2{
-		ContentType: contentType,
-		Value: asn1.RawValue{
-			Class:      asn1.ClassContextSpecific,
-			Tag:        0,
-			IsCompound: true,
-			Bytes:      encoded,
-		},
-	}
-	ciblob, err := asn1.Marshal(ci2)
-	if err != nil {
-		return ContentInfo{}, nil
-	}
-	return ContentInfo{Raw: ciblob}, nil
-}
-
-func (ci ContentInfo) Unmarshal(dest interface{}) (err error) {
-	// First re-decode the contentinfo but this time with the second field
-	var ci2 contentInfo2
-	_, err = asn1.Unmarshal(ci.Raw, &ci2)
-	if err == nil {
-		// Now decode the raw value in the second field
-		_, err = asn1.Unmarshal(ci2.Value.Bytes, dest)
-	}
-	return
-}
-
-func (ci ContentInfo) UnmarshalBytes() ([]byte, error) {
-	// Unambigious way to unmarshal bytes if they are there or return nil if
-	// they were left out (i.e. detached signature)
-	var ci2 contentInfoBytes
-	if _, err := asn1.Unmarshal(ci.Raw, &ci2); err != nil {
-		return nil, err
-	} else {
-		return ci2.Value, nil
-	}
 }
 
 type ContentInfoSignedData struct {
@@ -114,18 +55,76 @@ type RawCertificates struct {
 }
 
 type Attribute struct {
-	Type  asn1.ObjectIdentifier
-	Value asn1.RawValue `asn1:"set"`
+	Type   asn1.ObjectIdentifier
+	Values asn1.RawValue
+}
+
+type AttributeList []Attribute
+
+func (l *AttributeList) GetOne(oid asn1.ObjectIdentifier, dest interface{}) error {
+	for _, raw := range *l {
+		if !raw.Type.Equal(oid) {
+			continue
+		}
+		rest, err := asn1.Unmarshal(raw.Values.Bytes, dest)
+		if err != nil {
+			return err
+		} else if len(rest) != 0 {
+			return fmt.Errorf("attribute %s: expected one, found multiple", oid)
+		} else {
+			return nil
+		}
+	}
+	return fmt.Errorf("attribute not found: %s", oid)
+}
+
+// marshal authenticated attributes for digesting
+func (l *AttributeList) Bytes() ([]byte, error) {
+	// needs an explicit SET OF tag but not the class-specific tag from the
+	// original struct. see RFC 2315 9.3, 2nd paragraph
+	encoded, err := asn1.Marshal(struct {
+		A []Attribute `asn1:"set"`
+	}{A: *l})
+	if err != nil {
+		return nil, err
+	}
+	var raw asn1.RawValue
+	if _, err := asn1.Unmarshal(encoded, &raw); err != nil {
+		return nil, err
+	}
+	return raw.Bytes, nil
+}
+
+func (l *AttributeList) Add(oid asn1.ObjectIdentifier, obj interface{}) error {
+	value, err := asn1.Marshal(obj)
+	if err != nil {
+		return err
+	}
+	for _, attr := range *l {
+		if attr.Type.Equal(oid) {
+			attr.Values.Bytes = append(attr.Values.Bytes, value...)
+			return nil
+		}
+	}
+	*l = append(*l, Attribute{
+		Type: oid,
+		Values: asn1.RawValue{
+			Class:      asn1.ClassUniversal,
+			Tag:        asn1.TagSet,
+			IsCompound: true,
+			Bytes:      value,
+		}})
+	return nil
 }
 
 type SignerInfo struct {
 	Version                   int                      `asn1:"default:1"`
 	IssuerAndSerialNumber     IssuerAndSerial          ``
 	DigestAlgorithm           pkix.AlgorithmIdentifier ``
-	AuthenticatedAttributes   []Attribute              `asn1:"optional,tag:0"`
+	AuthenticatedAttributes   AttributeList            `asn1:"optional,tag:0"`
 	DigestEncryptionAlgorithm pkix.AlgorithmIdentifier ``
 	EncryptedDigest           []byte                   ``
-	UnauthenticatedAttributes []Attribute              `asn1:"optional,tag:1"`
+	UnauthenticatedAttributes AttributeList            `asn1:"optional,tag:1"`
 }
 
 type IssuerAndSerial struct {
