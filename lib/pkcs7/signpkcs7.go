@@ -126,44 +126,56 @@ func (sd *SignedData) Verify(externalContent []byte) error {
 		return errors.New("pkcs7: certificate missing from signedData")
 	}
 	for _, si := range sd.SignerInfos {
-		hash, ok := x509tools.PkixDigestToHash(si.DigestAlgorithm)
-		if !ok || !hash.Available() {
-			return fmt.Errorf("pkcs7: unknown hash with OID %s", si.DigestAlgorithm.Algorithm)
-		}
-		w := hash.New()
-		w.Write(content)
-		digest := w.Sum(nil)
-		if len(si.AuthenticatedAttributes) != 0 {
-			// check the content digest against the messageDigest attribute
-			var md []byte
-			if err := si.AuthenticatedAttributes.GetOne(OidAttributeMessageDigest, &md); err != nil {
-				return err
-			} else if !hmac.Equal(md, digest) {
-				return errors.New("pkcs7: content digest does not match")
-			}
-			// now pivot to verifying the hash over the authenticated attributes
-			w = hash.New()
-			attrbytes, err := si.AuthenticatedAttributes.Bytes()
-			if err != nil {
-				return err
-			}
-			w.Write(attrbytes)
-			digest = w.Sum(nil)
-		} // otherwise the content hash is verified directly
-		var cert *x509.Certificate
-		is := si.IssuerAndSerialNumber
-		for _, cert2 := range certs {
-			if bytes.Equal(cert2.RawIssuer, is.IssuerName.FullBytes) && cert2.SerialNumber.Cmp(is.SerialNumber) == 0 {
-				cert = cert2
-				break
-			}
-		}
-		if cert == nil {
-			return errors.New("pkcs7: certificate missing from signedData")
-		}
-		if err := x509tools.Verify(cert.PublicKey, hash, digest, si.EncryptedDigest); err != nil {
+		err = si.Verify(content, certs)
+		if err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func (si *SignerInfo) Verify(content []byte, certs []*x509.Certificate) error {
+	hash, ok := x509tools.PkixDigestToHash(si.DigestAlgorithm)
+	if !ok || !hash.Available() {
+		return fmt.Errorf("pkcs7: unknown hash with OID %s", si.DigestAlgorithm.Algorithm)
+	}
+	w := hash.New()
+	w.Write(content)
+	digest := w.Sum(nil)
+	if len(si.AuthenticatedAttributes) != 0 {
+		// check the content digest against the messageDigest attribute
+		var md []byte
+		if err := si.AuthenticatedAttributes.GetOne(OidAttributeMessageDigest, &md); err != nil {
+			return err
+		} else if !hmac.Equal(md, digest) {
+			return errors.New("pkcs7: content digest does not match")
+		}
+		// now pivot to verifying the hash over the authenticated attributes
+		w = hash.New()
+		attrbytes, err := si.AuthenticatedAttributes.Bytes()
+		if err != nil {
+			return err
+		}
+		w.Write(attrbytes)
+		digest = w.Sum(nil)
+	} // otherwise the content hash is verified directly
+	var cert *x509.Certificate
+	is := si.IssuerAndSerialNumber
+	for _, cert2 := range certs {
+		if bytes.Equal(cert2.RawIssuer, is.IssuerName.FullBytes) && cert2.SerialNumber.Cmp(is.SerialNumber) == 0 {
+			cert = cert2
+			break
+		}
+	}
+	if cert == nil {
+		return errors.New("pkcs7: certificate missing from signedData")
+	}
+	err := x509tools.Verify(cert.PublicKey, hash, digest, si.EncryptedDigest)
+	if err == rsa.ErrVerification {
+		// "Symantec Time Stamping Services Signer" seems to be emitting
+		// signatures without the AlgorithmIdentifier strucuture, so try
+		// without it.
+		err = x509tools.Verify(cert.PublicKey, 0, digest, si.EncryptedDigest)
+	}
+	return err
 }

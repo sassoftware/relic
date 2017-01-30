@@ -21,7 +21,6 @@ import (
 	"crypto"
 	"crypto/hmac"
 	"crypto/tls"
-	"crypto/x509"
 	"encoding/asn1"
 	"errors"
 	"fmt"
@@ -42,16 +41,8 @@ type TimestampClient struct {
 
 func (t TimestampClient) do(req *http.Request) ([]byte, error) {
 	tconf := &tls.Config{}
-	if t.CaFile != "" {
-		pool := x509.NewCertPool()
-		contents, err := ioutil.ReadFile(t.CaFile)
-		if err != nil {
-			return nil, err
-		}
-		if !pool.AppendCertsFromPEM(contents) {
-			return nil, fmt.Errorf("no CA certificates in %s", t.CaFile)
-		}
-		tconf.RootCAs = pool
+	if err := x509tools.LoadCertPool(t.CaFile, tconf); err != nil {
+		return nil, err
 	}
 	client := &http.Client{
 		Timeout: t.Timeout,

@@ -19,7 +19,6 @@ package pkcs7
 import (
 	"crypto/x509"
 	"encoding/asn1"
-	"errors"
 	"fmt"
 )
 
@@ -29,15 +28,7 @@ func ParseCertificates(der []byte) ([]*x509.Certificate, error) {
 	if err != nil {
 		return nil, fmt.Errorf("pkcs7: %s", err)
 	}
-	blob := psd.Content.Certificates.Raw
-	if len(blob) == 0 {
-		return nil, errors.New("pkcs7: no certificates")
-	}
-	var val asn1.RawValue
-	if _, err := asn1.Unmarshal(blob, &val); err != nil {
-		return nil, err
-	}
-	return x509.ParseCertificates(val.Bytes)
+	return psd.Content.Certificates.Parse()
 }
 
 func ExtractAndDetach(der []byte) (pkcs, content []byte, err error) {

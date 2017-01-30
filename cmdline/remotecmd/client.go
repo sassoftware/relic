@@ -18,7 +18,6 @@ package remotecmd
 
 import (
 	"crypto/tls"
-	"crypto/x509"
 	"errors"
 	"fmt"
 	"io"
@@ -31,6 +30,7 @@ import (
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
 	"golang.org/x/net/http2"
 )
 
@@ -53,18 +53,11 @@ func makeTlsConfig() (*tls.Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	pool := x509.NewCertPool()
-	cacert, err := ioutil.ReadFile(config.Remote.CaCert)
-	if err != nil {
+	tconf := &tls.Config{Certificates: []tls.Certificate{tlscert}}
+	if err := x509tools.LoadCertPool(config.Remote.CaCert, tconf); err != nil {
 		return nil, err
 	}
-	if !pool.AppendCertsFromPEM(cacert) {
-		return nil, errors.New("Failed to parse CA certificates")
-	}
-	return &tls.Config{
-		Certificates: []tls.Certificate{tlscert},
-		RootCAs:      pool,
-	}, nil
+	return tconf, nil
 }
 
 func callRemote(endpoint, method string, query *url.Values, body io.ReadSeeker) (*http.Response, error) {

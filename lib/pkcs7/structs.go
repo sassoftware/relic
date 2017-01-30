@@ -19,7 +19,6 @@ package pkcs7
 import (
 	"crypto/x509/pkix"
 	"encoding/asn1"
-	"fmt"
 	"math/big"
 )
 
@@ -60,62 +59,6 @@ type Attribute struct {
 }
 
 type AttributeList []Attribute
-
-func (l *AttributeList) GetOne(oid asn1.ObjectIdentifier, dest interface{}) error {
-	for _, raw := range *l {
-		if !raw.Type.Equal(oid) {
-			continue
-		}
-		rest, err := asn1.Unmarshal(raw.Values.Bytes, dest)
-		if err != nil {
-			return err
-		} else if len(rest) != 0 {
-			return fmt.Errorf("attribute %s: expected one, found multiple", oid)
-		} else {
-			return nil
-		}
-	}
-	return fmt.Errorf("attribute not found: %s", oid)
-}
-
-// marshal authenticated attributes for digesting
-func (l *AttributeList) Bytes() ([]byte, error) {
-	// needs an explicit SET OF tag but not the class-specific tag from the
-	// original struct. see RFC 2315 9.3, 2nd paragraph
-	encoded, err := asn1.Marshal(struct {
-		A []Attribute `asn1:"set"`
-	}{A: *l})
-	if err != nil {
-		return nil, err
-	}
-	var raw asn1.RawValue
-	if _, err := asn1.Unmarshal(encoded, &raw); err != nil {
-		return nil, err
-	}
-	return raw.Bytes, nil
-}
-
-func (l *AttributeList) Add(oid asn1.ObjectIdentifier, obj interface{}) error {
-	value, err := asn1.Marshal(obj)
-	if err != nil {
-		return err
-	}
-	for _, attr := range *l {
-		if attr.Type.Equal(oid) {
-			attr.Values.Bytes = append(attr.Values.Bytes, value...)
-			return nil
-		}
-	}
-	*l = append(*l, Attribute{
-		Type: oid,
-		Values: asn1.RawValue{
-			Class:      asn1.ClassUniversal,
-			Tag:        asn1.TagSet,
-			IsCompound: true,
-			Bytes:      value,
-		}})
-	return nil
-}
 
 type SignerInfo struct {
 	Version                   int                      `asn1:"default:1"`

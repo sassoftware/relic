@@ -17,15 +17,12 @@
 package pkcs9
 
 import (
-	"crypto/hmac"
 	"crypto/x509/pkix"
 	"encoding/asn1"
-	"errors"
 	"math/big"
 	"time"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs7"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
 )
 
 const (
@@ -49,6 +46,10 @@ const (
 var (
 	OidKeyPurposeTimeStamping  = asn1.ObjectIdentifier{1, 3, 6, 1, 5, 5, 7, 3, 8}
 	OidAttributeTimeStampToken = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 9, 16, 2, 14}
+	OidAttributeCounterSign    = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 9, 6}
+
+	// undocumented(?) alternative to OidAttributeTimeStampToken found in a microsoft binary
+	OidSpcTimeStampToken = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 3, 3, 1}
 )
 
 type TimeStampReq struct {
@@ -63,20 +64,6 @@ type TimeStampReq struct {
 type MessageImprint struct {
 	HashAlgorithm pkix.AlgorithmIdentifier
 	HashedMessage []byte
-}
-
-func (i MessageImprint) Verify(data []byte) error {
-	hash, ok := x509tools.PkixDigestToHash(i.HashAlgorithm)
-	if !ok || !hash.Available() {
-		return errors.New("pkcs9: unknown digest algorithm")
-	}
-	w := hash.New()
-	w.Write(data)
-	digest := w.Sum(nil)
-	if !hmac.Equal(digest, i.HashedMessage) {
-		return errors.New("pkcs9: digest check failed")
-	}
-	return nil
 }
 
 type TimeStampResp struct {
@@ -112,15 +99,4 @@ type Accuracy struct {
 type GeneralName struct {
 	// See RFC 3280
 	Value asn1.RawValue
-}
-
-func (g GeneralName) RDNSequence() pkix.RDNSequence {
-	if g.Value.Tag != 4 {
-		return nil
-	}
-	var seq pkix.RDNSequence
-	if _, err := asn1.Unmarshal(g.Value.Bytes, &seq); err != nil {
-		return nil
-	}
-	return seq
 }
