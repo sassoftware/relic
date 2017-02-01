@@ -9,6 +9,14 @@ tokens:
     serial: 99999
     # PIN is optional for command-line use, but required for servers
     pin: 123456
+    #pin: "" # blank PIN, without prompting
+
+    # Optional login user. Useful values:
+    # 0 - CKU_SO
+    # 1 - CKU_USER (default)
+    # 2 - CKU_CONTEXT_SPECIFIC, SafeNet: CKU_AUDIT
+    # 0x80000001 - SafeNet: CKU_LIMITED_USER
+    #user: 1
 tools:
   # Servers can also invoke a predefined command-line tool to sign packages
   signtool:

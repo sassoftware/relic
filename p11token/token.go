@@ -79,7 +79,7 @@ func Open(config *config.Config, tokenName string, pinProvider PinProvider) (*To
 		return nil, err
 	}
 	token.sh = sh
-	err = token.autoLogIn(false, tokenConf.Pin, pinProvider)
+	err = token.autoLogIn(tokenConf, pinProvider)
 	if err != nil {
 		token.Close()
 		return nil, err
@@ -163,16 +163,10 @@ func (token *Token) IsLoggedIn() (bool, error) {
 	return (info.State == CKS_RO_USER_FUNCTIONS || info.State == CKS_RW_USER_FUNCTIONS || info.State == CKS_RW_SO_FUNCTIONS), nil
 }
 
-func (token *Token) Login(admin bool, pin string) error {
+func (token *Token) Login(user uint, pin string) error {
 	token.mutex.Lock()
 	defer token.mutex.Unlock()
-	var userType uint
-	if admin {
-		userType = pkcs11.CKU_SO
-	} else {
-		userType = pkcs11.CKU_USER
-	}
-	err := token.ctx.Login(token.sh, userType, pin)
+	err := token.ctx.Login(token.sh, user, pin)
 	if err != nil {
 		if rv, ok := err.(pkcs11.Error); ok && rv == pkcs11.CKR_PIN_INCORRECT {
 			return PinIncorrectError{}
@@ -181,7 +175,7 @@ func (token *Token) Login(admin bool, pin string) error {
 	return err
 }
 
-func (token *Token) autoLogIn(admin bool, pin string, pinProvider PinProvider) error {
+func (token *Token) autoLogIn(tokenConf *config.TokenConfig, pinProvider PinProvider) error {
 	loggedIn, err := token.IsLoggedIn()
 	if err != nil {
 		return err
@@ -189,20 +183,24 @@ func (token *Token) autoLogIn(admin bool, pin string, pinProvider PinProvider) e
 	if loggedIn {
 		return nil
 	}
-	if pin != "" {
-		err = token.Login(admin, pin)
+	user := pkcs11.CKU_USER
+	if tokenConf.User != nil {
+		user = *tokenConf.User
+	}
+	if tokenConf.Pin != nil {
+		err = token.Login(user, *tokenConf.Pin)
 		if err != nil {
 			return err
 		}
 	} else if pinProvider != nil {
 		for {
-			pin, err = pinProvider.GetPin(token.Name)
+			pin, err := pinProvider.GetPin(token.Name)
 			if err != nil {
 				return err
 			} else if pin == "" {
 				return errors.New("Aborted")
 			}
-			err = token.Login(admin, pin)
+			err = token.Login(user, pin)
 			if _, ok := err.(PinIncorrectError); ok {
 				pinProvider.WriteString("Incorrect PIN")
 				continue
