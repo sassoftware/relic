@@ -17,6 +17,7 @@
 package pkcs9
 
 import (
+	"crypto/x509"
 	"errors"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs7"
@@ -26,16 +27,21 @@ func AddStampToSignedData(signerInfo *pkcs7.SignerInfo, token pkcs7.ContentInfoS
 	return signerInfo.UnauthenticatedAttributes.Add(OidAttributeTimeStampToken, token)
 }
 
-func VerifyCounterSignature(psd *pkcs7.ContentInfoSignedData) error {
+type CounterSignature struct {
+	SignerInfo  *pkcs7.SignerInfo
+	Certificate *x509.Certificate
+}
+
+func VerifyCounterSignature(psd *pkcs7.ContentInfoSignedData) (cs CounterSignature, err error) {
 	if len(psd.Content.SignerInfos) != 1 {
-		return errors.New("expected exactly one SignerInfo")
+		return cs, errors.New("expected exactly one SignerInfo")
 	}
 	si := psd.Content.SignerInfos[0]
 	var tst pkcs7.ContentInfoSignedData
 	var tsi pkcs7.SignerInfo
 	certs, err := psd.Content.Certificates.Parse()
 	if err != nil {
-		return err
+		return cs, err
 	}
 	// check several OIDs for timestamp tokens
 	err = si.UnauthenticatedAttributes.GetOne(OidAttributeTimeStampToken, &tst)
@@ -45,24 +51,26 @@ func VerifyCounterSignature(psd *pkcs7.ContentInfoSignedData) error {
 	if err == nil {
 		// timestamptoken is a fully nested signedData
 		if len(tst.Content.SignerInfos) != 1 {
-			return errors.New("counter-signature should have exactly one SignerInfo")
+			return cs, errors.New("counter-signature should have exactly one SignerInfo")
 		}
 		tsi = tst.Content.SignerInfos[0]
 		tsicerts, err := tst.Content.Certificates.Parse()
 		if err != nil {
-			return err
+			return cs, err
 		} else if len(tsicerts) != 0 {
 			// keep both sets of certs just in case
 			certs = append(certs, tsicerts...)
 		}
 	} else if _, ok := err.(pkcs7.ErrNoAttribute); ok {
 		if err := si.UnauthenticatedAttributes.GetOne(OidAttributeCounterSign, &tsi); err != nil {
-			return err
+			return cs, err
 		}
 		// counterSignature is just a signerinfo and the certificates come from
 		// the parent signedData
 	} else {
-		return err
+		return cs, err
 	}
-	return tsi.Verify(si.EncryptedDigest, certs)
+	cert, err := tsi.Verify(si.EncryptedDigest, certs)
+	cs = CounterSignature{&tsi, cert}
+	return cs, err
 }

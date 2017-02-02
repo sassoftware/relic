@@ -21,10 +21,12 @@ import (
 	"fmt"
 )
 
-type ErrNoAttribute asn1.ObjectIdentifier
+type ErrNoAttribute struct {
+	Id asn1.ObjectIdentifier
+}
 
 func (e ErrNoAttribute) Error() string {
-	return fmt.Sprintf("attribute not found: %s", e)
+	return fmt.Sprintf("attribute not found: %s", e.Id)
 }
 
 // marshal authenticated attributes for digesting
@@ -59,7 +61,7 @@ func (l *AttributeList) GetOne(oid asn1.ObjectIdentifier, dest interface{}) erro
 			return nil
 		}
 	}
-	return ErrNoAttribute(oid)
+	return ErrNoAttribute{oid}
 }
 
 // create or append to an attribute
