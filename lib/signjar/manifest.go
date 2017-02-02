@@ -89,6 +89,47 @@ func DumpManifest(files *FilesMap) []byte {
 	return out.Bytes()
 }
 
+func SplitManifest(manifest []byte) ([][]byte, error) {
+	sections := make([][]byte, 0)
+	for len(manifest) != 0 {
+		i1 := bytes.Index(manifest, []byte("\r\n\r\n"))
+		i2 := bytes.Index(manifest, []byte("\n\n"))
+		var idx int
+		if i1 < 0 {
+			if i2 < 0 {
+				return nil, errors.New("trailing bytes after last newline")
+			}
+			idx = i2 + 2
+		} else {
+			idx = i1 + 4
+		}
+		section := manifest[:idx]
+		manifest = manifest[idx:]
+		sections = append(sections, section)
+	}
+	return sections, nil
+}
+
+func ParseSection(section []byte) (http.Header, error) {
+	section = bytes.Replace(section, []byte("\r\n"), []byte{'\n'}, -1)
+	section = bytes.Replace(section, []byte("\n "), []byte{}, -1)
+	keys := bytes.Split(section, []byte{'\n'})
+	hdr := make(http.Header)
+	for _, line := range keys {
+		if len(line) == 0 {
+			continue
+		}
+		idx := bytes.IndexRune(line, ':')
+		if idx < 0 {
+			return nil, errors.New("jar manifest is malformed")
+		}
+		key := strings.TrimSpace(string(line[:idx]))
+		value := strings.TrimSpace(string(line[idx+1:]))
+		hdr.Set(key, value)
+	}
+	return hdr, nil
+}
+
 // Transform a MANIFEST.MF into a *.SF by digesting each section with the
 // specified hash
 func DigestManifest(manifest []byte, hash crypto.Hash) ([]byte, error) {

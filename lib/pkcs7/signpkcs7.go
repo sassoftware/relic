@@ -19,14 +19,12 @@ package pkcs7
 import (
 	"bytes"
 	"crypto"
-	"crypto/hmac"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
 	"errors"
-	"fmt"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
 )
@@ -107,79 +105,4 @@ func (raw RawCertificates) Parse() ([]*x509.Certificate, error) {
 		return nil, err
 	}
 	return x509.ParseCertificates(val.Bytes)
-}
-
-func (sd *SignedData) Verify(externalContent []byte) (*x509.Certificate, error) {
-	content, err := sd.ContentInfo.Bytes()
-	if err != nil {
-		return nil, err
-	} else if content == nil {
-		if externalContent == nil {
-			return nil, errors.New("pkcs7: missing content")
-		}
-		content = externalContent
-	}
-	certs, err := sd.Certificates.Parse()
-	if err != nil {
-		return nil, fmt.Errorf("pkcs7: %s", err)
-	} else if len(certs) == 0 {
-		return nil, errors.New("pkcs7: certificate missing from signedData")
-	}
-	var cert *x509.Certificate
-	for _, si := range sd.SignerInfos {
-		cert, err = si.Verify(content, certs)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return cert, nil
-}
-
-func (si *SignerInfo) FindCertificate(certs []*x509.Certificate) (*x509.Certificate, error) {
-	is := si.IssuerAndSerialNumber
-	for _, cert := range certs {
-		if bytes.Equal(cert.RawIssuer, is.IssuerName.FullBytes) && cert.SerialNumber.Cmp(is.SerialNumber) == 0 {
-			return cert, nil
-		}
-	}
-	return nil, errors.New("pkcs7: certificate missing from signedData")
-}
-
-func (si *SignerInfo) Verify(content []byte, certs []*x509.Certificate) (*x509.Certificate, error) {
-	hash, ok := x509tools.PkixDigestToHash(si.DigestAlgorithm)
-	if !ok || !hash.Available() {
-		return nil, fmt.Errorf("pkcs7: unknown hash with OID %s", si.DigestAlgorithm.Algorithm)
-	}
-	w := hash.New()
-	w.Write(content)
-	digest := w.Sum(nil)
-	if len(si.AuthenticatedAttributes) != 0 {
-		// check the content digest against the messageDigest attribute
-		var md []byte
-		if err := si.AuthenticatedAttributes.GetOne(OidAttributeMessageDigest, &md); err != nil {
-			return nil, err
-		} else if !hmac.Equal(md, digest) {
-			return nil, errors.New("pkcs7: content digest does not match")
-		}
-		// now pivot to verifying the hash over the authenticated attributes
-		w = hash.New()
-		attrbytes, err := si.AuthenticatedAttributes.Bytes()
-		if err != nil {
-			return nil, err
-		}
-		w.Write(attrbytes)
-		digest = w.Sum(nil)
-	} // otherwise the content hash is verified directly
-	cert, err := si.FindCertificate(certs)
-	if err != nil {
-		return nil, err
-	}
-	err = x509tools.Verify(cert.PublicKey, hash, digest, si.EncryptedDigest)
-	if err == rsa.ErrVerification {
-		// "Symantec Time Stamping Services Signer" seems to be emitting
-		// signatures without the AlgorithmIdentifier strucuture, so try
-		// without it.
-		err = x509tools.Verify(cert.PublicKey, 0, digest, si.EncryptedDigest)
-	}
-	return cert, err
 }

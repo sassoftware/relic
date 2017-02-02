@@ -139,6 +139,8 @@ func FormatRDNSequence(seq pkix.RDNSequence) string {
 				case 17:
 					attname = "postalCode"
 				}
+			} else if t.Equal(asn1.ObjectIdentifier{0, 9, 2342, 19200300, 100, 1, 25}) {
+				attname = "dc"
 			}
 			var elem string
 			if attname == "" {

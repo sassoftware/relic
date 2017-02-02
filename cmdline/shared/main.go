@@ -74,6 +74,14 @@ func InitConfig() error {
 	return nil
 }
 
+func OpenFile(path string) (*os.File, error) {
+	if path == "-" {
+		return os.Stdin, nil
+	} else {
+		return os.Open(path)
+	}
+}
+
 func Main() {
 	if err := RootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)

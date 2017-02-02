@@ -14,16 +14,31 @@
  * limitations under the License.
  */
 
-package main
+package verify
 
 import (
-	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
+	"crypto/x509"
+	"io"
+	"os"
 
-	_ "gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/remotecmd"
-	_ "gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/servecmd"
-	_ "gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/verify"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/signjar"
 )
 
-func main() {
-	shared.Main()
+func verifyJar(f *os.File) error {
+	size, err := f.Seek(0, io.SeekEnd)
+	if err != nil {
+		return err
+	}
+	f.Seek(0, 0)
+	sigs, err := signjar.Verify(f, size, argNoIntegrityCheck)
+	if err != nil {
+		return err
+	}
+	var lasterr error
+	for _, sig := range sigs {
+		if err := doPkcs(f.Name(), *sig, x509.ExtKeyUsageCodeSigning); err != nil {
+			lasterr = err
+		}
+	}
+	return lasterr
 }

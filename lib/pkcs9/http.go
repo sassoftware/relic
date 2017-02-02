@@ -127,7 +127,7 @@ func ParseHttpResponse(msg *TimeStampReq, body []byte) (*pkcs7.ContentInfoSigned
 }
 
 func SanityCheckToken(req *TimeStampReq, psd *pkcs7.ContentInfoSignedData) error {
-	if _, err := psd.Content.Verify(nil); err != nil {
+	if _, err := psd.Content.Verify(nil, false); err != nil {
 		return err
 	}
 	info, err := UnpackTokenInfo(psd)

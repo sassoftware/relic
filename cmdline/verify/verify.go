@@ -1,0 +1,148 @@
+/*
+ * Copyright (c) SAS Institute Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package verify
+
+import (
+	"crypto/x509"
+	"errors"
+	"fmt"
+	"io/ioutil"
+	"os"
+	"strings"
+
+	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/magic"
+	"github.com/spf13/cobra"
+)
+
+var VerifyCmd = &cobra.Command{
+	Use:   "verify",
+	Short: "Verify a signed package or executable",
+	RunE:  verifyCmd,
+}
+
+var (
+	argNoIntegrityCheck  bool
+	argNoChain           bool
+	argAlsoSystem        bool
+	argContent           string
+	argTrustedCerts      []string
+	argIntermediateCerts []string
+
+	trustedCerts      []*x509.Certificate
+	trustedPool       *x509.CertPool
+	intermediateCerts []*x509.Certificate
+)
+
+func init() {
+	shared.RootCmd.AddCommand(VerifyCmd)
+	VerifyCmd.Flags().BoolVar(&argNoIntegrityCheck, "no-integrity-check", false, "Bypass the integrity check of the file contents and only inspect the signature itself")
+	VerifyCmd.Flags().BoolVar(&argNoChain, "no-trust-chain", false, "Do not test whether the signing certificate is trusted")
+	VerifyCmd.Flags().BoolVar(&argAlsoSystem, "system-store", false, "When --cert is used, append rather than replace the system trust store")
+	VerifyCmd.Flags().StringVar(&argContent, "content", "", "Specify file containing contents for detached signatures")
+	VerifyCmd.Flags().StringArrayVar(&argTrustedCerts, "cert", nil, "Add a trusted root certificate (PEM, DER, PKCS#7, or PGP)")
+	VerifyCmd.Flags().StringArrayVar(&argIntermediateCerts, "intermediate-cert", nil, "Add an extra cert to help build the trust chain")
+}
+
+func verifyCmd(cmd *cobra.Command, args []string) error {
+	if len(args) == 0 {
+		return errors.New("Expected 1 or more files")
+	}
+	if err := loadCerts(); err != nil {
+		return err
+	}
+	rc := 0
+	for _, path := range args {
+		if err := verifyOne(path); err != nil {
+			fmt.Printf("%s ERROR: %s\n", path, err)
+			rc = 1
+		}
+	}
+	if rc != 0 {
+		fmt.Fprintln(os.Stderr, "ERROR: 1 or more files did not validate")
+	}
+	os.Exit(rc)
+	return nil
+}
+
+func verifyOne(path string) error {
+	f, err := shared.OpenFile(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	fileType := magic.Detect(f)
+	if _, err := f.Seek(0, 0); err != nil {
+		return err
+	}
+	switch fileType {
+	case magic.FileTypeRPM:
+		//FileTypeRPM
+		//FileTypeDEB
+		//FileTypePGP
+	case magic.FileTypeJAR:
+		return verifyJar(f)
+	case magic.FileTypePKCS7:
+		return verifyPkcs(f)
+		//FileTypePECOFF
+		//FileTypeMSI
+	}
+	return errors.New("unknown filetype")
+}
+
+func loadCerts() error {
+	for _, path := range argTrustedCerts {
+		data, err := ioutil.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		certs, err := certloader.ParseCertificates(data)
+		if err != nil {
+			return fmt.Errorf("%s: %s", path, err)
+		}
+		trustedCerts = append(trustedCerts, certs...)
+	}
+	if len(trustedCerts) == 0 || argAlsoSystem {
+		var err error
+		trustedPool, err = x509.SystemCertPool()
+		if err != nil {
+			if strings.Index(err.Error(), "not available") < 0 || argAlsoSystem {
+				return err
+			} else {
+				trustedPool = x509.NewCertPool()
+			}
+		}
+	} else {
+		trustedPool = x509.NewCertPool()
+	}
+	for _, cert := range trustedCerts {
+		trustedPool.AddCert(cert)
+	}
+	for _, path := range argIntermediateCerts {
+		data, err := ioutil.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		certs, err := certloader.ParseCertificates(data)
+		if err != nil {
+			return fmt.Errorf("%s: %s", path, err)
+		}
+		intermediateCerts = append(intermediateCerts, certs...)
+	}
+	return nil
+}
