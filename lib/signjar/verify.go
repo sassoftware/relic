@@ -197,7 +197,7 @@ func verifySigFile(sigfile, manifest []byte) error {
 	if err := hashFile(sfParsed.Main, bytes.NewReader(manifest), "-Manifest"); err != nil {
 		return err
 	}
-	sections, err := SplitManifest(manifest)
+	sections, err := splitManifest(manifest)
 	if err != nil {
 		return err
 	}
@@ -208,7 +208,7 @@ func verifySigFile(sigfile, manifest []byte) error {
 				return err
 			}
 		} else {
-			hdr, err := ParseSection(section)
+			hdr, err := parseSection(section)
 			if err != nil {
 				return err
 			}

@@ -46,6 +46,10 @@ func (sd *SignedData) Verify(externalContent []byte, skipDigests bool) (Signatur
 				return Signature{}, errors.New("pkcs7: missing content")
 			}
 			content = externalContent
+		} else if externalContent != nil {
+			if !bytes.Equal(externalContent, content) {
+				return Signature{}, errors.New("pkcs7: internal and external content were both provided but are not equal")
+			}
 		}
 	}
 	certs, err := sd.Certificates.Parse()

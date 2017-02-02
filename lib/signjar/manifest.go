@@ -38,8 +38,10 @@ type FilesMap struct {
 }
 
 func ParseManifest(manifest []byte) (files *FilesMap, err error) {
-	manifest = bytes.Replace(manifest, []byte("\r\n"), []byte{'\n'}, -1)
-	sections := bytes.Split(manifest, []byte("\n\n"))
+	sections, err := splitManifest(manifest)
+	if err != nil {
+		return nil, err
+	}
 	files = &FilesMap{
 		Order: make([]string, 0, len(sections)-1),
 		Files: make(map[string]http.Header, len(sections)-1),
@@ -48,20 +50,9 @@ func ParseManifest(manifest []byte) (files *FilesMap, err error) {
 		if i > 0 && len(section) == 0 {
 			continue
 		}
-		section = bytes.Replace(section, []byte("\n "), []byte{}, -1)
-		keys := bytes.Split(section, []byte{'\n'})
-		hdr := make(http.Header)
-		for _, line := range keys {
-			if len(line) == 0 {
-				continue
-			}
-			idx := bytes.IndexRune(line, ':')
-			if idx < 0 {
-				return nil, errors.New("jar manifest is malformed")
-			}
-			key := strings.TrimSpace(string(line[:idx]))
-			value := strings.TrimSpace(string(line[idx+1:]))
-			hdr.Set(key, value)
+		hdr, err := parseSection(section)
+		if err != nil {
+			return nil, err
 		}
 		if i == 0 {
 			files.Main = hdr
@@ -89,7 +80,7 @@ func DumpManifest(files *FilesMap) []byte {
 	return out.Bytes()
 }
 
-func SplitManifest(manifest []byte) ([][]byte, error) {
+func splitManifest(manifest []byte) ([][]byte, error) {
 	sections := make([][]byte, 0)
 	for len(manifest) != 0 {
 		i1 := bytes.Index(manifest, []byte("\r\n\r\n"))
@@ -110,7 +101,7 @@ func SplitManifest(manifest []byte) ([][]byte, error) {
 	return sections, nil
 }
 
-func ParseSection(section []byte) (http.Header, error) {
+func parseSection(section []byte) (http.Header, error) {
 	section = bytes.Replace(section, []byte("\r\n"), []byte{'\n'}, -1)
 	section = bytes.Replace(section, []byte("\n "), []byte{}, -1)
 	keys := bytes.Split(section, []byte{'\n'})
@@ -130,66 +121,44 @@ func ParseSection(section []byte) (http.Header, error) {
 	return hdr, nil
 }
 
+func hashSection(hash crypto.Hash, section []byte) string {
+	d := hash.New()
+	d.Write(section)
+	return base64.StdEncoding.EncodeToString(d.Sum(nil))
+}
+
 // Transform a MANIFEST.MF into a *.SF by digesting each section with the
 // specified hash
-func DigestManifest(manifest []byte, hash crypto.Hash) ([]byte, error) {
+func DigestManifest(manifest []byte, hash crypto.Hash, sectionsOnly bool) ([]byte, error) {
+	sections, err := splitManifest(manifest)
+	if err != nil {
+		return nil, err
+	}
 	hashName := hashNames[hash]
 	if hashName == "" {
 		return nil, errors.New("unsupported hash type")
 	}
-	b64 := base64.StdEncoding
-	digestAll := hash.New()
-	digestAll.Write(manifest)
-	hashManifest := digestAll.Sum(nil)
-	var hashMain []byte
-
-	var files bytes.Buffer
-	mainSection := true
-	for len(manifest) != 0 {
-		digestSection := hash.New()
-		copyingName := false
-		sawName := false
-		for len(manifest) != 0 {
-			i := bytes.IndexByte(manifest, '\n')
-			if i < 0 {
-				return nil, errors.New("trailing bytes after last newline")
-			}
-			i++
-			line := manifest[:i]
-			manifest = manifest[i:]
-			digestSection.Write(line)
-			linestr := string(line)
-			if linestr == "\r\n" || linestr == "\n" {
-				break
-			} else if !mainSection && strings.HasPrefix(strings.ToLower(linestr), "name:") {
-				copyingName = true
-				sawName = true
-				files.Write(line)
-			} else if len(linestr) != 0 && linestr[0] != ' ' {
-				copyingName = false
-			} else if copyingName {
-				files.Write(line)
-			}
-		}
-		if mainSection {
-			mainSection = false
-			hashMain = digestSection.Sum(nil)
-		} else {
-			if !sawName {
-				return nil, errors.New("File section was missing Name attribute")
-			}
-			writeAttribute(&files, hashName+"-Digest", b64.EncodeToString(digestSection.Sum(nil)))
-			files.WriteString("\r\n")
-		}
-	}
-
 	var output bytes.Buffer
 	writeAttribute(&output, "Signature-Version", "1.0")
-	writeAttribute(&output, hashName+"-Digest-Manifest-Main-Attributes", b64.EncodeToString(hashMain))
-	writeAttribute(&output, hashName+"-Digest-Manifest", b64.EncodeToString(hashManifest))
+	writeAttribute(&output, hashName+"-Digest-Manifest-Main-Attributes", hashSection(hash, sections[0]))
+	if !sectionsOnly {
+		writeAttribute(&output, hashName+"-Digest-Manifest", hashSection(hash, manifest))
+	}
 	writeAttribute(&output, "Created-By", fmt.Sprintf("%s (%s)", config.UserAgent, config.Author))
 	output.WriteString("\r\n")
-	output.Write(files.Bytes())
+	for _, section := range sections[1:] {
+		hdr, err := parseSection(section)
+		if err != nil {
+			return nil, err
+		}
+		name := hdr.Get("Name")
+		if name == "" {
+			return nil, errors.New("File section was missing Name attribute")
+		}
+		writeAttribute(&output, "Name", name)
+		writeAttribute(&output, hashName+"-Digest", hashSection(hash, section))
+		output.WriteString("\r\n")
+	}
 	return output.Bytes(), nil
 }
 

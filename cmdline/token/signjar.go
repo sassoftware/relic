@@ -42,8 +42,10 @@ var SignJarManifestCmd = &cobra.Command{
 }
 
 var (
-	argSignFileOutput string
-	argKeyAlias       string
+	argSignFileOutput  string
+	argKeyAlias        string
+	argSectionsOnly    bool
+	argInlineSignature bool
 )
 
 func init() {
@@ -53,6 +55,8 @@ func init() {
 	SignJarCmd.Flags().StringVarP(&argFile, "file", "f", "", "Input JAR file to sign")
 	SignJarCmd.Flags().StringVarP(&argOutput, "output", "o", "", "Output file for JAR. Defaults to same as input.")
 	SignJarCmd.Flags().StringVar(&argKeyAlias, "key-alias", "RELIC", "Alias to use for the signed manifest")
+	SignJarCmd.Flags().BoolVar(&argSectionsOnly, "sections-only", false, "Don't compute hash of entire manifest")
+	SignJarCmd.Flags().BoolVar(&argInlineSignature, "inline-signature", false, "Include .SF inside the signature block")
 
 	shared.RootCmd.AddCommand(SignJarManifestCmd)
 	shared.AddDigestFlag(SignJarManifestCmd)
@@ -60,6 +64,8 @@ func init() {
 	SignJarManifestCmd.Flags().StringVarP(&argFile, "file", "f", "", "Input manifest file to sign")
 	SignJarManifestCmd.Flags().StringVarP(&argOutput, "output", "o", "", "Output file for signature (.RSA or .EC)")
 	SignJarManifestCmd.Flags().StringVar(&argSignFileOutput, "out-sf", "", "Write .SF file")
+	SignJarManifestCmd.Flags().BoolVar(&argSectionsOnly, "sections-only", false, "Don't compute hash of entire manifest")
+	SignJarManifestCmd.Flags().BoolVar(&argInlineSignature, "inline-signature", false, "Include .SF inside the signature block")
 }
 
 func signJarCmd(cmd *cobra.Command, args []string) (err error) {
@@ -93,11 +99,11 @@ func signJarCmd(cmd *cobra.Command, args []string) (err error) {
 	if err != nil {
 		return err
 	}
-	sigfile, err := signjar.DigestManifest(manifest, hash)
+	sigfile, err := signjar.DigestManifest(manifest, hash, argSectionsOnly)
 	if err != nil {
 		return err
 	}
-	pkcs, err := signAndTimestamp(sigfile, key, certs, hash, true)
+	pkcs, err := signAndTimestamp(sigfile, key, certs, hash, !argInlineSignature)
 	if err != nil {
 		return err
 	}
@@ -147,16 +153,16 @@ func signJarManifestCmd(cmd *cobra.Command, args []string) (err error) {
 	if err != nil {
 		return err
 	}
-	sigfile, err := signjar.DigestManifest(manifest, hash)
+	sigfile, err := signjar.DigestManifest(manifest, hash, argSectionsOnly)
 	if err != nil {
 		return err
 	}
-	detach := argSignFileOutput != ""
+	detach := !argInlineSignature && argSignFileOutput != ""
 	pkcs, err := signAndTimestamp(sigfile, key, certs, hash, detach)
 	if err != nil {
 		return err
 	}
-	if detach {
+	if argSignFileOutput != "" {
 		if err := ioutil.WriteFile(argSignFileOutput, sigfile, 0666); err != nil {
 			return err
 		}
