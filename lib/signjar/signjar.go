@@ -31,6 +31,10 @@ import (
 	"strings"
 )
 
+// found in the "extra" field of JAR files, not strictly required but it makes
+// `file` output actually say JAR
+var jarMagic = []byte{0xfe, 0xca, 0, 0}
+
 func DigestJar(jar *zip.Reader, hash crypto.Hash) ([]byte, error) {
 	var manifest []byte
 	for _, f := range jar.File {
@@ -119,6 +123,12 @@ func DigestJar(jar *zip.Reader, hash crypto.Hash) ([]byte, error) {
 	return manifest, nil
 }
 
+type newFile struct {
+	Name     string
+	Contents []byte
+	Extra    []byte
+}
+
 func UpdateJar(outw io.Writer, jar *zip.Reader, keyAlias string, pubkey crypto.PublicKey, manifest, sigfile, pkcs []byte) error {
 	signame := strings.ToUpper(keyAlias) + ".SF"
 	pkcsname := strings.ToUpper(keyAlias)
@@ -131,22 +141,30 @@ func UpdateJar(outw io.Writer, jar *zip.Reader, keyAlias string, pubkey crypto.P
 		signame = "SIG-" + signame
 		pkcsname = "SIG-" + pkcsname + ".SIG"
 	}
-	newFiles := map[string][]byte{
-		"META-INF/MANIFEST.MF": manifest,
-		"META-INF/" + signame:  sigfile,
-		"META-INF/" + pkcsname: pkcs,
+	newFiles := []newFile{
+		newFile{"META-INF/", nil, jarMagic},
+		newFile{"META-INF/MANIFEST.MF", manifest, nil},
+		newFile{"META-INF/" + signame, sigfile, nil},
+		newFile{"META-INF/" + pkcsname, pkcs, nil},
 	}
 	return updateZip(outw, jar, newFiles)
 }
 
-func updateZip(outw io.Writer, inz *zip.Reader, newFiles map[string][]byte) error {
+func updateZip(outw io.Writer, inz *zip.Reader, newFiles []newFile) error {
 	outz := zip.NewWriter(outw)
 	defer outz.Close()
 
-	for name, contents := range newFiles {
-		w, err := outz.Create(name)
+	skipFiles := make(map[string]bool, len(newFiles))
+	for _, newFile := range newFiles {
+		skipFiles[newFile.Name] = true
+		hdr := &zip.FileHeader{
+			Name:   newFile.Name,
+			Method: zip.Deflate,
+			Extra:  newFile.Extra,
+		}
+		w, err := outz.CreateHeader(hdr)
 		if err == nil {
-			_, err = w.Write(contents)
+			_, err = w.Write(newFile.Contents)
 		}
 		if err != nil {
 			return err
@@ -154,7 +172,7 @@ func updateZip(outw io.Writer, inz *zip.Reader, newFiles map[string][]byte) erro
 	}
 
 	for _, f := range inz.File {
-		if newFiles[f.Name] != nil {
+		if skipFiles[f.Name] {
 			continue
 		}
 		r, err := f.Open()
