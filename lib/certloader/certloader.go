@@ -94,7 +94,7 @@ func ParseCertificates(pemData []byte) ([]*x509.Certificate, error) {
 		}
 	}
 	if len(certs) == 0 {
-		return nil, errors.New("failed to find any certificates in PEM file")
+		return nil, ErrNoCerts
 	}
 	return certs, nil
 }
@@ -145,3 +145,11 @@ func LoadX509KeyPair(certFile, keyFile string) (tls.Certificate, error) {
 	}
 	return tcert, nil
 }
+
+type errNoCerts struct{}
+
+func (errNoCerts) Error() string {
+	return "failed to find any certificates in PEM file"
+}
+
+var ErrNoCerts = errNoCerts{}

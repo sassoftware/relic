@@ -20,7 +20,6 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -28,6 +27,7 @@ import (
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/magic"
 	"github.com/spf13/cobra"
+	"golang.org/x/crypto/openpgp"
 )
 
 var VerifyCmd = &cobra.Command{
@@ -46,6 +46,7 @@ var (
 
 	trustedCerts      []*x509.Certificate
 	trustedPool       *x509.CertPool
+	trustedPgp        openpgp.EntityList
 	intermediateCerts []*x509.Certificate
 )
 
@@ -92,31 +93,27 @@ func verifyOne(path string) error {
 	}
 	switch fileType {
 	case magic.FileTypeRPM:
-		//FileTypeRPM
+		return verifyRpm(f)
 		//FileTypeDEB
 		//FileTypePGP
 	case magic.FileTypeJAR:
 		return verifyJar(f)
 	case magic.FileTypePKCS7:
 		return verifyPkcs(f)
-		//FileTypePECOFF
+	case magic.FileTypePECOFF:
+		return verifyPeCoff(f)
 		//FileTypeMSI
 	}
 	return errors.New("unknown filetype")
 }
 
 func loadCerts() error {
-	for _, path := range argTrustedCerts {
-		data, err := ioutil.ReadFile(path)
-		if err != nil {
-			return err
-		}
-		certs, err := certloader.ParseCertificates(data)
-		if err != nil {
-			return fmt.Errorf("%s: %s", path, err)
-		}
-		trustedCerts = append(trustedCerts, certs...)
+	trusted, err := certloader.LoadAnyCerts(argTrustedCerts)
+	if err != nil {
+		return err
 	}
+	trustedCerts = trusted.X509Certs
+	trustedPgp = trusted.PGPCerts
 	if len(trustedCerts) == 0 || argAlsoSystem {
 		var err error
 		trustedPool, err = x509.SystemCertPool()
@@ -133,16 +130,10 @@ func loadCerts() error {
 	for _, cert := range trustedCerts {
 		trustedPool.AddCert(cert)
 	}
-	for _, path := range argIntermediateCerts {
-		data, err := ioutil.ReadFile(path)
-		if err != nil {
-			return err
-		}
-		certs, err := certloader.ParseCertificates(data)
-		if err != nil {
-			return fmt.Errorf("%s: %s", path, err)
-		}
-		intermediateCerts = append(intermediateCerts, certs...)
+	intermediate, err := certloader.LoadAnyCerts(argIntermediateCerts)
+	if err != nil {
+		return err
 	}
+	intermediateCerts = intermediate.X509Certs
 	return nil
 }
