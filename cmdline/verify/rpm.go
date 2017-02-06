@@ -40,27 +40,11 @@ func verifyRpm(f *os.File) error {
 	}
 	seen := make(map[uint64]bool)
 	for _, sig := range sigs {
-		var name string
 		if seen[sig.KeyId] {
 			continue
 		}
 		seen[sig.KeyId] = true
-		if sig.Signer != nil {
-			var firstName string
-			for _, ident := range sig.Signer.Identities {
-				if firstName == "" {
-					firstName = ident.Name
-				}
-				if ident.SelfSignature.IsPrimaryId != nil && *ident.SelfSignature.IsPrimaryId {
-					name = ident.Name
-					break
-				}
-			}
-			if name == "" {
-				name = firstName
-			}
-		}
-		fmt.Printf("%s: OK - %s(%x) [%s]\n", f.Name(), name, sig.KeyId, sig.CreationTime)
+		fmt.Printf("%s: OK - %s(%x) [%s]\n", f.Name(), entityName(sig.Signer), sig.KeyId, sig.CreationTime)
 	}
 	return nil
 }

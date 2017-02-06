@@ -95,7 +95,8 @@ func verifyOne(path string) error {
 	case magic.FileTypeRPM:
 		return verifyRpm(f)
 		//FileTypeDEB
-		//FileTypePGP
+	case magic.FileTypePGP:
+		return verifyPgp(f)
 	case magic.FileTypeJAR:
 		return verifyJar(f)
 	case magic.FileTypePKCS7:
