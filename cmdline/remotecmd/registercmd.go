@@ -67,7 +67,8 @@ func registerCmd(cmd *cobra.Command, args []string) error {
 		}
 	}
 	if fileExists(shared.ArgConfig) {
-		return fmt.Errorf("Config file %s already exists", shared.ArgConfig)
+		fmt.Fprintf(os.Stderr, "Config file %s already exists\n", shared.ArgConfig)
+		return nil
 	}
 	defaultDir := path.Dir(shared.ArgConfig)
 	keyPath := path.Join(defaultDir, "client.pem")
