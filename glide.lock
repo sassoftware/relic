@@ -1,5 +1,5 @@
 hash: 8b11039af346973f322401822631e187789f06a58ea553e49c443152c36b3738
-updated: 2017-02-03T19:19:26.093482119Z
+updated: 2017-02-08T16:27:53.405921809Z
 imports:
 - name: github.com/braintree/manners
   version: 82a8879fc5fd0381fa8b2d8033b19bf255252088
@@ -19,11 +19,11 @@ imports:
   - cpio
   - fileutil
 - name: github.com/spf13/cobra
-  version: 35136c09d8da66b901337c6e86fd8e88a1a255bd
+  version: 99600f6874c95daab762dc2373dc3ee1f6a48575
 - name: github.com/spf13/pflag
   version: 9ff6c6923cfffbcd502984b8e0c80539a94968b7
 - name: golang.org/x/crypto
-  version: bed12803fa9663d7aa2c2346b0c634ad2dcd43b7
+  version: 84bacda6ede319f5074d43b5d096b7ee7f3f5d77
   subpackages:
   - openpgp
   - openpgp/armor
@@ -35,7 +35,7 @@ imports:
   - cast5
   - openpgp/elgamal
 - name: golang.org/x/net
-  version: 007e530097ad7f954752df63046b4036f98ba6a6
+  version: 236b8f043b920452504e263bc21d354427127473
   subpackages:
   - http2
   - http2/hpack
@@ -52,7 +52,7 @@ imports:
   - windows/registry
   - unix
 - name: gopkg.in/yaml.v2
-  version: 4c78c975fe7c825c6d1466c42be594d1d6f3aba6
+  version: a3f3340b5840cee44f372bddb5880fcbc419b46a
 - name: xi2.org/x/xz
   version: 19aeb13c4e7cb6bd3188dfede73840f33455425a
 testImports: []

@@ -21,6 +21,7 @@ import (
 	"crypto/x509"
 	"encoding/asn1"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -41,15 +42,14 @@ func verifyMsi(f *os.File) error {
 	}
 	defer os.RemoveAll(scratchDir)
 	var stderr bytes.Buffer
-	proc := exec.Command("msidump", "-s", f.Name(), "-d", scratchDir)
-	proc.Dir = scratchDir
+	proc := exec.Command("msidump", "-s", "-d", scratchDir, f.Name())
 	proc.Stderr = &stderr
 	err = proc.Run()
 	if err != nil {
 		if strings.Contains(err.Error(), "executable file not found") {
 			return errors.New("msidump not found, please install msitools")
 		}
-		return err
+		return fmt.Errorf("%s\nStandard error:\n%s", err, stderr.String())
 	}
 	der, err := ioutil.ReadFile(path.Join(scratchDir, "_Streams", "\x05DigitalSignature"))
 	if err != nil {
