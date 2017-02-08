@@ -147,6 +147,20 @@ func UpdateJar(outw io.Writer, jar *zip.Reader, keyAlias string, pubkey crypto.P
 		newFile{"META-INF/" + signame, sigfile, nil},
 		newFile{"META-INF/" + pkcsname, pkcs, nil},
 	}
+	// delete old signatures
+	for _, f := range jar.File {
+		if !strings.HasPrefix(f.Name, "META-INF/") {
+			continue
+		}
+		base := path.Base(f.Name)
+		ext := path.Ext(base)
+		if base == signame || base == pkcsname {
+			continue
+		}
+		if ext == ".SF" || ext == ".RSA" || ext == ".DSA" || ext == ".EC" || ext == ".SIG" || strings.HasPrefix(base, "SIG-") {
+			newFiles = append(newFiles, newFile{f.Name, nil, nil})
+		}
+	}
 	return updateZip(outw, jar, newFiles)
 }
 
@@ -157,6 +171,10 @@ func updateZip(outw io.Writer, inz *zip.Reader, newFiles []newFile) error {
 	skipFiles := make(map[string]bool, len(newFiles))
 	for _, newFile := range newFiles {
 		skipFiles[newFile.Name] = true
+		if newFile.Contents == nil {
+			// just delete, don't update
+			continue
+		}
 		hdr := &zip.FileHeader{
 			Name:   newFile.Name,
 			Method: zip.Deflate,
