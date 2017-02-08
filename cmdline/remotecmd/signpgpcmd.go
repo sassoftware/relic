@@ -117,32 +117,32 @@ func signPgpCmd(cmd *cobra.Command, args []string) (err error) {
 			// not seekable so consume it all now
 			contents, err := ioutil.ReadAll(io.LimitReader(infile, maxStreamClearSignSize))
 			if err != nil {
-				return err
+				return shared.Fail(err)
 			} else if len(contents) == maxStreamClearSignSize {
-				return errors.New("Input stream is too big, try writing it to file first")
+				return shared.Fail(errors.New("Input stream is too big, try writing it to file first"))
 			}
 			instream = bytes.NewReader(contents)
 		}
 	}
-	response, err := callRemote("sign", "POST", &values, instream)
+	response, err := CallRemote("sign", "POST", &values, instream)
 	if err != nil {
-		return err
+		return shared.Fail(err)
 	}
 	if argOutput == "" {
 		argOutput = "-"
 	}
 	output, err := atomicfile.WriteAny(argOutput)
 	if err != nil {
-		return err
+		return shared.Fail(err)
 	}
 	if argPgpClearsign {
 		// Reassemble clearsign from the local input file and the received signature block
 		sig, err2 := ioutil.ReadAll(response.Body)
 		if err2 != nil {
-			return err2
+			return shared.Fail(err2)
 		}
 		if _, err := instream.Seek(0, 0); err != nil {
-			return fmt.Errorf("failed to seek input stream: %s", err)
+			return shared.Fail(fmt.Errorf("failed to seek input stream: %s", err))
 		}
 		err = clearsign.MergeClearSign(output, sig, instream)
 	} else {
@@ -151,5 +151,8 @@ func signPgpCmd(cmd *cobra.Command, args []string) (err error) {
 	if infile != os.Stdin {
 		infile.Close() // windows file locking
 	}
-	return output.Commit()
+	if err := output.Commit(); err != nil {
+		return shared.Fail(err)
+	}
+	return err
 }

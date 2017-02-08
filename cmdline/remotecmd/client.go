@@ -25,6 +25,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -36,31 +37,8 @@ import (
 
 const connectTimeout = time.Second * 15
 
-func makeTlsConfig() (*tls.Config, error) {
-	err := shared.InitConfig()
-	if err != nil {
-		return nil, err
-	}
-	config := shared.CurrentConfig
-	if config.Remote == nil {
-		return nil, errors.New("Missing remote section in config file")
-	} else if config.Remote.Url == "" && config.Remote.DirectoryUrl == "" {
-		return nil, errors.New("url or DirectoryUrl must be set in 'remote' section of configuration")
-	} else if config.Remote.CertFile == "" || config.Remote.KeyFile == "" || config.Remote.CaCert == "" {
-		return nil, errors.New("certfile, keyfile, and cacert are required settings in 'remote' section of configuration")
-	}
-	tlscert, err := tls.LoadX509KeyPair(config.Remote.CertFile, config.Remote.KeyFile)
-	if err != nil {
-		return nil, err
-	}
-	tconf := &tls.Config{Certificates: []tls.Certificate{tlscert}}
-	if err := x509tools.LoadCertPool(config.Remote.CaCert, tconf); err != nil {
-		return nil, err
-	}
-	return tconf, nil
-}
-
-func callRemote(endpoint, method string, query *url.Values, body io.ReadSeeker) (*http.Response, error) {
+// Make a single API request to a named endpoint, handling directory lookup and failover automatically.
+func CallRemote(endpoint, method string, query *url.Values, body io.ReadSeeker) (*http.Response, error) {
 	if err := shared.InitConfig(); err != nil {
 		return nil, err
 	}
@@ -70,13 +48,14 @@ func callRemote(endpoint, method string, query *url.Values, body io.ReadSeeker) 
 		if err != nil {
 			return nil, err
 		} else if len(newBases) > 0 {
-			fmt.Println("new bases:", newBases)
 			bases = newBases
 		}
 	}
 	return doRequest(bases, endpoint, method, query, body)
 }
 
+// Call the configured directory URL to get a list of servers to try.
+// callRemote() calls this automatically, use that instead.
 func getDirectory(dirurl string) ([]string, error) {
 	response, err := doRequest([]string{dirurl}, "directory", "GET", nil, nil)
 	if err != nil {
@@ -94,22 +73,7 @@ func getDirectory(dirurl string) ([]string, error) {
 	}
 }
 
-func splitHostPort(u *url.URL) (host, port string, err error) {
-	s := u.Host
-	hasPort := strings.LastIndex(s, ":") > strings.LastIndex(s, "]")
-	if !hasPort {
-		switch u.Scheme {
-		case "http":
-			s += ":80"
-		case "https":
-			s += ":443"
-		default:
-			return "", "", fmt.Errorf("unsupported scheme: %s", u.Scheme)
-		}
-	}
-	return net.SplitHostPort(s)
-}
-
+// Build a HTTP request from various bits and pieces
 func buildRequest(base, endpoint, method string, query *url.Values, bodyFile io.ReadSeeker) (*http.Request, error) {
 	eurl, err := url.Parse(endpoint)
 	if err != nil {
@@ -140,6 +104,32 @@ func buildRequest(base, endpoint, method string, query *url.Values, bodyFile io.
 	return request, nil
 }
 
+// Build TLS config based on client configuration
+func makeTlsConfig() (*tls.Config, error) {
+	err := shared.InitConfig()
+	if err != nil {
+		return nil, err
+	}
+	config := shared.CurrentConfig
+	if config.Remote == nil {
+		return nil, errors.New("Missing remote section in config file")
+	} else if config.Remote.Url == "" && config.Remote.DirectoryUrl == "" {
+		return nil, errors.New("url or DirectoryUrl must be set in 'remote' section of configuration")
+	} else if config.Remote.CertFile == "" || config.Remote.KeyFile == "" || config.Remote.CaCert == "" {
+		return nil, errors.New("certfile, keyfile, and cacert are required settings in 'remote' section of configuration")
+	}
+	tlscert, err := tls.LoadX509KeyPair(config.Remote.CertFile, config.Remote.KeyFile)
+	if err != nil {
+		return nil, err
+	}
+	tconf := &tls.Config{Certificates: []tls.Certificate{tlscert}}
+	if err := x509tools.LoadCertPool(config.Remote.CaCert, tconf); err != nil {
+		return nil, err
+	}
+	return tconf, nil
+}
+
+// Transact one request, trying multiple servers if necessary. Internal use only.
 func doRequest(bases []string, endpoint, method string, query *url.Values, bodyFile io.ReadSeeker) (response *http.Response, err error) {
 	tconf, err := makeTlsConfig()
 	if err != nil {
@@ -159,20 +149,46 @@ func doRequest(bases []string, endpoint, method string, query *url.Values, bodyF
 			return nil, err
 		}
 		response, err = client.Do(request)
-		if err == nil && response.StatusCode >= 300 {
+		if err == nil {
+			if response.StatusCode < 300 {
+				if i != 0 {
+					fmt.Printf("successfully contacted %s\n", request.URL)
+				}
+				return response, nil
+			}
+			// HTTP error, probably a 503
 			body, _ := ioutil.ReadAll(response.Body)
+			response.Body.Close()
 			err = ResponseError{method, request.URL.String(), response.StatusCode, string(body)}
 		}
-		if err2, ok := err.(temporary); ok && err2.Temporary() {
+		if isTemporary(err) && i+1 < len(bases) {
 			fmt.Printf("%s\nunable to connect to %s; trying next server\n", err, request.URL)
 		} else {
-			if err == nil && i != 0 {
-				fmt.Printf("successfully contacted %s\n", request.URL)
-			}
-			return
+			return nil, err
 		}
 	}
 	return
+}
+
+// Check if an error is something recoverable, i.e. if we should continue to
+// try another server. In practice, anything other than a HTTP 4XX status will
+// result in a retry.
+func isTemporary(err error) bool {
+	if e, ok := err.(temporary); ok && e.Temporary() {
+		return true
+	}
+	// unpack error wrappers
+	if e, ok := err.(*url.Error); ok {
+		err = e.Err
+	}
+	if e, ok := err.(*net.OpError); ok {
+		err = e.Err
+	}
+	// treat any syscall error as something recoverable
+	if _, ok := err.(*os.SyscallError); ok {
+		return true
+	}
+	return false
 }
 
 type temporary interface {

@@ -54,34 +54,6 @@ func bailUnlessVersion(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func InitConfig() error {
-	usedDefault := false
-	if ArgConfig == "" {
-		ArgConfig = config.DefaultConfig()
-		if ArgConfig == "" {
-			return errors.New("--config not specified")
-		}
-		usedDefault = true
-	}
-	config, err := config.ReadFile(ArgConfig)
-	if err != nil {
-		if os.IsNotExist(err) && usedDefault {
-			return fmt.Errorf("--config not specified and default config at %s does not exist", ArgConfig)
-		}
-		return err
-	}
-	CurrentConfig = config
-	return nil
-}
-
-func OpenFile(path string) (*os.File, error) {
-	if path == "-" {
-		return os.Stdin, nil
-	} else {
-		return os.Open(path)
-	}
-}
-
 func Main() {
 	if err := RootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)

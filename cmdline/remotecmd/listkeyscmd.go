@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"io/ioutil"
 
+	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
+
 	"github.com/spf13/cobra"
 )
 
@@ -36,17 +38,17 @@ func init() {
 
 func listKeysCmd(cmd *cobra.Command, args []string) error {
 	var keyList []string
-	response, err := callRemote("list_keys", "GET", nil, nil)
+	response, err := CallRemote("list_keys", "GET", nil, nil)
 	if err != nil {
-		return err
+		return shared.Fail(err)
 	}
 	resbytes, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		return err
+		return shared.Fail(err)
 	}
 	err = json.Unmarshal(resbytes, &keyList)
 	if err != nil {
-		return err
+		return shared.Fail(err)
 	}
 	for _, key := range keyList {
 		fmt.Println(key)

@@ -73,21 +73,21 @@ func registerCmd(cmd *cobra.Command, args []string) error {
 	defaultDir := path.Dir(shared.ArgConfig)
 	keyPath := path.Join(defaultDir, "client.pem")
 	if fileExists(keyPath) {
-		return fmt.Errorf("Key file %s already exists", keyPath)
+		return shared.Fail(fmt.Errorf("Key file %s already exists", keyPath))
 	}
 	if err := writeKeyPair(keyPath); err != nil {
-		return err
+		return shared.Fail(err)
 	}
 	cacert, err := ioutil.ReadFile(argCaCert)
 	if err != nil {
-		return fmt.Errorf("Error reading cacert: %s", err)
+		return shared.Fail(fmt.Errorf("Error reading cacert: %s", err))
 	}
 	capath := path.Join(defaultDir, "cacert.pem")
 	if err = writeConfig(shared.ArgConfig, argRemoteUrl, keyPath, capath); err != nil {
-		return err
+		return shared.Fail(err)
 	}
 	if err = ioutil.WriteFile(capath, cacert, 0644); err != nil {
-		return err
+		return shared.Fail(err)
 	}
 	return nil
 }

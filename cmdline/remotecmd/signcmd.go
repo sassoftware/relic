@@ -26,6 +26,7 @@ import (
 	"path"
 	"strings"
 
+	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/binpatch"
 	"github.com/spf13/cobra"
 )
@@ -62,36 +63,38 @@ func signCmd(cmd *cobra.Command, args []string) (err error) {
 	// open for writing so in-place patch works
 	infile, err := os.OpenFile(argFile, os.O_RDWR, 0)
 	if err != nil {
-		return err
+		return shared.Fail(err)
 	}
 
 	values := url.Values{}
 	values.Add("key", argKeyName)
 	values.Add("filename", path.Base(argFile))
 
-	response, err := callRemote("sign", "POST", &values, infile)
+	response, err := CallRemote("sign", "POST", &values, infile)
 	if err != nil {
-		return err
+		return shared.Fail(err)
 	}
 	defer response.Body.Close()
 	if response.Header.Get("Content-Type") == "application/x-binary-patch" {
 		blob, err := ioutil.ReadAll(response.Body)
 		if err != nil {
-			return err
+			return shared.Fail(err)
 		}
 		patch, err := binpatch.Load(blob)
 		if err != nil {
-			return err
+			return shared.Fail(err)
 		}
 		err = patch.Apply(infile, argOutput)
 	} else {
 		infile.Close()
 		err = writeOutput(argOutput, response.Body)
 	}
-	if err == nil {
+	if err != nil {
+		return shared.Fail(err)
+	} else {
 		fmt.Fprintf(os.Stderr, "Signed %s\n", argFile)
 	}
-	return
+	return nil
 }
 
 func writeOutput(path string, src io.Reader) error {

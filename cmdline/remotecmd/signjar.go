@@ -19,7 +19,6 @@ package remotecmd
 import (
 	"archive/zip"
 	"bytes"
-	"crypto"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -27,6 +26,7 @@ import (
 	"os"
 	"path"
 
+	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/atomicfile"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs7"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/signjar"
@@ -35,13 +35,16 @@ import (
 func signJar() error {
 	inz, err := zip.OpenReader(argFile)
 	if err != nil {
-		return err
+		return shared.Fail(err)
 	}
 	defer inz.Close()
-	hash := crypto.SHA256
-	manifest, err := signjar.DigestJar(&inz.Reader, hash)
+	hash, err := shared.GetDigest()
 	if err != nil {
 		return err
+	}
+	manifest, err := signjar.DigestJar(&inz.Reader, hash)
+	if err != nil {
+		return shared.Fail(err)
 	}
 	infile := bytes.NewReader(manifest)
 
@@ -49,38 +52,38 @@ func signJar() error {
 	values.Add("sigtype", "jar-manifest")
 	values.Add("key", argKeyName)
 	values.Add("filename", path.Base(argFile))
-	response, err := callRemote("sign", "POST", &values, infile)
+	response, err := CallRemote("sign", "POST", &values, infile)
 	if err != nil {
-		return err
+		return shared.Fail(err)
 	}
 	defer response.Body.Close()
 	pkcs, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		return err
+		return shared.Fail(err)
 	}
 
 	certs, err := pkcs7.ParseCertificates(pkcs)
 	if err != nil {
-		return err
+		return shared.Fail(err)
 	} else if len(certs) == 0 {
-		return errors.New("pkcs7: did not contain any certificates")
+		return shared.Fail(errors.New("pkcs7: did not contain any certificates"))
 	}
 	pubkey := certs[0].PublicKey
 	// The server returns an "opaque" signature with the content, extract the content and remove it from the signature
 	pkcs, sigfile, err := pkcs7.ExtractAndDetach(pkcs)
 	if err != nil {
-		return err
+		return shared.Fail(err)
 	}
 	w, err := atomicfile.WriteAny(argOutput)
 	if err != nil {
-		return err
+		return shared.Fail(err)
 	}
 	if err := signjar.UpdateJar(w, &inz.Reader, argKeyAlias, pubkey, manifest, sigfile, pkcs); err != nil {
-		return err
+		return shared.Fail(err)
 	}
 	inz.Close()
 	if err := w.Commit(); err != nil {
-		return err
+		return shared.Fail(err)
 	}
 	fmt.Fprintf(os.Stderr, "Signed %s\n", argFile)
 	return nil
