@@ -1,5 +1,5 @@
 hash: 8b11039af346973f322401822631e187789f06a58ea553e49c443152c36b3738
-updated: 2017-02-08T16:27:53.405921809Z
+updated: 2017-02-09T19:42:21.898302783Z
 imports:
 - name: github.com/braintree/manners
   version: 82a8879fc5fd0381fa8b2d8033b19bf255252088
@@ -13,17 +13,19 @@ imports:
   version: 55e2b933bc6d828eca462bf6017215b96981342c
 - name: github.com/op/go-logging
   version: 970db520ece77730c7e4724c61121037378659d9
+- name: github.com/qur/ar
+  version: 282534b917707a0e6639276266fa6421c634af2d
 - name: github.com/sassoftware/go-rpmutils
   version: 95f7d12b6fa9b166d98f9b926101d1e2d1e4353d
   subpackages:
   - cpio
   - fileutil
 - name: github.com/spf13/cobra
-  version: 99600f6874c95daab762dc2373dc3ee1f6a48575
+  version: b5d8e8f46a2f829f755b6e33b454e25c61c935e1
 - name: github.com/spf13/pflag
   version: 9ff6c6923cfffbcd502984b8e0c80539a94968b7
 - name: golang.org/x/crypto
-  version: 84bacda6ede319f5074d43b5d096b7ee7f3f5d77
+  version: dd96d35c1b251a7ef77f057fc5c4f92ea2b285b4
   subpackages:
   - openpgp
   - openpgp/armor
@@ -35,7 +37,7 @@ imports:
   - cast5
   - openpgp/elgamal
 - name: golang.org/x/net
-  version: 236b8f043b920452504e263bc21d354427127473
+  version: a689eb3bc4b53af70390acc3cf68c9f549b6b8d6
   subpackages:
   - http2
   - http2/hpack
