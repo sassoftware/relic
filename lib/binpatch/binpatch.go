@@ -27,10 +27,16 @@ import (
 )
 
 type PatchInfo struct {
-	PatchOffset uint64 `json:"patch_offset,omitempty"`
-	PatchLength uint64 `json:"patch_length,omitempty"`
+	PatchOffset int64 `json:"patch_offset,omitempty"`
+	PatchLength int64 `json:"patch_length,omitempty"`
 
-	patch []byte
+	Data map[string]interface{} `json:"data"`
+
+	Patch []byte `json:"-"`
+}
+
+func New(blob []byte, offset, length int64, data map[string]interface{}) *PatchInfo {
+	return &PatchInfo{offset, length, data, blob}
 }
 
 func Load(blob []byte) (*PatchInfo, error) {
@@ -42,8 +48,17 @@ func Load(blob []byte) (*PatchInfo, error) {
 	if err := json.Unmarshal(blob[:idx], info); err != nil {
 		return nil, err
 	}
-	info.patch = blob[idx+1:]
+	info.Patch = blob[idx+1:]
 	return info, nil
+}
+
+func (p *PatchInfo) Dump() []byte {
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.Encode(p)
+	buf.WriteByte(0)
+	buf.Write(p.Patch)
+	return buf.Bytes()
 }
 
 func (p *PatchInfo) Apply(infile *os.File, outpath string) error {
@@ -54,11 +69,14 @@ func (p *PatchInfo) Apply(infile *os.File, outpath string) error {
 	if outpath == "-" {
 		// send to stdout
 		return p.apply(infile, os.Stdout)
+	} else if outpath == "" {
+		outpath = infile.Name()
 	}
+	newEnd := p.PatchOffset + int64(len(p.Patch))
+	oldEnd := p.PatchOffset + p.PatchLength
 	outinfo, err := os.Lstat(outpath)
-	if err == nil && p.PatchLength == uint64(len(p.patch)) && canOverwrite(ininfo, outinfo) {
-		// overwrite
-		return p.applyInPlace(infile)
+	if err == nil && canOverwrite(ininfo, outinfo) && (p.PatchLength == int64(len(p.Patch)) || newEnd >= ininfo.Size() || oldEnd == ininfo.Size()) {
+		return p.applyInPlace(infile, ininfo.Size())
 	}
 	// write-rename
 	out, err := atomicfile.New(outpath)
@@ -80,25 +98,31 @@ func (p *PatchInfo) apply(infile io.ReadSeeker, outstream io.Writer) error {
 		return err
 	}
 	if p.PatchOffset > 0 {
-		if _, err := io.CopyN(outstream, infile, int64(p.PatchOffset)); err != nil {
+		if _, err := io.CopyN(outstream, infile, p.PatchOffset); err != nil {
 			return err
 		}
 	}
-	if n, err := outstream.Write(p.patch); err != nil {
+	if n, err := outstream.Write(p.Patch); err != nil {
 		return err
-	} else if n != len(p.patch) {
+	} else if n != len(p.Patch) {
 		return io.ErrShortWrite
 	}
-	if _, err := infile.Seek(int64(p.PatchOffset+p.PatchLength), 0); err != nil {
+	if _, err := infile.Seek(p.PatchOffset+p.PatchLength, 0); err != nil {
 		return err
 	}
 	_, err := io.Copy(outstream, infile)
 	return err
 }
 
-func (p *PatchInfo) applyInPlace(outfile *os.File) error {
-	_, err := outfile.WriteAt(p.patch, int64(p.PatchOffset))
-	return err
+func (p *PatchInfo) applyInPlace(outfile *os.File, oldSize int64) error {
+	_, err := outfile.WriteAt(p.Patch, p.PatchOffset)
+	if err != nil {
+		return err
+	}
+	if p.PatchOffset+p.PatchLength == oldSize {
+		return outfile.Truncate(p.PatchOffset + int64(len(p.Patch)))
+	}
+	return nil
 }
 
 func canOverwrite(ininfo, outinfo os.FileInfo) bool {

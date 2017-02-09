@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"os"
 
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pgptools"
+
 	"github.com/sassoftware/go-rpmutils"
 )
 
@@ -44,7 +46,7 @@ func verifyRpm(f *os.File) error {
 			continue
 		}
 		seen[sig.KeyId] = true
-		fmt.Printf("%s: OK - %s(%x) [%s]\n", f.Name(), entityName(sig.Signer), sig.KeyId, sig.CreationTime)
+		fmt.Printf("%s: OK - %s(%x) [%s]\n", f.Name(), pgptools.EntityName(sig.Signer), sig.KeyId, sig.CreationTime)
 	}
 	return nil
 }

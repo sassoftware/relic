@@ -50,6 +50,8 @@ func (s *Server) serveSign(request *http.Request, writer http.ResponseWriter) (r
 		return s.signPgp(keyConf, request, filename)
 	} else if sigType == "rpm" || exten == ".rpm" {
 		return s.signRpm(keyConf, request)
+	} else if sigType == "deb" || exten == ".deb" {
+		return s.signDeb(keyConf, request, filename)
 	} else if sigType == "jar-manifest" {
 		return s.signJar(keyConf, request, filename)
 	} else if sigType != "" {

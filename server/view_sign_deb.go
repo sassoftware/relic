@@ -17,19 +17,16 @@
 package server
 
 import (
-	"bytes"
-	"errors"
 	"net/http"
 	"os"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/signrpm"
 )
 
-func (s *Server) signRpm(keyConf *config.KeyConfig, request *http.Request) (Response, error) {
+func (s *Server) signDeb(keyConf *config.KeyConfig, request *http.Request, filename string) (Response, error) {
 	cmdline := []string{
 		os.Args[0],
-		"sign-rpm",
+		"sign-deb",
 		"--config", s.Config.Path(),
 		"--key", keyConf.Name(),
 		"--file", "-",
@@ -39,15 +36,6 @@ func (s *Server) signRpm(keyConf *config.KeyConfig, request *http.Request) (Resp
 	if response != nil || err != nil {
 		return response, err
 	}
-	endOfJson := bytes.IndexByte(stdout, 0)
-	if endOfJson < 0 {
-		return nil, errors.New("Did not find null terminator in sign-rpm output")
-	}
-	jinfo, err := signrpm.LoadJson(stdout[:endOfJson])
-	if err != nil {
-		return nil, err
-	}
-	s.Logr(request, "Signed package: nevra=%s key=%s fp=%s md5=%s sha1=%s",
-		jinfo.Nevra, keyConf.Name(), jinfo.Fingerprint, jinfo.Md5, jinfo.Sha1)
+	s.Logr(request, "Signed package: filename=%s key=%s", filename, keyConf.Name())
 	return BytesResponse(stdout, "application/x-binary-patch"), nil
 }

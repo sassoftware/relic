@@ -23,7 +23,7 @@ import (
 	"strings"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/clearsign"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pgptools"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/p11token/pgptoken"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/openpgp"
@@ -87,11 +87,10 @@ func signPgpCmd(cmd *cobra.Command, args []string) (err error) {
 	if err != nil {
 		return err
 	}
-	pkey, err := pgptoken.KeyFromToken(key)
+	entity, err := pgptoken.KeyFromToken(key)
 	if err != nil {
 		return err
 	}
-	entity := &openpgp.Entity{PrivateKey: pkey}
 	config := &packet.Config{}
 
 	var infile *os.File
@@ -117,9 +116,9 @@ func signPgpCmd(cmd *cobra.Command, args []string) (err error) {
 	}
 
 	if argPgpMiniClear {
-		err = clearsign.DetachClearSign(out, entity, infile, config)
+		err = pgptools.DetachClearSign(out, entity, infile, config)
 	} else if argPgpClearsign {
-		err = clearsign.ClearSign(out, entity, infile, config)
+		err = pgptools.ClearSign(out, entity, infile, config)
 	} else if argPgpArmor && !argPgpNoArmor {
 		if argPgpTextMode {
 			err = openpgp.ArmoredDetachSignText(out, entity, infile, nil)

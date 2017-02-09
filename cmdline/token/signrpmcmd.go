@@ -59,13 +59,13 @@ func signRpmCmd(cmd *cobra.Command, args []string) (err error) {
 	if err != nil {
 		return err
 	}
-	packet, err := pgptoken.KeyFromToken(key)
+	entity, err := pgptoken.KeyFromToken(key)
 	if err != nil {
 		return err
 	}
 	var info *signrpm.SigInfo
 	if argJson || argPatch {
-		info, err = signrpm.SignRpmStream(rpmfile, packet, nil)
+		info, err = signrpm.SignRpmStream(rpmfile, entity.PrivateKey, nil)
 		if err != nil {
 			return err
 		}
@@ -91,7 +91,7 @@ func signRpmCmd(cmd *cobra.Command, args []string) (err error) {
 		if argOutput == "" {
 			argOutput = argFile
 		}
-		info, err = signrpm.SignRpmFile(rpmfile, argOutput, packet, nil)
+		info, err = signrpm.SignRpmFile(rpmfile, argOutput, entity.PrivateKey, nil)
 		if err != nil {
 			return err
 		}

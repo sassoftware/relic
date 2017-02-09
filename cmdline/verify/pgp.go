@@ -26,6 +26,7 @@ import (
 	"os"
 	"time"
 
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pgptools"
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/armor"
 	"golang.org/x/crypto/openpgp/clearsign"
@@ -124,7 +125,7 @@ func verifyPgpDetached(f *os.File, signature io.Reader, signed io.ReadSeeker) er
 		default:
 			panic("unreachable")
 		}
-		fmt.Printf("%s: OK - %s(%x) [%s]\n", f.Name(), entityName(keys[0].Entity), keyId, creationTime)
+		fmt.Printf("%s: OK - %s(%x) [%s]\n", f.Name(), pgptools.EntityName(keys[0].Entity), keyId, creationTime)
 		found = true
 	}
 	if !found {
@@ -168,22 +169,6 @@ func verifyPgpInline(f *os.File, signature io.Reader) error {
 	} else if md.SignatureV3 != nil {
 		creationTime = md.SignatureV3.CreationTime
 	}
-	fmt.Printf("%s: OK - %s(%x) [%s]\n", f.Name(), entityName(md.SignedBy.Entity), md.SignedByKeyId, creationTime)
+	fmt.Printf("%s: OK - %s(%x) [%s]\n", f.Name(), pgptools.EntityName(md.SignedBy.Entity), md.SignedByKeyId, creationTime)
 	return nil
-}
-
-func entityName(entity *openpgp.Entity) string {
-	if entity == nil {
-		return ""
-	}
-	var name string
-	for _, ident := range entity.Identities {
-		if name == "" {
-			name = ident.Name
-		}
-		if ident.SelfSignature.IsPrimaryId != nil && *ident.SelfSignature.IsPrimaryId {
-			return ident.Name
-		}
-	}
-	return name
 }

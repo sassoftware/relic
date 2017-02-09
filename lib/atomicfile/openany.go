@@ -53,3 +53,16 @@ func WriteAny(path string) (AtomicFile, error) {
 	}
 	return New(path)
 }
+
+// Write bytes to a file, using write-rename when appropriate
+func WriteFile(path string, data []byte) error {
+	f, err := WriteAny(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	if _, err := f.Write(data); err != nil {
+		return err
+	}
+	return f.Commit()
+}

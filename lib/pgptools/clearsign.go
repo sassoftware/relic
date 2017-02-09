@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package clearsign
+package pgptools
 
 import (
 	"bufio"

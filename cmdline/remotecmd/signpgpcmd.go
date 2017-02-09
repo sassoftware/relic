@@ -29,7 +29,7 @@ import (
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/atomicfile"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/clearsign"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pgptools"
 	"github.com/spf13/cobra"
 )
 
@@ -144,7 +144,7 @@ func signPgpCmd(cmd *cobra.Command, args []string) (err error) {
 		if _, err := instream.Seek(0, 0); err != nil {
 			return shared.Fail(fmt.Errorf("failed to seek input stream: %s", err))
 		}
-		err = clearsign.MergeClearSign(output, sig, instream)
+		err = pgptools.MergeClearSign(output, sig, instream)
 	} else {
 		_, err = io.Copy(output, response.Body)
 	}

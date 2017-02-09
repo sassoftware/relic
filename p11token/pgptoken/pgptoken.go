@@ -45,7 +45,7 @@ func ReadEntity(path string) (*openpgp.Entity, error) {
 	return openpgp.ReadEntity(packet.NewReader(reader))
 }
 
-func KeyFromToken(key *p11token.Key) (*packet.PrivateKey, error) {
+func KeyFromToken(key *p11token.Key) (*openpgp.Entity, error) {
 	if key.Certificate == "" {
 		return nil, errors.New("'certificate' setting in key configuration must point to a PGP public key file")
 	}
@@ -61,5 +61,6 @@ func KeyFromToken(key *p11token.Key) (*packet.PrivateKey, error) {
 	if !x509tools.SameKey(key.Public(), priv.PublicKey.PublicKey) {
 		return nil, errors.New("Certificate does not match specified key in token")
 	}
-	return priv, nil
+	entity.PrivateKey = priv
+	return entity, nil
 }
