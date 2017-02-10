@@ -50,7 +50,7 @@ func NewContentInfo(contentType asn1.ObjectIdentifier, data interface{}) (ci Con
 	if err != nil {
 		return ContentInfo{}, nil
 	}
-	return ContentInfo{Raw: ciblob}, nil
+	return ContentInfo{Raw: ciblob, ContentType: contentType}, nil
 }
 
 // Unmarshal a structure from a ContentInfo.

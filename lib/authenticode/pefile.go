@@ -31,6 +31,9 @@ func VerifyPE(r io.ReaderAt, skipDigests bool) ([]PESignature, error) {
 	if err := findCertTable(r, &m); err != nil {
 		return nil, err
 	}
+	if m.sizeOfCerts == 0 {
+		return nil, errors.New("image does not contain any signatures")
+	}
 	var imageReader io.Reader
 	if !skipDigests {
 		segments := new(readerList)
@@ -114,9 +117,6 @@ func findCertTable(r io.ReaderAt, m *peMarkers) error {
 	default:
 		return errors.New("unrecognized optional header magic")
 	}
-	if m.posDDCert+8 > m.posSecTbl || dd.Size == 0 {
-		return errors.New("image does not contain any signatures")
-	}
 	m.posCerts = int64(dd.VirtualAddress)
 	m.sizeOfCerts = int64(dd.Size)
 	m.posTrailer = m.posCerts + m.sizeOfCerts
@@ -193,9 +193,6 @@ func checkSignature(der []byte) (*PESignature, error) {
 	var psd pkcs7.ContentInfoSignedData
 	if rest, err := asn1.Unmarshal(der, &psd); err != nil {
 		return nil, err
-		// some binaries in the wild seem to have trailing zeroes, probably due
-		// to including the alignment padding in the size when it's supposed to
-		// be implicit
 	} else if len(bytes.TrimRight(rest, "\x00")) != 0 {
 		return nil, errors.New("trailing garbage after signature")
 	}

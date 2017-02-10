@@ -21,20 +21,34 @@ import (
 	"crypto/x509"
 	"encoding/asn1"
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"os"
 	"time"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs7"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs9"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/p11token"
 )
 
-func signAndTimestamp(data []byte, key *p11token.Key, certs []*x509.Certificate, opts crypto.SignerOpts, detach bool) (sig []byte, err error) {
+func readCerts(key *p11token.Key) ([]*x509.Certificate, error) {
+	certblob, err := ioutil.ReadFile(key.Certificate)
+	if err != nil {
+		return nil, err
+	}
+	return certloader.ParseCertificates(certblob)
+}
+
+func signAndTimestamp(data []byte, key *p11token.Key, opts crypto.SignerOpts, detach bool) (sig []byte, err error) {
 	var psd *pkcs7.ContentInfoSignedData
 	hash := opts.HashFunc()
+	certs, err := readCerts(key)
+	if err != nil {
+		return nil, err
+	}
 	if detach {
 		d := hash.New()
 		d.Write(data)
@@ -43,8 +57,12 @@ func signAndTimestamp(data []byte, key *p11token.Key, certs []*x509.Certificate,
 		psd, err = pkcs7.SignData(data, key, certs, opts)
 	}
 	if err != nil {
-		return
+		return nil, err
 	}
+	return timestampPkcs(psd, key, certs, opts.HashFunc())
+}
+
+func timestampPkcs(psd *pkcs7.ContentInfoSignedData, key *p11token.Key, certs []*x509.Certificate, hash crypto.Hash) (sig []byte, err error) {
 	keyConf := shared.CurrentConfig.Keys[key.Name]
 	if keyConf.Timestamp {
 		signerInfo := &psd.Content.SignerInfos[0]

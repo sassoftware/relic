@@ -24,7 +24,6 @@ import (
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/atomicfile"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/signjar"
 	"github.com/spf13/cobra"
 )
@@ -91,19 +90,11 @@ func signJarCmd(cmd *cobra.Command, args []string) (err error) {
 	if err != nil {
 		return err
 	}
-	certblob, err := ioutil.ReadFile(key.Certificate)
-	if err != nil {
-		return err
-	}
-	certs, err := certloader.ParseCertificates(certblob)
-	if err != nil {
-		return err
-	}
 	sigfile, err := signjar.DigestManifest(manifest, hash, argSectionsOnly)
 	if err != nil {
 		return err
 	}
-	pkcs, err := signAndTimestamp(sigfile, key, certs, hash, !argInlineSignature)
+	pkcs, err := signAndTimestamp(sigfile, key, hash, !argInlineSignature)
 	if err != nil {
 		return err
 	}
@@ -145,20 +136,12 @@ func signJarManifestCmd(cmd *cobra.Command, args []string) (err error) {
 	if err != nil {
 		return err
 	}
-	certblob, err := ioutil.ReadFile(key.Certificate)
-	if err != nil {
-		return err
-	}
-	certs, err := certloader.ParseCertificates(certblob)
-	if err != nil {
-		return err
-	}
 	sigfile, err := signjar.DigestManifest(manifest, hash, argSectionsOnly)
 	if err != nil {
 		return err
 	}
 	detach := !argInlineSignature && argSignFileOutput != ""
-	pkcs, err := signAndTimestamp(sigfile, key, certs, hash, detach)
+	pkcs, err := signAndTimestamp(sigfile, key, hash, detach)
 	if err != nil {
 		return err
 	}

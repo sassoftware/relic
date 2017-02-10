@@ -26,6 +26,7 @@ import (
 var (
 	OidSpcIndirectDataContent = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 2, 1, 4}
 	OidSpcSpOpusInfo          = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 2, 1, 12}
+	OidSpcPeImageData         = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 2, 1, 15}
 )
 
 type SpcIndirectDataContent struct {
@@ -35,7 +36,7 @@ type SpcIndirectDataContent struct {
 
 type SpcAttributePeImageData struct {
 	Type  asn1.ObjectIdentifier
-	Value SpcPeImageData `asn1:"explicit,optional,tag:0"`
+	Value SpcPeImageData `asn1:"optional"`
 }
 
 type DigestInfo struct {
@@ -45,7 +46,27 @@ type DigestInfo struct {
 
 type SpcPeImageData struct {
 	Flags asn1.BitString
-	File  asn1.RawValue
+	File  SpcLink `asn1:"tag:0"`
+}
+
+type SpcLink struct {
+	Url     string              `asn1:"optional,tag:0,ia5"`
+	Moniker SpcSerializedObject `asn1:"optional,tag:1"`
+	File    SpcString           `asn1:"optional,tag:2"`
+}
+
+type SpcString struct {
+	Unicode string `asn1:"optional,tag:0"`
+	Ascii   string `asn1:"optional,tag:1,ia5"`
+}
+
+type SpcSerializedObject struct {
+	// not implemented
+	Raw asn1.RawValue
+}
+
+type SpcSpOpusInfo struct {
+	// TODO
 }
 
 // file offsets to various interesting points in a PE file

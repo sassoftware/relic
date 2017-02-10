@@ -25,13 +25,18 @@ import (
 )
 
 type AtomicFile interface {
-	io.WriteCloser
+	io.Reader
+	io.ReaderAt
+	io.Writer
+	io.WriterAt
+	io.Seeker
+	io.Closer
 	Commit() error
 }
 
 type atomicFile struct {
-	name     string
-	tempfile *os.File
+	*os.File
+	name string
 }
 
 func New(name string) (AtomicFile, error) {
@@ -39,36 +44,32 @@ func New(name string) (AtomicFile, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &atomicFile{name, tempfile}, nil
-}
-
-func (f *atomicFile) Write(d []byte) (int, error) {
-	return f.tempfile.Write(d)
+	return &atomicFile{tempfile, name}, nil
 }
 
 func (f *atomicFile) Close() error {
-	if f.tempfile == nil {
+	if f.File == nil {
 		return nil
 	}
-	f.tempfile.Close()
-	os.Remove(f.tempfile.Name())
-	f.tempfile = nil
+	f.File.Close()
+	os.Remove(f.File.Name())
+	f.File = nil
 	return nil
 }
 
 func (f *atomicFile) Commit() error {
-	if f.tempfile == nil {
+	if f.File == nil {
 		return errors.New("file is closed")
 	}
-	f.tempfile.Chmod(0644)
-	f.tempfile.Close()
+	f.File.Chmod(0644)
+	f.File.Close()
 	// rename can't overwrite on windows
 	if err := os.Remove(f.name); err != nil && !os.IsNotExist(err) {
 		return err
 	}
-	if err := os.Rename(f.tempfile.Name(), f.name); err != nil {
+	if err := os.Rename(f.File.Name(), f.name); err != nil {
 		return err
 	}
-	f.tempfile = nil
+	f.File = nil
 	return nil
 }
