@@ -104,6 +104,8 @@ type Config struct {
 	Remote    *RemoteConfig            `,omitempty`
 	Timestamp *TimestampConfig         `,omitempty`
 
+	PinFile string // Optional YAML file with additional token PINs
+
 	path string
 }
 
@@ -128,6 +130,22 @@ func ReadFile(path string) (*Config, error) {
 	config.Clients = normalized
 	if config.Server != nil && config.Server.MaxDocSize == 0 {
 		config.Server.MaxDocSize = defaultMaxDocSize
+	}
+	if config.PinFile != "" {
+		contents, err := ioutil.ReadFile(config.PinFile)
+		if err != nil {
+			return nil, fmt.Errorf("error reading PinFile: %s", err)
+		}
+		pinMap := make(map[string]string)
+		if err := yaml.Unmarshal(contents, pinMap); err != nil {
+			return nil, fmt.Errorf("error reading PinFile: %s", err)
+		}
+		for token, pin := range pinMap {
+			tokenConf := config.Tokens[token]
+			if tokenConf != nil {
+				tokenConf.Pin = &pin
+			}
+		}
 	}
 	if config.Keys != nil {
 		for keyName, keyConf := range config.Keys {
