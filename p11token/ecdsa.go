@@ -96,47 +96,20 @@ func (key *Key) signECDSA(digest []byte) (der []byte, err error) {
 	return asn1.Marshal(ecdsaSignature{r, s})
 }
 
-func (token *Token) importECDSA(label string, priv *ecdsa.PrivateKey) ([]byte, error) {
-	keyId := makeKeyId()
-	if keyId == nil {
-		return nil, errors.New("failed to make key ID")
-	}
+func ecdsaImportAttrs(priv *ecdsa.PrivateKey) (pub_attrs, priv_attrs []*pkcs11.Attribute, err error) {
 	curve, err := x509tools.CurveByCurve(priv.Curve)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	shared_attrs := []*pkcs11.Attribute{
-		pkcs11.NewAttribute(pkcs11.CKA_ID, keyId),
-		pkcs11.NewAttribute(pkcs11.CKA_LABEL, label),
-		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),
-		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, CKK_ECDSA),
+	pub_attrs = []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_EC_PARAMS, curve.ToDer()),
-	}
-	pub_attrs := []*pkcs11.Attribute{
-		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PUBLIC_KEY),
-		pkcs11.NewAttribute(pkcs11.CKA_PRIVATE, false),
-		pkcs11.NewAttribute(pkcs11.CKA_VERIFY, true),
 		pkcs11.NewAttribute(pkcs11.CKA_EC_POINT, pointToDer(&priv.PublicKey)),
 	}
-	pub_attrs = append(pub_attrs, shared_attrs...)
-	priv_attrs := []*pkcs11.Attribute{
-		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PRIVATE_KEY),
-		pkcs11.NewAttribute(pkcs11.CKA_EXTRACTABLE, false),
-		pkcs11.NewAttribute(pkcs11.CKA_SENSITIVE, true),
-		pkcs11.NewAttribute(pkcs11.CKA_SIGN, true),
+	priv_attrs = []*pkcs11.Attribute{
+		pkcs11.NewAttribute(pkcs11.CKA_EC_PARAMS, curve.ToDer()),
 		pkcs11.NewAttribute(pkcs11.CKA_VALUE, priv.D.Bytes()),
 	}
-	priv_attrs = append(priv_attrs, shared_attrs...)
-	priv_handle, err := token.ctx.CreateObject(token.sh, priv_attrs)
-	if err != nil {
-		return nil, err
-	}
-	_, err = token.ctx.CreateObject(token.sh, pub_attrs)
-	if err != nil {
-		token.ctx.DestroyObject(token.sh, priv_handle)
-		return nil, err
-	}
-	return keyId, nil
+	return
 }
 
 func (token *Token) generateECDSA(label string, bits uint) (keyId []byte, err error) {

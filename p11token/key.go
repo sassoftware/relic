@@ -18,8 +18,6 @@ package p11token
 
 import (
 	"crypto"
-	"crypto/ecdsa"
-	"crypto/rsa"
 	"encoding/hex"
 	"errors"
 	"io"
@@ -137,32 +135,6 @@ func (key *Key) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts) ([]b
 	default:
 		return nil, errors.New("Unsupported key type")
 	}
-}
-
-func (token *Token) Import(keyName string, privKey crypto.PrivateKey) (*Key, error) {
-	token.mutex.Lock()
-	defer token.mutex.Unlock()
-	keyConf, err := token.config.GetKey(keyName)
-	if err != nil {
-		return nil, err
-	}
-	if keyConf.Label == "" {
-		return nil, errors.New("Key attribute 'label' must be defined in order to create an object")
-	}
-	var keyId []byte
-	switch priv := privKey.(type) {
-	case *rsa.PrivateKey:
-		keyId, err = token.importRSA(keyConf.Label, priv)
-	case *ecdsa.PrivateKey:
-		keyId, err = token.importECDSA(keyConf.Label, priv)
-	default:
-		return nil, errors.New("Unsupported key type")
-	}
-	if err != nil {
-		return nil, err
-	}
-	keyConf.Id = hex.EncodeToString(keyId)
-	return token.getKey(keyConf, keyName)
 }
 
 func (token *Token) Generate(keyName string, keyType uint, bits uint) (*Key, error) {
