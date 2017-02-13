@@ -33,9 +33,9 @@ type Fileish interface {
 	io.Reader
 	io.ReaderAt
 	io.Writer
-	io.WriterAt
 	io.Seeker
 	io.Closer
+	Truncate(size int64) error
 }
 
 func SignImprint(digest []byte, privKey crypto.Signer, certs []*x509.Certificate, hash crypto.Hash) (*pkcs7.ContentInfoSignedData, error) {
@@ -60,13 +60,6 @@ func SignImprint(digest []byte, privKey crypto.Signer, certs []*x509.Certificate
 }
 
 func InsertPESignature(f Fileish, sig []byte) error {
-	m := new(peMarkers)
-	if err := parseCoffHeader(f, m); err != nil {
-		return err
-	}
-	if err := findCertTable(f, m); err != nil {
-		return err
-	}
 	// pack new cert table
 	padded := (len(sig) + 7) / 8 * 8
 	info := certInfo{
@@ -79,24 +72,38 @@ func InsertPESignature(f Fileish, sig []byte) error {
 	binary.Write(&buf, binary.LittleEndian, info)
 	buf.Write(sig)
 	buf.Write(make([]byte, padded-len(sig)))
-	if m.sizeOfCerts != 0 {
-		panic("todo")
-	} else {
-		n, err := f.Seek(0, io.SeekEnd)
-		if err != nil {
-			return err
-		}
-		if n >= (1 << 32) {
-			return errors.New("PE file is too big")
-		}
-		dd.VirtualAddress = uint32(n)
+	// find a place for it
+	fileSize, err := f.Seek(0, io.SeekEnd)
+	if err != nil {
+		return err
 	}
+	posDDCert, certStart, certSize, err := findSignatures(f)
+	if certSize != 0 {
+		if certStart+certSize != fileSize {
+			// Even though the signature covers data coming after the
+			// certificate table, there's no way to actually relocate that data
+			// to make room for a bigger or smaller sig without potentially
+			// breaking whatever it is the image does with the data.
+			return errors.New("can't re-sign an image that has data after the existing signature")
+		}
+		fileSize = certStart
+	}
+	if fileSize >= (1 << 32) {
+		return errors.New("PE file is too big")
+	}
+	if err := f.Truncate(fileSize); err != nil {
+		return err
+	}
+	dd.VirtualAddress = uint32(fileSize)
 	dd.Size = uint32(buf.Len())
+	if _, err := f.Seek(fileSize, 0); err != nil {
+		return err
+	}
 	if _, err := f.Write(buf.Bytes()); err != nil {
 		return err
 	}
 	// go back and update the headers
-	if _, err := f.Seek(m.posDDCert, 0); err != nil {
+	if _, err := f.Seek(posDDCert, 0); err != nil {
 		return err
 	}
 	if err := binary.Write(f, binary.LittleEndian, dd); err != nil {

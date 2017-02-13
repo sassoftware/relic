@@ -17,6 +17,7 @@
 package token
 
 import (
+	"crypto"
 	"errors"
 	"io"
 	"os"
@@ -75,11 +76,11 @@ func signPeInput(r io.Reader) ([]byte, error) {
 	if err != nil {
 		return nil, shared.Fail(err)
 	}
-	imprint, err := authenticode.DigestPE(r, hash)
+	sums, err := authenticode.DigestPE(r, []crypto.Hash{hash})
 	if err != nil {
 		return nil, shared.Fail(err)
 	}
-	psd, err := authenticode.SignImprint(imprint, key, certs, hash)
+	psd, err := authenticode.SignImprint(sums[0], key, certs, hash)
 	if err != nil {
 		return nil, shared.Fail(err)
 	}

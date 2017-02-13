@@ -21,6 +21,7 @@ import (
 	"debug/pe"
 	"encoding/binary"
 	"errors"
+	"hash"
 	"io"
 	"io/ioutil"
 )
@@ -29,8 +30,16 @@ import (
 // PE Authenticode: http://msdn.microsoft.com/en-us/windows/hardware/gg463180.aspx
 
 // Calculate a digest (message imprint) over a PE image.
-func DigestPE(r io.Reader, hash crypto.Hash) ([]byte, error) {
-	d := hash.New()
+// To keep things simple, this won't work if the sections are out-of-order
+func DigestPE(r io.Reader, hashes []crypto.Hash) ([][]byte, error) {
+	digesters := make([]hash.Hash, len(hashes))
+	writers := make([]io.Writer, len(hashes))
+	for i, hash := range hashes {
+		h := hash.New()
+		digesters[i] = h
+		writers[i] = h
+	}
+	d := io.MultiWriter(writers...)
 	peStart, err := readDosHeader(r, d)
 	if err != nil {
 		return nil, err
@@ -42,7 +51,7 @@ func DigestPE(r io.Reader, hash crypto.Hash) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	secTblStart, sizeOfHdr, certStart, certSize, err := readOptHeader(r, d, peStart, fh)
+	_, secTblStart, sizeOfHdr, certStart, certSize, err := readOptHeader(r, d, peStart, fh)
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +62,11 @@ func DigestPE(r io.Reader, hash crypto.Hash) ([]byte, error) {
 	if err := readTrailer(r, d, lastSection, certStart, certSize); err != nil {
 		return nil, err
 	}
-	return d.Sum(nil), nil
+	sums := make([][]byte, len(digesters))
+	for i, digester := range digesters {
+		sums[i] = digester.Sum(nil)
+	}
+	return sums, nil
 }
 
 func readDosHeader(r io.Reader, d io.Writer) (int64, error) {
@@ -84,10 +97,10 @@ func readCoffHeader(r io.Reader, d io.Writer) (*pe.FileHeader, error) {
 	return hdr, nil
 }
 
-func readOptHeader(r io.Reader, d io.Writer, peStart int64, fh *pe.FileHeader) (secTblStart, sizeOfHdr, certStart, certSize int64, err error) {
+func readOptHeader(r io.Reader, d io.Writer, peStart int64, fh *pe.FileHeader) (posDDCert, secTblStart, sizeOfHdr, certStart, certSize int64, err error) {
 	buf := make([]byte, fh.SizeOfOptionalHeader)
 	if _, err := r.Read(buf); err != nil {
-		return 0, 0, 0, 0, err
+		return 0, 0, 0, 0, 0, err
 	}
 	// locate the bits that need to be omitted from hash
 	cksumStart := 64
@@ -100,10 +113,10 @@ func readOptHeader(r io.Reader, d io.Writer, peStart int64, fh *pe.FileHeader) (
 		// PE32
 		var opt pe.OptionalHeader32
 		if err := binaryReadBytes(buf, &opt); err != nil {
-			return 0, 0, 0, 0, err
+			return 0, 0, 0, 0, 0, err
 		}
 		if opt.NumberOfRvaAndSizes < 5 {
-			return 0, 0, 0, 0, errors.New("PE header did not leave room for signature")
+			return 0, 0, 0, 0, 0, errors.New("PE header did not leave room for signature")
 		} else {
 			dd = opt.DataDirectory[4]
 		}
@@ -113,17 +126,17 @@ func readOptHeader(r io.Reader, d io.Writer, peStart int64, fh *pe.FileHeader) (
 		// PE32+
 		var opt pe.OptionalHeader64
 		if err := binaryReadBytes(buf, &opt); err != nil {
-			return 0, 0, 0, 0, err
+			return 0, 0, 0, 0, 0, err
 		}
 		if opt.NumberOfRvaAndSizes < 5 {
-			return 0, 0, 0, 0, errors.New("PE header did not leave room for signature")
+			return 0, 0, 0, 0, 0, errors.New("PE header did not leave room for signature")
 		} else {
 			dd = opt.DataDirectory[4]
 		}
 		dd4Start = 144
 		sizeOfHdr = int64(opt.SizeOfHeaders)
 	default:
-		return 0, 0, 0, 0, errors.New("unrecognized optional header magic")
+		return 0, 0, 0, 0, 0, errors.New("unrecognized optional header magic")
 	}
 	dd4End := dd4Start + 8
 	certStart = int64(dd.VirtualAddress)
@@ -132,7 +145,8 @@ func readOptHeader(r io.Reader, d io.Writer, peStart int64, fh *pe.FileHeader) (
 	d.Write(buf[:cksumStart])
 	d.Write(buf[cksumEnd:dd4Start])
 	d.Write(buf[dd4End:])
-	return secTblStart, sizeOfHdr, certStart, certSize, nil
+	posDDCert = peStart + 24 + dd4Start
+	return posDDCert, secTblStart, sizeOfHdr, certStart, certSize, nil
 }
 
 func readSections(r io.Reader, d io.Writer, fh *pe.FileHeader, secTblStart, sizeOfHdr int64) (int64, error) {

@@ -31,6 +31,7 @@ type AtomicFile interface {
 	io.WriterAt
 	io.Seeker
 	io.Closer
+	Truncate(size int64) error
 	Commit() error
 }
 
