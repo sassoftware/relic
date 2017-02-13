@@ -25,8 +25,8 @@ func (s *Server) serveListKeys(request *http.Request) (res Response, err error) 
 		return ErrorResponse(http.StatusMethodNotAllowed), nil
 	}
 	keys := []string{}
-	for key, _ := range s.Config.Keys {
-		if s.CheckKeyAccess(request, key) != nil {
+	for key, keyConf := range s.Config.Keys {
+		if !keyConf.Hide && s.CheckKeyAccess(request, key) != nil {
 			keys = append(keys, key)
 		}
 	}

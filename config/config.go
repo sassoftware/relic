@@ -50,12 +50,14 @@ type ToolConfig struct {
 type KeyConfig struct {
 	Token       string   // Token section to use for this key (linux)
 	Tool        string   // Tool section to use for this key (windows)
+	Alias       string   // This is an alias for another key
 	Label       string   // Select a key by label
 	Id          string   // Select a key by ID (hex notation)
 	Certificate string   // Path to certificate associated with this key
 	Key         string   // Name of key container (windows)
 	Roles       []string // List of user roles that can use this key
 	Timestamp   bool     // If true, attach a timestamped countersignature when possible
+	Hide        bool     // If true, then omit this key from 'remote list-keys'
 
 	name  string
 	token *TokenConfig
@@ -178,13 +180,16 @@ func (config *Config) GetToken(tokenName string) (*TokenConfig, error) {
 }
 
 func (config *Config) GetKey(keyName string) (*KeyConfig, error) {
-	if config.Keys == nil {
-		return nil, errors.New("No keys defined in configuration")
-	}
 	keyConf, ok := config.Keys[keyName]
 	if !ok {
 		return nil, fmt.Errorf("Key \"%s\" not found in configuration", keyName)
-	} else if keyConf.Token == "" && keyConf.Tool == "" {
+	} else if keyConf.Alias != "" {
+		keyConf, ok = config.Keys[keyConf.Alias]
+		if !ok {
+			return nil, fmt.Errorf("Alias \"%s\" points to undefined key \"%s\"", keyName, keyConf.Alias)
+		}
+	}
+	if keyConf.Token == "" && keyConf.Tool == "" {
 		return nil, fmt.Errorf("Key \"%s\" does not specify required value 'token' or 'tool'", keyName)
 	} else {
 		return keyConf, nil
