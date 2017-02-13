@@ -32,11 +32,11 @@ var PingCmd = &cobra.Command{
 
 func init() {
 	shared.RootCmd.AddCommand(PingCmd)
-	PingCmd.Flags().StringVarP(&argKeyName, "key", "k", "", "Name of key section in config file to use")
+	PingCmd.Flags().StringVarP(&argToken, "token", "t", "", "Name of token section in config file to use")
 }
 
 func pingCmd(cmd *cobra.Command, args []string) error {
-	token, err := openTokenByKey(argKeyName)
+	token, err := openToken(argToken)
 	if err != nil {
 		return err
 	}

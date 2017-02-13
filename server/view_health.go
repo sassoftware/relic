@@ -25,8 +25,6 @@ import (
 	"os/exec"
 	"sync"
 	"time"
-
-	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
 )
 
 var (
@@ -67,11 +65,12 @@ func (s *Server) healthCheck() bool {
 	ok := true
 	sawToken := make(map[string]bool)
 	for _, keyConf := range s.Config.Keys {
-		if keyConf.Token == "" || len(keyConf.Roles) == 0 || sawToken[keyConf.Token] {
+		token := keyConf.Token
+		if token == "" || len(keyConf.Roles) == 0 || sawToken[token] {
 			continue
 		}
-		sawToken[keyConf.Token] = true
-		if !s.pingOne(keyConf) {
+		sawToken[token] = true
+		if !s.pingOne(token) {
 			ok = false
 			break
 		}
@@ -90,11 +89,11 @@ func (s *Server) healthCheck() bool {
 	return ok
 }
 
-func (s *Server) pingOne(keyConf *config.KeyConfig) bool {
+func (s *Server) pingOne(tokenName string) bool {
 	ctx, cancel := context.WithTimeout(context.Background(), PingTimeout)
 	defer cancel()
 	var output bytes.Buffer
-	proc := exec.CommandContext(ctx, os.Args[0], "ping", "--config", s.Config.Path(), "--key", keyConf.Name())
+	proc := exec.CommandContext(ctx, os.Args[0], "ping", "--config", s.Config.Path(), "--token", tokenName)
 	proc.Stdout = &output
 	proc.Stderr = &output
 	err := proc.Run()
@@ -103,9 +102,9 @@ func (s *Server) pingOne(keyConf *config.KeyConfig) bool {
 	}
 	select {
 	case <-ctx.Done():
-		s.Logf("error: health check of key %s timed out", keyConf.Name())
+		s.Logf("error: health check of token %s timed out", tokenName)
 	default:
-		s.Logf("error: health check of key %s failed: %s\n%s\n", err, output.String())
+		s.Logf("error: health check of token %s failed: %s\n%s\n", tokenName, err, output.String())
 	}
 	return false
 }

@@ -147,7 +147,8 @@ func ReadFile(path string) (*Config, error) {
 		for token, pin := range pinMap {
 			tokenConf := config.Tokens[token]
 			if tokenConf != nil {
-				tokenConf.Pin = &pin
+				ppin := pin
+				tokenConf.Pin = &ppin
 			}
 		}
 	}
