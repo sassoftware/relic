@@ -18,10 +18,12 @@ package p11token
 
 import (
 	"errors"
+	"fmt"
 	"runtime"
 	"sync"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/passprompt"
 	"github.com/miekg/pkcs11"
 )
 
@@ -51,12 +53,7 @@ type Token struct {
 	mutex  sync.Mutex
 }
 
-type PinProvider interface {
-	WriteString(string)
-	GetPin(tokenName string) (pin string, err error)
-}
-
-func Open(config *config.Config, tokenName string, pinProvider PinProvider) (*Token, error) {
+func Open(config *config.Config, tokenName string, pinProvider passprompt.PasswordGetter) (*Token, error) {
 	tokenConf, err := config.GetToken(tokenName)
 	if err != nil {
 		return nil, err
@@ -175,7 +172,7 @@ func (token *Token) Login(user uint, pin string) error {
 	return err
 }
 
-func (token *Token) autoLogIn(tokenConf *config.TokenConfig, pinProvider PinProvider) error {
+func (token *Token) autoLogIn(tokenConf *config.TokenConfig, pinProvider passprompt.PasswordGetter) error {
 	loggedIn, err := token.IsLoggedIn()
 	if err != nil {
 		return err
@@ -193,8 +190,10 @@ func (token *Token) autoLogIn(tokenConf *config.TokenConfig, pinProvider PinProv
 			return err
 		}
 	} else if pinProvider != nil {
+		initialPrompt := fmt.Sprintf("PIN for token %s: ", token.Name)
+		prompt := initialPrompt
 		for {
-			pin, err := pinProvider.GetPin(token.Name)
+			pin, err := pinProvider.GetPasswd(prompt)
 			if err != nil {
 				return err
 			} else if pin == "" {
@@ -202,7 +201,7 @@ func (token *Token) autoLogIn(tokenConf *config.TokenConfig, pinProvider PinProv
 			}
 			err = token.Login(user, pin)
 			if _, ok := err.(PinIncorrectError); ok {
-				pinProvider.WriteString("Incorrect PIN")
+				prompt = "Incorrect PIN\r\n" + initialPrompt
 				continue
 			} else if err != nil {
 				return err

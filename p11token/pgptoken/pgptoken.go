@@ -29,7 +29,7 @@ import (
 	"golang.org/x/crypto/openpgp/packet"
 )
 
-func ReadEntity(path string) (*openpgp.Entity, error) {
+func readEntity(path string) (*openpgp.Entity, error) {
 	blob, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -49,7 +49,7 @@ func KeyFromToken(key *p11token.Key) (*openpgp.Entity, error) {
 	if key.Certificate == "" {
 		return nil, errors.New("'certificate' setting in key configuration must point to a PGP public key file")
 	}
-	entity, err := ReadEntity(key.Certificate)
+	entity, err := readEntity(key.Certificate)
 	if err != nil {
 		return nil, err
 	}

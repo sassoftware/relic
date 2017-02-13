@@ -19,13 +19,12 @@ package token
 import (
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"strings"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/passprompt"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/p11token"
-	"github.com/howeyc/gopass"
 	"github.com/spf13/cobra"
 )
 
@@ -39,23 +38,6 @@ var (
 )
 
 var tokenMap map[string]*p11token.Token
-
-type pinPrompt struct{}
-
-func (pinPrompt) WriteString(value string) {
-	fmt.Fprintln(os.Stderr, value)
-}
-
-func (pinPrompt) GetPin(tokenName string) (string, error) {
-	fmt.Fprintf(os.Stderr, "PIN for token %s: ", tokenName)
-	pin, err := gopass.GetPasswd()
-	if err == io.EOF {
-		return "", errors.New("EOF while asking for PIN")
-	} else if err != nil {
-		return "", err
-	}
-	return string(pin), nil
-}
 
 func addSelectOrGenerateFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&argKeyName, "key", "k", "", "Name of key section in config file to use")
@@ -94,7 +76,7 @@ func openToken(tokenName string) (*p11token.Token, error) {
 	if err != nil {
 		return nil, err
 	}
-	token, err = p11token.Open(shared.CurrentConfig, tokenName, &pinPrompt{})
+	token, err = p11token.Open(shared.CurrentConfig, tokenName, &passprompt.PasswordPrompt{})
 	if err != nil {
 		return nil, err
 	}
