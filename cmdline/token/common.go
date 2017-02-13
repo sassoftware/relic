@@ -21,8 +21,10 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/passprompt"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/p11token"
 	"github.com/spf13/cobra"
@@ -33,6 +35,8 @@ var (
 	argJson      bool
 	argPatch     bool
 	argKeyName   string
+	argToken     string
+	argLabel     string
 	argOutput    string
 	argTokenName string
 )
@@ -41,12 +45,51 @@ var tokenMap map[string]*p11token.Token
 
 func addSelectOrGenerateFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&argKeyName, "key", "k", "", "Name of key section in config file to use")
+	cmd.Flags().StringVarP(&argToken, "token", "t", "", "Name of token to generate key in")
+	cmd.Flags().StringVarP(&argLabel, "label", "l", "", "Label to attach to generated key")
 	cmd.Flags().UintVar(&argRsaBits, "generate-rsa", 0, "Generate a RSA key of the specified bit size, if needed")
 	cmd.Flags().UintVar(&argEcdsaBits, "generate-ecdsa", 0, "Generate an ECDSA key of the specified curve size, if needed")
 }
 
+// Update key config with values from --token and --label
+func newKeyConfig() (*config.KeyConfig, error) {
+	if err := shared.InitConfig(); err != nil {
+		return nil, err
+	}
+	var keyConf *config.KeyConfig
+	if argKeyName != "" {
+		var err error
+		keyConf, err = shared.CurrentConfig.GetKey(argKeyName)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		if argToken == "" || argLabel == "" {
+			return nil, errors.New("Either --key, or --token and --label, must be set")
+		}
+		argKeyName = fmt.Sprintf("new-key-%d", time.Now().UnixNano())
+		keyConf = shared.CurrentConfig.NewKey(argKeyName)
+	}
+	if argToken != "" {
+		tokenConf, err := shared.CurrentConfig.GetToken(argToken)
+		if err != nil {
+			return nil, err
+		}
+		keyConf.SetToken(tokenConf)
+	}
+	if argLabel != "" {
+		keyConf.Label = argLabel
+		keyConf.Id = ""
+	}
+	return keyConf, nil
+}
+
 func selectOrGenerate() (key *p11token.Key, err error) {
-	token, err := openTokenByKey(argKeyName)
+	keyConf, err := newKeyConfig()
+	if err != nil {
+		return nil, err
+	}
+	token, err := openToken(keyConf.Token)
 	if err != nil {
 		return nil, err
 	}

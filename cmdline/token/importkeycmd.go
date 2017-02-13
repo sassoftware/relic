@@ -38,6 +38,8 @@ var ImportKeyCmd = &cobra.Command{
 func init() {
 	shared.RootCmd.AddCommand(ImportKeyCmd)
 	ImportKeyCmd.Flags().StringVarP(&argKeyName, "key", "k", "", "Name of key section in config file to use")
+	ImportKeyCmd.Flags().StringVarP(&argToken, "token", "t", "", "Name of token to import key to")
+	ImportKeyCmd.Flags().StringVarP(&argLabel, "label", "l", "", "Label to attach to imported key")
 	ImportKeyCmd.Flags().StringVarP(&argFile, "file", "f", "", "Private key file to import: PEM, DER, or PGP")
 }
 
@@ -53,9 +55,13 @@ func importKeyCmd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return shared.Fail(err)
 	}
-	token, err := openTokenByKey(argKeyName)
+	keyConf, err := newKeyConfig()
 	if err != nil {
 		return err
+	}
+	token, err := openToken(keyConf.Token)
+	if err != nil {
+		return shared.Fail(err)
 	}
 	_, err = token.GetKey(argKeyName)
 	if err == nil {

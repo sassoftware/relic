@@ -25,6 +25,9 @@ import (
 )
 
 func InitConfig() error {
+	if CurrentConfig != nil {
+		return nil
+	}
 	usedDefault := false
 	if ArgConfig == "" {
 		ArgConfig = config.DefaultConfig()

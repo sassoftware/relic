@@ -38,6 +38,8 @@ type TokenConfig struct {
 	Pin      *string // PIN to use, otherwise will be prompted. Can be empty. (optional)
 	Timeout  int     // (server) Terminate command after N seconds (default 300)
 	User     *uint   // User argument for PKCS#11 login (optional)
+
+	name string
 }
 
 type ToolConfig struct {
@@ -147,15 +149,16 @@ func ReadFile(path string) (*Config, error) {
 			}
 		}
 	}
-	if config.Keys != nil {
-		for keyName, keyConf := range config.Keys {
-			keyConf.name = keyName
-			if keyConf.Token != "" && config.Tokens != nil {
-				keyConf.token = config.Tokens[keyConf.Token]
-			}
-			if keyConf.Tool != "" && config.Tools != nil {
-				keyConf.tool = config.Tools[keyConf.Tool]
-			}
+	for tokenName, tokenConf := range config.Tokens {
+		tokenConf.name = tokenName
+	}
+	for keyName, keyConf := range config.Keys {
+		keyConf.name = keyName
+		if keyConf.Token != "" {
+			keyConf.token = config.Tokens[keyConf.Token]
+		}
+		if keyConf.Tool != "" {
+			keyConf.tool = config.Tools[keyConf.Tool]
 		}
 	}
 	config.path = path
@@ -186,6 +189,14 @@ func (config *Config) GetKey(keyName string) (*KeyConfig, error) {
 	} else {
 		return keyConf, nil
 	}
+}
+
+func (config *Config) NewKey(name string) *KeyConfig {
+	if config.Keys == nil {
+		config.Keys = make(map[string]*KeyConfig)
+	}
+	config.Keys[name] = &KeyConfig{name: name}
+	return config.Keys[name]
 }
 
 func (config *Config) Path() string {

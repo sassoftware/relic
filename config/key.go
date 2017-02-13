@@ -62,3 +62,8 @@ func (keyConf *KeyConfig) GetTimeout() time.Duration {
 		return defaultTimeout
 	}
 }
+
+func (keyConf *KeyConfig) SetToken(tokenConf *TokenConfig) {
+	keyConf.Token = tokenConf.name
+	keyConf.token = tokenConf
+}
