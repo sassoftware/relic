@@ -17,9 +17,11 @@
 package x509tools
 
 import (
+	"crypto/ecdsa"
 	"crypto/elliptic"
 	"encoding/asn1"
 	"fmt"
+	"math/big"
 	"strconv"
 	"strings"
 )
@@ -86,4 +88,34 @@ func CurveByBits(bits uint) (*CurveDefinition, error) {
 		}
 	}
 	return nil, fmt.Errorf("Unsupported ECDSA curve: %v\nSupported curves: %s", bits, SupportedCurves())
+}
+
+func DerToPoint(curve elliptic.Curve, der []byte) (*big.Int, *big.Int) {
+	var blob []byte
+	switch der[0] {
+	case asn1.TagOctetString:
+		_, err := asn1.Unmarshal(der, &blob)
+		if err != nil {
+			return nil, nil
+		}
+	case asn1.TagBitString:
+		var bits asn1.BitString
+		_, err := asn1.Unmarshal(der, &bits)
+		if err != nil {
+			return nil, nil
+		}
+		blob = bits.Bytes
+	default:
+		return nil, nil
+	}
+	return elliptic.Unmarshal(curve, blob)
+}
+
+func PointToDer(pub *ecdsa.PublicKey) []byte {
+	blob := elliptic.Marshal(pub.Curve, pub.X, pub.Y)
+	der, err := asn1.Marshal(blob)
+	if err != nil {
+		return nil
+	}
+	return der
 }

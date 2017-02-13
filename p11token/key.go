@@ -18,7 +18,6 @@ package p11token
 
 import (
 	"crypto"
-	"encoding/hex"
 	"errors"
 	"io"
 
@@ -135,30 +134,4 @@ func (key *Key) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts) ([]b
 	default:
 		return nil, errors.New("Unsupported key type")
 	}
-}
-
-func (token *Token) Generate(keyName string, keyType uint, bits uint) (*Key, error) {
-	token.mutex.Lock()
-	defer token.mutex.Unlock()
-	keyConf, err := token.config.GetKey(keyName)
-	if err != nil {
-		return nil, err
-	}
-	if keyConf.Label == "" {
-		return nil, errors.New("Key attribute 'label' must be defined in order to create an object")
-	}
-	var keyId []byte
-	switch keyType {
-	case CKK_RSA:
-		keyId, err = token.generateRSA(keyConf.Label, bits)
-	case CKK_ECDSA:
-		keyId, err = token.generateECDSA(keyConf.Label, bits)
-	default:
-		return nil, errors.New("Unsupported key type")
-	}
-	if err != nil {
-		return nil, err
-	}
-	keyConf.Id = hex.EncodeToString(keyId)
-	return token.getKey(keyConf, keyName)
 }

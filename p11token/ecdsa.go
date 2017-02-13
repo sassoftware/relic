@@ -19,44 +19,12 @@ package p11token
 import (
 	"crypto"
 	"crypto/ecdsa"
-	"crypto/elliptic"
 	"encoding/asn1"
 	"errors"
-	"math/big"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
 	"github.com/miekg/pkcs11"
 )
-
-func derToPoint(curve elliptic.Curve, der []byte) (*big.Int, *big.Int) {
-	var blob []byte
-	switch der[0] {
-	case asn1.TagOctetString:
-		_, err := asn1.Unmarshal(der, &blob)
-		if err != nil {
-			return nil, nil
-		}
-	case asn1.TagBitString:
-		var bits asn1.BitString
-		_, err := asn1.Unmarshal(der, &bits)
-		if err != nil {
-			return nil, nil
-		}
-		blob = bits.Bytes
-	default:
-		return nil, nil
-	}
-	return elliptic.Unmarshal(curve, blob)
-}
-
-func pointToDer(pub *ecdsa.PublicKey) []byte {
-	blob := elliptic.Marshal(pub.Curve, pub.X, pub.Y)
-	der, err := asn1.Marshal(blob)
-	if err != nil {
-		return nil
-	}
-	return der
-}
 
 func (key *Key) toEcdsaKey() (crypto.PublicKey, error) {
 	ecparams := key.token.getAttribute(key.pub, pkcs11.CKA_EC_PARAMS)
@@ -68,16 +36,12 @@ func (key *Key) toEcdsaKey() (crypto.PublicKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	x, y := derToPoint(curve.Curve, ecpoint)
+	x, y := x509tools.DerToPoint(curve.Curve, ecpoint)
 	if x == nil || y == nil {
 		return nil, errors.New("Invalid elliptic curve point")
 	}
 	eckey := &ecdsa.PublicKey{Curve: curve.Curve, X: x, Y: y}
 	return eckey, nil
-}
-
-type ecdsaSignature struct {
-	R, S *big.Int
 }
 
 func (key *Key) signECDSA(digest []byte) (der []byte, err error) {
@@ -93,7 +57,7 @@ func (key *Key) signECDSA(digest []byte) (der []byte, err error) {
 	sigBytes := len(sig) / 2
 	r := bytesToBig(sig[:sigBytes])
 	s := bytesToBig(sig[sigBytes:])
-	return asn1.Marshal(ecdsaSignature{r, s})
+	return asn1.Marshal(x509tools.EcdsaSignature{r, s})
 }
 
 func ecdsaImportAttrs(priv *ecdsa.PrivateKey) (pub_attrs, priv_attrs []*pkcs11.Attribute, err error) {
@@ -103,7 +67,7 @@ func ecdsaImportAttrs(priv *ecdsa.PrivateKey) (pub_attrs, priv_attrs []*pkcs11.A
 	}
 	pub_attrs = []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_EC_PARAMS, curve.ToDer()),
-		pkcs11.NewAttribute(pkcs11.CKA_EC_POINT, pointToDer(&priv.PublicKey)),
+		pkcs11.NewAttribute(pkcs11.CKA_EC_POINT, x509tools.PointToDer(&priv.PublicKey)),
 	}
 	priv_attrs = []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_EC_PARAMS, curve.ToDer()),
@@ -112,36 +76,12 @@ func ecdsaImportAttrs(priv *ecdsa.PrivateKey) (pub_attrs, priv_attrs []*pkcs11.A
 	return
 }
 
-func (token *Token) generateECDSA(label string, bits uint) (keyId []byte, err error) {
+func ecdsaGenerateAttrs(bits uint) ([]*pkcs11.Attribute, *pkcs11.Mechanism, error) {
 	curve, err := x509tools.CurveByBits(bits)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	keyId = makeKeyId()
-	if keyId == nil {
-		return nil, errors.New("failed to make key ID")
-	}
-	shared_attrs := []*pkcs11.Attribute{
-		pkcs11.NewAttribute(pkcs11.CKA_ID, keyId),
-		pkcs11.NewAttribute(pkcs11.CKA_LABEL, label),
-		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),
-	}
-	pub_attrs := []*pkcs11.Attribute{
-		pkcs11.NewAttribute(pkcs11.CKA_EC_PARAMS, curve.ToDer()),
-		pkcs11.NewAttribute(pkcs11.CKA_PRIVATE, false),
-		pkcs11.NewAttribute(pkcs11.CKA_VERIFY, true),
-	}
-	pub_attrs = append(pub_attrs, shared_attrs...)
-	priv_attrs := []*pkcs11.Attribute{
-		pkcs11.NewAttribute(pkcs11.CKA_EXTRACTABLE, false),
-		pkcs11.NewAttribute(pkcs11.CKA_SENSITIVE, true),
-		pkcs11.NewAttribute(pkcs11.CKA_SIGN, true),
-	}
-	priv_attrs = append(priv_attrs, shared_attrs...)
+	pubAttrs := []*pkcs11.Attribute{pkcs11.NewAttribute(pkcs11.CKA_EC_PARAMS, curve.ToDer())}
 	mech := pkcs11.NewMechanism(pkcs11.CKM_EC_KEY_PAIR_GEN, nil)
-	_, _, err = token.ctx.GenerateKeyPair(token.sh, []*pkcs11.Mechanism{mech}, pub_attrs, priv_attrs)
-	if err != nil {
-		return nil, err
-	}
-	return keyId, nil
+	return pubAttrs, mech, nil
 }

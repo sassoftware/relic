@@ -81,37 +81,15 @@ func rsaImportAttrs(priv *rsa.PrivateKey) (pub_attrs, priv_attrs []*pkcs11.Attri
 	return
 }
 
-func (token *Token) generateRSA(label string, bits uint) (keyId []byte, err error) {
+func rsaGenerateAttrs(bits uint) ([]*pkcs11.Attribute, *pkcs11.Mechanism, error) {
 	if bits < 1024 || bits > 4096 {
-		return nil, errors.New("unsupported number of bits")
-	}
-	keyId = makeKeyId()
-	if keyId == nil {
-		return nil, errors.New("failed to make key ID")
+		return nil, nil, errors.New("unsupported number of bits")
 	}
 	pub_exponent := []byte{1, 0, 1} // 65537
-	shared_attrs := []*pkcs11.Attribute{
-		pkcs11.NewAttribute(pkcs11.CKA_ID, keyId),
-		pkcs11.NewAttribute(pkcs11.CKA_LABEL, label),
-		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),
-	}
-	pub_attrs := []*pkcs11.Attribute{
+	attrs := []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_MODULUS_BITS, bits),
 		pkcs11.NewAttribute(pkcs11.CKA_PUBLIC_EXPONENT, pub_exponent),
-		pkcs11.NewAttribute(pkcs11.CKA_PRIVATE, false),
-		pkcs11.NewAttribute(pkcs11.CKA_VERIFY, true),
 	}
-	pub_attrs = append(pub_attrs, shared_attrs...)
-	priv_attrs := []*pkcs11.Attribute{
-		pkcs11.NewAttribute(pkcs11.CKA_EXTRACTABLE, false),
-		pkcs11.NewAttribute(pkcs11.CKA_SENSITIVE, true),
-		pkcs11.NewAttribute(pkcs11.CKA_SIGN, true),
-	}
-	priv_attrs = append(priv_attrs, shared_attrs...)
 	mech := pkcs11.NewMechanism(pkcs11.CKM_RSA_PKCS_KEY_PAIR_GEN, nil)
-	_, _, err = token.ctx.GenerateKeyPair(token.sh, []*pkcs11.Mechanism{mech}, pub_attrs, priv_attrs)
-	if err != nil {
-		return nil, err
-	}
-	return keyId, nil
+	return attrs, mech, nil
 }

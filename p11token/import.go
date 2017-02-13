@@ -28,6 +28,22 @@ import (
 	"github.com/miekg/pkcs11"
 )
 
+var newPublicKeyAttrs = []*pkcs11.Attribute{
+	pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PUBLIC_KEY),
+	pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),
+	pkcs11.NewAttribute(pkcs11.CKA_PRIVATE, false),
+	pkcs11.NewAttribute(pkcs11.CKA_VERIFY, true),
+}
+
+var newPrivateKeyAttrs = []*pkcs11.Attribute{
+	pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PRIVATE_KEY),
+	pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),
+	pkcs11.NewAttribute(pkcs11.CKA_PRIVATE, true),
+	pkcs11.NewAttribute(pkcs11.CKA_SENSITIVE, true),
+	pkcs11.NewAttribute(pkcs11.CKA_EXTRACTABLE, false),
+	pkcs11.NewAttribute(pkcs11.CKA_SIGN, true),
+}
+
 // Import a PKCS#8 encoded key using a random 3DES key and the Unwrap function.
 // For some HSMs this is the only way to import keys.
 func (token *Token) importPkcs8(pk8 []byte, attrs []*pkcs11.Attribute) error {
@@ -74,56 +90,42 @@ func (token *Token) Import(keyName string, privKey crypto.PrivateKey) (*Key, err
 	if keyId == nil {
 		return nil, errors.New("failed to make key ID")
 	}
-	var pub_type_specific, priv_type_specific []*pkcs11.Attribute
+	var pubTypeAttrs, privTypeAttrs []*pkcs11.Attribute
 	var keyType uint
 	switch priv := privKey.(type) {
 	case *rsa.PrivateKey:
 		keyType = pkcs11.CKK_RSA
-		pub_type_specific, priv_type_specific, err = rsaImportAttrs(priv)
+		pubTypeAttrs, privTypeAttrs, err = rsaImportAttrs(priv)
 	case *ecdsa.PrivateKey:
 		keyType = pkcs11.CKK_ECDSA
-		pub_type_specific, priv_type_specific, err = ecdsaImportAttrs(priv)
+		pubTypeAttrs, privTypeAttrs, err = ecdsaImportAttrs(priv)
 	default:
 		return nil, errors.New("Unsupported key type")
 	}
 	if err != nil {
 		return nil, err
 	}
-	shared_attrs := []*pkcs11.Attribute{
+	commonAttrs := []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, keyType),
 		pkcs11.NewAttribute(pkcs11.CKA_ID, keyId),
 		pkcs11.NewAttribute(pkcs11.CKA_LABEL, keyConf.Label),
-		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),
 	}
-	pub_attrs := []*pkcs11.Attribute{
-		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PUBLIC_KEY),
-		pkcs11.NewAttribute(pkcs11.CKA_PRIVATE, false),
-		pkcs11.NewAttribute(pkcs11.CKA_VERIFY, true),
-	}
-	pub_attrs = append(pub_attrs, shared_attrs...)
-	priv_attrs := []*pkcs11.Attribute{
-		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PRIVATE_KEY),
-		pkcs11.NewAttribute(pkcs11.CKA_PRIVATE, true),
-		pkcs11.NewAttribute(pkcs11.CKA_SENSITIVE, true),
-		pkcs11.NewAttribute(pkcs11.CKA_EXTRACTABLE, false),
-		pkcs11.NewAttribute(pkcs11.CKA_SIGN, true),
-	}
-	priv_attrs = append(priv_attrs, shared_attrs...)
-	pub_attrs = append(pub_attrs, pub_type_specific...)
-	pub_handle, err := token.ctx.CreateObject(token.sh, pub_attrs)
+	pubAttrs := attrConcat(commonAttrs, newPublicKeyAttrs, pubTypeAttrs)
+	privAttrsSensitive := attrConcat(commonAttrs, newPrivateKeyAttrs, privTypeAttrs)
+	pub_handle, err := token.ctx.CreateObject(token.sh, pubAttrs)
 	if err != nil {
 		return nil, err
 	}
-	sensitive_priv_attrs := append(priv_attrs, priv_type_specific...)
-	_, err = token.ctx.CreateObject(token.sh, sensitive_priv_attrs)
+	_, err = token.ctx.CreateObject(token.sh, privAttrsSensitive)
 	if err2, ok := err.(pkcs11.Error); ok && err2 == pkcs11.CKR_TEMPLATE_INCONSISTENT {
 		// Some HSMs don't seem to allow importing private keys directly so use
 		// key wrapping to sneak it in. Exclude the "sensitive" attrs since
 		// only the flags, label etc. are useful for Unwrap
+		privAttrsUnwrap := attrConcat(commonAttrs, newPrivateKeyAttrs)
 		var pk8 []byte
 		pk8, err = pkcs8.MarshalPKCS8PrivateKey(privKey)
 		if err == nil {
-			err = token.importPkcs8(pk8, priv_attrs)
+			err = token.importPkcs8(pk8, privAttrsUnwrap)
 		}
 	}
 	if err != nil {
@@ -132,4 +134,52 @@ func (token *Token) Import(keyName string, privKey crypto.PrivateKey) (*Key, err
 	}
 	keyConf.Id = hex.EncodeToString(keyId)
 	return token.getKey(keyConf, keyName)
+}
+
+func (token *Token) Generate(keyName string, keyType uint, bits uint) (*Key, error) {
+	token.mutex.Lock()
+	defer token.mutex.Unlock()
+	keyConf, err := token.config.GetKey(keyName)
+	if err != nil {
+		return nil, err
+	}
+	if keyConf.Label == "" {
+		return nil, errors.New("Key attribute 'label' must be defined in order to create an object")
+	}
+	keyId := makeKeyId()
+	if keyId == nil {
+		return nil, errors.New("failed to make key ID")
+	}
+	var pubTypeAttrs []*pkcs11.Attribute
+	var mech *pkcs11.Mechanism
+	switch keyType {
+	case CKK_RSA:
+		pubTypeAttrs, mech, err = rsaGenerateAttrs(bits)
+	case CKK_ECDSA:
+		pubTypeAttrs, mech, err = ecdsaGenerateAttrs(bits)
+	default:
+		return nil, errors.New("Unsupported key type")
+	}
+	if err != nil {
+		return nil, err
+	}
+	commonAttrs := []*pkcs11.Attribute{
+		pkcs11.NewAttribute(pkcs11.CKA_ID, keyId),
+		pkcs11.NewAttribute(pkcs11.CKA_LABEL, keyConf.Label),
+	}
+	pubAttrs := attrConcat(commonAttrs, newPublicKeyAttrs, pubTypeAttrs)
+	privAttrs := attrConcat(commonAttrs, newPrivateKeyAttrs)
+	if _, _, err := token.ctx.GenerateKeyPair(token.sh, []*pkcs11.Mechanism{mech}, pubAttrs, privAttrs); err != nil {
+		return nil, err
+	}
+	keyConf.Id = hex.EncodeToString(keyId)
+	return token.getKey(keyConf, keyName)
+}
+
+func attrConcat(attrSets ...[]*pkcs11.Attribute) []*pkcs11.Attribute {
+	ret := make([]*pkcs11.Attribute, 0)
+	for _, attrs := range attrSets {
+		ret = append(ret, attrs...)
+	}
+	return ret
 }
