@@ -63,6 +63,14 @@ func (s *Server) invokeCommand(request *http.Request, stdin io.Reader, workDir s
 	}
 }
 
+func appendDigest(cmdline []string, request *http.Request) []string {
+	digest := request.URL.Query().Get("digest")
+	if digest != "" {
+		cmdline = append(cmdline, "--digest", digest)
+	}
+	return cmdline
+}
+
 func formatCmdline(cmdline []string) string {
 	words := make([]string, len(cmdline))
 	for i, word := range cmdline {

@@ -52,6 +52,7 @@ var (
 
 func init() {
 	RemoteCmd.AddCommand(SignPgpCmd)
+	shared.AddDigestFlag(SignPgpCmd)
 	SignPgpCmd.Flags().StringVarP(&argPgpUser, "local-user", "u", "", "Specify keyname or cfgfile:keyname")
 	SignPgpCmd.Flags().StringVarP(&argKeyName, "key", "k", "", "Name of key on remote server to use")
 	SignPgpCmd.Flags().StringVarP(&argOutput, "output", "o", "", "Write output to file")
@@ -59,13 +60,13 @@ func init() {
 	SignPgpCmd.Flags().BoolVar(&argPgpNoArmor, "no-armor", false, "Create binary output")
 	SignPgpCmd.Flags().BoolVarP(&argPgpDetached, "detach-sign", "b", false, "Create a detached signature")
 	SignPgpCmd.Flags().BoolVar(&argPgpClearsign, "clearsign", false, "Create a cleartext signature")
+	SignPgpCmd.Flags().StringVar(&shared.ArgDigest, "digest-algo", "", "Digest algorithm")
 
 	SignPgpCmd.Flags().BoolP("sign", "s", false, "(ignored)")
 	SignPgpCmd.Flags().BoolP("verbose", "v", false, "(ignored)")
 	SignPgpCmd.Flags().Bool("no-verbose", false, "(ignored)")
 	SignPgpCmd.Flags().BoolP("quiet", "q", false, "(ignored)")
 	SignPgpCmd.Flags().Bool("no-secmem-warning", false, "(ignored)")
-	SignPgpCmd.Flags().String("digest-algo", "", "(ignored)")
 }
 
 func signPgpCmd(cmd *cobra.Command, args []string) (err error) {
@@ -108,6 +109,9 @@ func signPgpCmd(cmd *cobra.Command, args []string) (err error) {
 	values.Add("sigtype", "pgp")
 	if argPgpArmor && !argPgpNoArmor {
 		values.Add("armor", "1")
+	}
+	if err := setDigestQueryParam(values); err != nil {
+		return err
 	}
 	if argPgpClearsign {
 		// Ask the server to just produce the signature block, not the embedded document

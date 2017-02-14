@@ -31,10 +31,8 @@ import (
 
 type Fileish interface {
 	io.Reader
-	io.ReaderAt
 	io.Writer
 	io.Seeker
-	io.Closer
 	Truncate(size int64) error
 }
 

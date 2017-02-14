@@ -17,10 +17,9 @@
 package remotecmd
 
 import (
-	"archive/zip"
-	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/url"
 	"os"
@@ -28,28 +27,21 @@ import (
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/atomicfile"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs7"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/signjar"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/authenticode"
 )
 
-func signJar() error {
-	inz, err := zip.OpenReader(argFile)
+func signPeCoff() error {
+	if argFile == "-" || argOutput == "-" {
+		return errors.New("--file and --output must be paths, not -")
+	}
+	infile, err := os.Open(argFile)
 	if err != nil {
 		return shared.Fail(err)
 	}
-	defer inz.Close()
-	hash, err := shared.GetDigest()
-	if err != nil {
-		return err
-	}
-	manifest, err := signjar.DigestJar(&inz.Reader, hash)
-	if err != nil {
-		return shared.Fail(err)
-	}
-	infile := bytes.NewReader(manifest)
+	defer infile.Close()
 
 	values := url.Values{}
-	values.Add("sigtype", "jar-manifest")
+	values.Add("sigtype", "pe-coff")
 	values.Add("key", argKeyName)
 	values.Add("filename", path.Base(argFile))
 	if err := setDigestQueryParam(values); err != nil {
@@ -65,27 +57,25 @@ func signJar() error {
 		return shared.Fail(err)
 	}
 
-	certs, err := pkcs7.ParseCertificates(pkcs)
-	if err != nil {
-		return shared.Fail(err)
-	} else if len(certs) == 0 {
-		return shared.Fail(errors.New("pkcs7: did not contain any certificates"))
+	if argOutput == "" {
+		argOutput = argFile
 	}
-	pubkey := certs[0].PublicKey
-	// The server returns an "opaque" signature with the content, extract the content and remove it from the signature
-	pkcs, sigfile, err := pkcs7.ExtractAndDetach(pkcs)
+	outfile, err := atomicfile.New(argOutput)
 	if err != nil {
 		return shared.Fail(err)
 	}
-	w, err := atomicfile.WriteAny(argOutput)
-	if err != nil {
+	defer outfile.Close()
+	if _, err := infile.Seek(0, 0); err != nil {
 		return shared.Fail(err)
 	}
-	if err := signjar.UpdateJar(w, &inz.Reader, argKeyAlias, pubkey, manifest, sigfile, pkcs); err != nil {
+	if _, err := io.Copy(outfile, infile); err != nil {
 		return shared.Fail(err)
 	}
-	inz.Close()
-	if err := w.Commit(); err != nil {
+	if err := authenticode.InsertPESignature(outfile, pkcs); err != nil {
+		return shared.Fail(err)
+	}
+	infile.Close()
+	if err := outfile.Commit(); err != nil {
 		return shared.Fail(err)
 	}
 	fmt.Fprintf(os.Stderr, "Signed %s\n", argFile)

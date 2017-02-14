@@ -24,6 +24,7 @@ import (
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/signrpm"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/p11token/pgptoken"
+	"github.com/sassoftware/go-rpmutils"
 	"github.com/spf13/cobra"
 )
 
@@ -35,6 +36,7 @@ var SignRpmCmd = &cobra.Command{
 
 func init() {
 	shared.RootCmd.AddCommand(SignRpmCmd)
+	shared.AddDigestFlag(SignRpmCmd)
 	SignRpmCmd.Flags().StringVarP(&argKeyName, "key", "k", "", "Name of key section in config file to use")
 	SignRpmCmd.Flags().StringVarP(&argFile, "file", "f", "", "Input RPM file to sign")
 	SignRpmCmd.Flags().StringVarP(&argOutput, "output", "o", "", "Output RPM file")
@@ -46,6 +48,11 @@ func signRpmCmd(cmd *cobra.Command, args []string) (err error) {
 	if argFile == "" {
 		return errors.New("--key and --file are required")
 	}
+	hash, err := shared.GetDigest()
+	if err != nil {
+		return err
+	}
+	config := &rpmutils.SignatureOptions{Hash: hash}
 	var rpmfile *os.File
 	if argFile == "-" {
 		rpmfile = os.Stdin
@@ -65,7 +72,7 @@ func signRpmCmd(cmd *cobra.Command, args []string) (err error) {
 	}
 	var info *signrpm.SigInfo
 	if argJson || argPatch {
-		info, err = signrpm.SignRpmStream(rpmfile, entity.PrivateKey, nil)
+		info, err = signrpm.SignRpmStream(rpmfile, entity.PrivateKey, config)
 		if err != nil {
 			return err
 		}
@@ -91,7 +98,7 @@ func signRpmCmd(cmd *cobra.Command, args []string) (err error) {
 		if argOutput == "" {
 			argOutput = argFile
 		}
-		info, err = signrpm.SignRpmFile(rpmfile, argOutput, entity.PrivateKey, nil)
+		info, err = signrpm.SignRpmFile(rpmfile, argOutput, entity.PrivateKey, config)
 		if err != nil {
 			return err
 		}

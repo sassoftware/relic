@@ -17,33 +17,27 @@
 package server
 
 import (
-	"bytes"
-	"io/ioutil"
 	"net/http"
 	"os"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
 )
 
-func (s *Server) signJar(keyConf *config.KeyConfig, request *http.Request, filename string) (Response, error) {
+func (s *Server) signPeCoff(keyConf *config.KeyConfig, request *http.Request, filename string) (Response, error) {
 	cmdline := []string{
 		os.Args[0],
-		"sign-jar-manifest",
+		"sign-pe",
 		"--config", s.Config.Path(),
 		"--key", keyConf.Name(),
+		"--pkcs7",
 		"--file", "-",
 		"--output", "-",
 	}
 	cmdline = appendDigest(cmdline, request)
-	manifest, err := ioutil.ReadAll(request.Body)
-	if err != nil {
-		return nil, err
-	}
-	stdin := bytes.NewReader(manifest)
-	stdout, response, err := s.invokeCommand(request, stdin, "", false, keyConf.GetTimeout(), cmdline)
+	stdout, response, err := s.invokeCommand(request, request.Body, "", false, keyConf.GetTimeout(), cmdline)
 	if response != nil || err != nil {
 		return response, err
 	}
-	s.Logr(request, "signed jar manifest: filename=%s key=%s size=%d", filename, keyConf.Name(), stdin.Size())
+	s.Logr(request, "Signed package: filename=%s key=%s", filename, keyConf.Name())
 	return BytesResponse(stdout, "application/pkcs7-mime"), nil
 }

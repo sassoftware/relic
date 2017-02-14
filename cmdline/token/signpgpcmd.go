@@ -49,6 +49,7 @@ var (
 
 func init() {
 	shared.RootCmd.AddCommand(SignPgpCmd)
+	shared.AddDigestFlag(SignPgpCmd)
 	SignPgpCmd.Flags().StringVarP(&argPgpUser, "local-user", "u", "", "Specify keyname or cfgfile:keyname")
 	SignPgpCmd.Flags().StringVarP(&argKeyName, "key", "k", "", "Name of key section in config file to use")
 	SignPgpCmd.Flags().StringVarP(&argOutput, "output", "o", "", "Write output to file")
@@ -58,19 +59,24 @@ func init() {
 	SignPgpCmd.Flags().BoolVarP(&argPgpDetached, "detach-sign", "b", false, "Create a detached signature")
 	SignPgpCmd.Flags().BoolVar(&argPgpClearsign, "clearsign", false, "Create a cleartext signature")
 	SignPgpCmd.Flags().BoolVar(&argPgpMiniClear, "mini-clear", false, "Create a cleartext signature without the embedded document")
+	SignPgpCmd.Flags().StringVar(&shared.ArgDigest, "digest-algo", "", "Digest algorithm")
 
 	SignPgpCmd.Flags().BoolP("sign", "s", false, "(ignored)")
 	SignPgpCmd.Flags().BoolP("verbose", "v", false, "(ignored)")
 	SignPgpCmd.Flags().Bool("no-verbose", false, "(ignored)")
 	SignPgpCmd.Flags().BoolP("quiet", "q", false, "(ignored)")
 	SignPgpCmd.Flags().Bool("no-secmem-warning", false, "(ignored)")
-	SignPgpCmd.Flags().String("digest-algo", "", "(ignored)")
 }
 
 func signPgpCmd(cmd *cobra.Command, args []string) (err error) {
 	if !argPgpDetached && !argPgpClearsign && !argPgpMiniClear {
 		return errors.New("--detach-sign or --clearsign must be set")
 	}
+	hash, err := shared.GetDigest()
+	if err != nil {
+		return err
+	}
+	config := &packet.Config{DefaultHash: hash}
 	if argKeyName == "" {
 		if argPgpUser == "" {
 			return errors.New("-u must be set to a keyname or cfgpath:keyname")
@@ -91,7 +97,6 @@ func signPgpCmd(cmd *cobra.Command, args []string) (err error) {
 	if err != nil {
 		return err
 	}
-	config := &packet.Config{}
 
 	var infile *os.File
 	if len(args) == 0 || (len(args) == 1 && args[0] == "-") {
@@ -121,18 +126,18 @@ func signPgpCmd(cmd *cobra.Command, args []string) (err error) {
 		err = pgptools.ClearSign(out, entity, infile, config)
 	} else if argPgpArmor && !argPgpNoArmor {
 		if argPgpTextMode {
-			err = openpgp.ArmoredDetachSignText(out, entity, infile, nil)
+			err = openpgp.ArmoredDetachSignText(out, entity, infile, config)
 		} else {
-			err = openpgp.ArmoredDetachSign(out, entity, infile, nil)
+			err = openpgp.ArmoredDetachSign(out, entity, infile, config)
 		}
 		if err == nil {
 			_, err = out.Write([]byte{'\n'})
 		}
 	} else {
 		if argPgpTextMode {
-			err = openpgp.DetachSignText(out, entity, infile, nil)
+			err = openpgp.DetachSignText(out, entity, infile, config)
 		} else {
-			err = openpgp.DetachSign(out, entity, infile, nil)
+			err = openpgp.DetachSign(out, entity, infile, config)
 		}
 	}
 	return err

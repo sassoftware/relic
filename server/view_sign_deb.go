@@ -32,6 +32,7 @@ func (s *Server) signDeb(keyConf *config.KeyConfig, request *http.Request, filen
 		"--file", "-",
 		"--patch",
 	}
+	cmdline = appendDigest(cmdline, request)
 	if role := request.URL.Query().Get("deb-role"); role != "" {
 		cmdline = append(cmdline, "--role", role)
 	}

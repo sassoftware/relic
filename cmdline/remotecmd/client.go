@@ -170,6 +170,17 @@ func doRequest(bases []string, endpoint, method string, query *url.Values, bodyF
 	return
 }
 
+func setDigestQueryParam(query url.Values) error {
+	if shared.ArgDigest == "" {
+		return nil
+	}
+	if _, err := shared.GetDigest(); err != nil {
+		return err
+	}
+	query.Add("digest", shared.ArgDigest)
+	return nil
+}
+
 // Check if an error is something recoverable, i.e. if we should continue to
 // try another server. In practice, anything other than a HTTP 4XX status will
 // result in a retry.

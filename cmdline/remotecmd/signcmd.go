@@ -49,6 +49,7 @@ func init() {
 	SignCmd.Flags().StringVarP(&argOutput, "output", "o", "", "Output file. Defaults to same as --file.")
 	SignCmd.Flags().StringVar(&argKeyAlias, "key-alias", "RELIC", "Alias to use for signed manifests (JAR only)")
 	SignCmd.Flags().StringVar(&argRole, "role", "", "Debian package signing role (DEB only)")
+	shared.AddDigestFlag(SignCmd)
 }
 
 func signCmd(cmd *cobra.Command, args []string) (err error) {
@@ -59,8 +60,11 @@ func signCmd(cmd *cobra.Command, args []string) (err error) {
 		argOutput = argFile
 	}
 	exten := strings.ToLower(path.Ext(argFile))
-	if exten == ".jar" {
+	switch exten {
+	case ".jar":
 		return signJar()
+	case ".acm", ".ax", ".cpl", ".dll", ".drv", ".efi", ".exe", ".ocx", ".scr", ".sys", ".tsp":
+		return signPeCoff()
 	}
 	// open for writing so in-place patch works
 	infile, err := os.OpenFile(argFile, os.O_RDWR, 0)
@@ -73,6 +77,9 @@ func signCmd(cmd *cobra.Command, args []string) (err error) {
 	values.Add("filename", path.Base(argFile))
 	if argRole != "" {
 		values.Add("deb-role", argRole)
+	}
+	if err := setDigestQueryParam(values); err != nil {
+		return err
 	}
 
 	response, err := CallRemote("sign", "POST", &values, infile)

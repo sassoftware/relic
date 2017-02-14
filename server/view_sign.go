@@ -46,18 +46,30 @@ func (s *Server) serveSign(request *http.Request, writer http.ResponseWriter) (r
 		return s.signWithTool(keyConf, request, filename, writer)
 	} else if keyConf.Token == "" {
 		return nil, fmt.Errorf("Key %s needs a tool or token setting", keyName)
-	} else if sigType == "pgp" {
+	}
+	switch sigType {
+	case "pgp":
 		return s.signPgp(keyConf, request, filename)
-	} else if sigType == "rpm" || exten == ".rpm" {
+	case "rpm":
 		return s.signRpm(keyConf, request)
-	} else if sigType == "deb" || exten == ".deb" {
+	case "deb":
 		return s.signDeb(keyConf, request, filename)
-	} else if sigType == "jar-manifest" {
+	case "jar-manifest":
 		return s.signJar(keyConf, request, filename)
-	} else if sigType != "" {
+	case "pe-coff":
+		return s.signPeCoff(keyConf, request, filename)
+	case "":
+		// look at filename
+	default:
 		s.Logr(request, "error: unknown sigtype: sigtype=%s key=%s", sigType, keyName)
 		return StringResponse(http.StatusBadRequest, "unknown sigtype"), nil
-	} else {
+	}
+	switch exten {
+	case ".rpm":
+		return s.signRpm(keyConf, request)
+	case ".deb":
+		return s.signDeb(keyConf, request, filename)
+	default:
 		s.Logr(request, "error: unknown filetype: filename=%s key=%s", filename, keyName)
 		return StringResponse(http.StatusBadRequest, "unknown filetype for key"), nil
 	}

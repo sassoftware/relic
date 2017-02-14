@@ -22,25 +22,6 @@ import (
 	"io"
 )
 
-// read bytes at an offset and return a byte slice
-func readNAt(r io.ReaderAt, offset int64, len int) ([]byte, error) {
-	buf := make([]byte, len)
-	_, err := r.ReadAt(buf, offset)
-	return buf, err
-}
-
-// read a binary structure at an offset
-func readBinaryAt(r io.ReaderAt, offset int64, len int64, value interface{}) error {
-	sr := io.NewSectionReader(r, offset, len)
-	size := binary.Size(value)
-	reader := io.Reader(sr)
-	empty := int64(size) - len
-	if empty > 0 {
-		reader = io.MultiReader(reader, bytes.NewBuffer(make([]byte, int(empty))))
-	}
-	return binary.Read(sr, binary.LittleEndian, value)
-}
-
 // read bytes from a stream and return a byte slice, also feeding a hash
 func readAndHash(r io.Reader, d io.Writer, n int) ([]byte, error) {
 	if n == 0 {

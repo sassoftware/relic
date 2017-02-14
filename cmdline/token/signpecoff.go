@@ -34,33 +34,49 @@ var SignPeCmd = &cobra.Command{
 	RunE:  signPeCmd,
 }
 
+var argPkcs7 bool
+
 func init() {
 	shared.RootCmd.AddCommand(SignPeCmd)
 	shared.AddDigestFlag(SignPeCmd)
 	SignPeCmd.Flags().StringVarP(&argKeyName, "key", "k", "", "Name of key section in config file to use")
 	SignPeCmd.Flags().StringVarP(&argFile, "file", "f", "", "Input file to sign")
 	SignPeCmd.Flags().StringVarP(&argOutput, "output", "o", "", "Output file. Defaults to same as input.")
+	SignPeCmd.Flags().BoolVar(&argPkcs7, "pkcs7", false, "Emit PKCS7 signature instead of the signed executable")
 }
 
 func signPeCmd(cmd *cobra.Command, args []string) (err error) {
 	if argFile == "" {
 		return errors.New("--key and --file are required")
-	} else if argFile == "-" || argOutput == "-" {
+	} else if !argPkcs7 && (argFile == "-" || argOutput == "-") {
 		return errors.New("--file and --output must be paths, not -")
 	}
-	infile, err := os.Open(argFile)
-	if err != nil {
-		return err
+	var infile *os.File
+	if argFile == "-" {
+		infile = os.Stdin
+	} else {
+		infile, err = os.Open(argFile)
+		if err != nil {
+			return err
+		}
+		defer infile.Close()
 	}
-	defer infile.Close()
 	pkcs, err := signPeInput(infile)
 	if err != nil {
 		return err
 	}
-	if argOutput == "" {
-		argOutput = argFile
+	if argPkcs7 {
+		if argOutput == "" {
+			argOutput = "-"
+		}
+		err = atomicfile.WriteFile(argOutput, pkcs)
+		return shared.Fail(err)
+	} else {
+		if argOutput == "" {
+			argOutput = argFile
+		}
+		return writePe(infile, pkcs)
 	}
-	return writePe(infile, pkcs)
 }
 
 func signPeInput(r io.Reader) ([]byte, error) {
@@ -106,6 +122,7 @@ func writePe(infile *os.File, pkcs []byte) error {
 	if err := authenticode.InsertPESignature(outfile, pkcs); err != nil {
 		return shared.Fail(err)
 	}
+	infile.Close()
 	if err := outfile.Commit(); err != nil {
 		return shared.Fail(err)
 	}

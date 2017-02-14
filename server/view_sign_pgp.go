@@ -52,6 +52,7 @@ func (s *Server) signPgp(keyConf *config.KeyConfig, request *http.Request, filen
 	} else {
 		cmdline = append(cmdline, "--detach-sign")
 	}
+	cmdline = appendDigest(cmdline, request)
 	stdout, response, err := s.invokeCommand(request, request.Body, "", false, keyConf.GetTimeout(), cmdline)
 	if response != nil || err != nil {
 		return response, err

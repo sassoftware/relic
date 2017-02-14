@@ -35,6 +35,7 @@ func (s *Server) signRpm(keyConf *config.KeyConfig, request *http.Request) (Resp
 		"--file", "-",
 		"--patch",
 	}
+	cmdline = appendDigest(cmdline, request)
 	stdout, response, err := s.invokeCommand(request, request.Body, "", false, keyConf.GetTimeout(), cmdline)
 	if response != nil || err != nil {
 		return response, err
