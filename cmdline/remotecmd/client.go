@@ -159,7 +159,7 @@ func doRequest(bases []string, endpoint, method string, query *url.Values, bodyF
 			// HTTP error, probably a 503
 			body, _ := ioutil.ReadAll(response.Body)
 			response.Body.Close()
-			err = ResponseError{method, request.URL.String(), response.StatusCode, string(body)}
+			err = ResponseError{method, request.URL.String(), response.Status, response.StatusCode, string(body)}
 		}
 		if isTemporary(err) && i+1 < len(bases) {
 			fmt.Printf("%s\nunable to connect to %s; trying next server\n", err, request.URL)
@@ -209,12 +209,13 @@ type temporary interface {
 type ResponseError struct {
 	Method     string
 	Url        string
+	Status     string
 	StatusCode int
 	BodyText   string
 }
 
 func (e ResponseError) Error() string {
-	return fmt.Sprintf("HTTP error: %s %s: %s\n%s", e.Method, e.Url, e.StatusCode, e.BodyText)
+	return fmt.Sprintf("HTTP error:\n%s %s\n%s\n%s", e.Method, e.Url, e.Status, e.BodyText)
 }
 
 func (e ResponseError) Temporary() bool {

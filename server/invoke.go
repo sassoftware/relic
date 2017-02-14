@@ -58,7 +58,12 @@ func (s *Server) invokeCommand(request *http.Request, stdin io.Reader, workDir s
 		}
 		return nil, StringResponse(http.StatusGatewayTimeout, "Signing command timed out"), nil
 	default:
-		s.Logr(request, "error: invoking signing tool: %s\nCommand: %s\nOutput:\n%s\n\n", err, formatCmdline(cmdline), output)
+	}
+	s.Logr(request, "error: invoking signing tool: %s\nCommand: %s\nOutput:\n%s\n\n", err, formatCmdline(cmdline), output)
+	switch {
+	case strings.Contains(stderr.String(), "no certificate of type"):
+		return nil, StringResponse(http.StatusBadRequest, "key does not support signatures of this type"), nil
+	default:
 		return nil, ErrorResponse(http.StatusInternalServerError), nil
 	}
 }

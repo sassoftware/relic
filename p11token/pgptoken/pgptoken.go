@@ -46,10 +46,10 @@ func readEntity(path string) (*openpgp.Entity, error) {
 }
 
 func KeyFromToken(key *p11token.Key) (*openpgp.Entity, error) {
-	if key.Certificate == "" {
-		return nil, errors.New("'certificate' setting in key configuration must point to a PGP public key file")
+	if key.PgpCertificate == "" {
+		return nil, p11token.ErrNoCertificate{"PGP"}
 	}
-	entity, err := readEntity(key.Certificate)
+	entity, err := readEntity(key.PgpCertificate)
 	if err != nil {
 		return nil, err
 	}

@@ -26,13 +26,14 @@ import (
 )
 
 type Key struct {
-	Name        string
-	Certificate string
-	token       *Token
-	keyType     uint
-	pub         pkcs11.ObjectHandle
-	priv        pkcs11.ObjectHandle
-	pubParsed   crypto.PublicKey
+	Name            string
+	PgpCertificate  string
+	X509Certificate string
+	token           *Token
+	keyType         uint
+	pub             pkcs11.ObjectHandle
+	priv            pkcs11.ObjectHandle
+	pubParsed       crypto.PublicKey
 }
 
 func (token *Token) GetKey(keyName string) (*Key, error) {
@@ -48,9 +49,10 @@ func (token *Token) GetKey(keyName string) (*Key, error) {
 func (token *Token) getKey(keyConf *config.KeyConfig, keyName string) (*Key, error) {
 	var err error
 	key := &Key{
-		Name:        keyName,
-		token:       token,
-		Certificate: keyConf.Certificate,
+		Name:            keyName,
+		token:           token,
+		PgpCertificate:  keyConf.PgpCertificate,
+		X509Certificate: keyConf.X509Certificate,
 	}
 	key.priv, err = token.findKey(keyConf, pkcs11.CKO_PRIVATE_KEY)
 	if err != nil {

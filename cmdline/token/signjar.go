@@ -79,11 +79,11 @@ func signJarCmd(cmd *cobra.Command, args []string) (err error) {
 	}
 	inz, err := zip.OpenReader(argFile)
 	if err != nil {
-		return err
+		return shared.Fail(err)
 	}
 	manifest, err := signjar.DigestJar(&inz.Reader, hash)
 	if err != nil {
-		return err
+		return shared.Fail(err)
 	}
 
 	key, err := openKey(argKeyName)
@@ -92,11 +92,11 @@ func signJarCmd(cmd *cobra.Command, args []string) (err error) {
 	}
 	sigfile, err := signjar.DigestManifest(manifest, hash, argSectionsOnly)
 	if err != nil {
-		return err
+		return shared.Fail(err)
 	}
 	pkcs, err := signAndTimestamp(sigfile, key, hash, !argInlineSignature)
 	if err != nil {
-		return err
+		return shared.Fail(err)
 	}
 
 	if argOutput == "" {
@@ -104,11 +104,11 @@ func signJarCmd(cmd *cobra.Command, args []string) (err error) {
 	}
 	w, err := atomicfile.WriteAny(argOutput)
 	if err != nil {
-		return err
+		return shared.Fail(err)
 	}
 	defer w.Close()
 	if err := signjar.UpdateJar(w, &inz.Reader, argKeyAlias, key.Public(), manifest, sigfile, pkcs); err != nil {
-		return err
+		return shared.Fail(err)
 	}
 	inz.Close()
 	return w.Commit()
@@ -129,7 +129,7 @@ func signJarManifestCmd(cmd *cobra.Command, args []string) (err error) {
 		manifest, err = ioutil.ReadFile(argFile)
 	}
 	if err != nil {
-		return err
+		return shared.Fail(err)
 	}
 
 	key, err := openKey(argKeyName)
@@ -138,16 +138,16 @@ func signJarManifestCmd(cmd *cobra.Command, args []string) (err error) {
 	}
 	sigfile, err := signjar.DigestManifest(manifest, hash, argSectionsOnly)
 	if err != nil {
-		return err
+		return shared.Fail(err)
 	}
 	detach := !argInlineSignature && argSignFileOutput != ""
 	pkcs, err := signAndTimestamp(sigfile, key, hash, detach)
 	if err != nil {
-		return err
+		return shared.Fail(err)
 	}
 	if argSignFileOutput != "" {
 		if err := ioutil.WriteFile(argSignFileOutput, sigfile, 0666); err != nil {
-			return err
+			return shared.Fail(err)
 		}
 	}
 
@@ -156,5 +156,5 @@ func signJarManifestCmd(cmd *cobra.Command, args []string) (err error) {
 	} else {
 		err = ioutil.WriteFile(argOutput, pkcs, 0666)
 	}
-	return err
+	return shared.Fail(err)
 }

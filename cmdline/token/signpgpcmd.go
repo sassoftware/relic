@@ -95,7 +95,7 @@ func signPgpCmd(cmd *cobra.Command, args []string) (err error) {
 	}
 	entity, err := pgptoken.KeyFromToken(key)
 	if err != nil {
-		return err
+		return shared.Fail(err)
 	}
 
 	var infile *os.File

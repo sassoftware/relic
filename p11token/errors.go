@@ -27,3 +27,11 @@ type PinIncorrectError struct{}
 func (PinIncorrectError) Error() string {
 	return "The entered PIN was incorrect"
 }
+
+type ErrNoCertificate struct {
+	Type string
+}
+
+func (e ErrNoCertificate) Error() string {
+	return "no certificate of type \"" + e.Type + "\" defined for this key"
+}

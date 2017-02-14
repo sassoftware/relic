@@ -35,7 +35,10 @@ import (
 )
 
 func readCerts(key *p11token.Key) ([]*x509.Certificate, error) {
-	certblob, err := ioutil.ReadFile(key.Certificate)
+	if key.X509Certificate == "" {
+		return nil, p11token.ErrNoCertificate{"X509"}
+	}
+	certblob, err := ioutil.ReadFile(key.X509Certificate)
 	if err != nil {
 		return nil, err
 	}
