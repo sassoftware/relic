@@ -39,6 +39,7 @@ var SignCmd = &cobra.Command{
 
 var (
 	argKeyAlias string
+	argRole     string
 )
 
 func init() {
@@ -47,6 +48,7 @@ func init() {
 	SignCmd.Flags().StringVarP(&argFile, "file", "f", "", "Input file to sign")
 	SignCmd.Flags().StringVarP(&argOutput, "output", "o", "", "Output file. Defaults to same as --file.")
 	SignCmd.Flags().StringVar(&argKeyAlias, "key-alias", "RELIC", "Alias to use for signed manifests (JAR only)")
+	SignCmd.Flags().StringVar(&argRole, "role", "", "Debian package signing role (DEB only)")
 }
 
 func signCmd(cmd *cobra.Command, args []string) (err error) {
@@ -69,6 +71,9 @@ func signCmd(cmd *cobra.Command, args []string) (err error) {
 	values := url.Values{}
 	values.Add("key", argKeyName)
 	values.Add("filename", path.Base(argFile))
+	if argRole != "" {
+		values.Add("deb-role", argRole)
+	}
 
 	response, err := CallRemote("sign", "POST", &values, infile)
 	if err != nil {

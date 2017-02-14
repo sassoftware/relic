@@ -33,6 +33,8 @@ var SignDebCmd = &cobra.Command{
 	RunE:  signDebCmd,
 }
 
+var argRole string
+
 func init() {
 	shared.RootCmd.AddCommand(SignDebCmd)
 	shared.AddDigestFlag(SignDebCmd)
@@ -40,6 +42,7 @@ func init() {
 	SignDebCmd.Flags().StringVarP(&argFile, "file", "f", "", "Input file to sign")
 	SignDebCmd.Flags().StringVarP(&argOutput, "output", "o", "", "Output file")
 	SignDebCmd.Flags().BoolVarP(&argPatch, "patch", "p", false, "Write a binary patch instead of an updated file")
+	SignDebCmd.Flags().StringVarP(&argRole, "role", "r", "builder", "Debian signing role: origin, maint, archive, etc.")
 }
 
 func signDebCmd(cmd *cobra.Command, args []string) (err error) {
@@ -63,7 +66,7 @@ func signDebCmd(cmd *cobra.Command, args []string) (err error) {
 	if err != nil {
 		return shared.Fail(err)
 	}
-	patch, err := signdeb.Sign(inFile, entity, hash, "builder")
+	patch, err := signdeb.Sign(inFile, entity, hash, argRole)
 	if err != nil {
 		return shared.Fail(err)
 	}

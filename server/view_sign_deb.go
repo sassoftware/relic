@@ -32,6 +32,9 @@ func (s *Server) signDeb(keyConf *config.KeyConfig, request *http.Request, filen
 		"--file", "-",
 		"--patch",
 	}
+	if role := request.URL.Query().Get("deb-role"); role != "" {
+		cmdline = append(cmdline, "--role", role)
+	}
 	stdout, response, err := s.invokeCommand(request, request.Body, "", false, keyConf.GetTimeout(), cmdline)
 	if response != nil || err != nil {
 		return response, err
