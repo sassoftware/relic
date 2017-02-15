@@ -17,46 +17,43 @@
 package verify
 
 import (
-	"bytes"
 	"crypto/x509"
 	"encoding/asn1"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"os"
-	"os/exec"
-	"path"
-	"strings"
 
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/comdoc"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs7"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs9"
 )
+
+const msiSigName = "\x05DigitalSignature"
 
 func verifyMsi(f *os.File) error {
 	if !argNoIntegrityCheck {
 		return errors.New("msi integrity check not supported yet, use --no-integrity-check")
 	}
-	scratchDir, err := ioutil.TempDir("", "relic-")
+	cdf, err := comdoc.NewReader(f)
 	if err != nil {
 		return err
 	}
-	defer os.RemoveAll(scratchDir)
-	var stderr bytes.Buffer
-	proc := exec.Command("msidump", "-s", "-d", scratchDir, f.Name())
-	proc.Stderr = &stderr
-	err = proc.Run()
-	if err != nil {
-		if strings.Contains(err.Error(), "executable file not found") {
-			return errors.New("msidump not found, please install msitools")
+	var der []byte
+	for _, info := range cdf.Files {
+		if info.Name() == msiSigName {
+			r, err := cdf.ReadStream(info)
+			if err != nil {
+				return err
+			}
+			der, err = ioutil.ReadAll(r)
+			if err != nil {
+				return err
+			}
+			break
 		}
-		return fmt.Errorf("%s\nStandard error:\n%s", err, stderr.String())
 	}
-	der, err := ioutil.ReadFile(path.Join(scratchDir, "_Streams", "\x05DigitalSignature"))
-	if err != nil {
-		if os.IsNotExist(err) {
-			return errors.New("msi is not signed")
-		}
-		return err
+	if len(der) == 0 {
+		return errors.New("MSI is not signed")
 	}
 	var psd pkcs7.ContentInfoSignedData
 	if _, err := asn1.Unmarshal(der, &psd); err != nil {

@@ -6,7 +6,7 @@ export GO15VENDOREXPERIMENT=1
 export PATH=$GOPATH/bin:$GOROOT/bin:$PATH
 rm -rf $WORKDIR/build
 
-go get -v github.com/Masterminds/glide
+[ -x $GOPATH/bin/glide ] || go get -v github.com/Masterminds/glide
 
 module=$(cd checkout && glide name 2>/dev/null)
 version=$(cd checkout && git describe --tags |sed -e 's/-\([0-9]*\).*/.\1/')

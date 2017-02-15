@@ -46,9 +46,10 @@ func (keyConf *KeyConfig) GetToolCmd(file string) ([]string, error) {
 	}
 	for i, word := range words {
 		word = strings.Replace(word, "{file}", file, -1)
-		word = strings.Replace(word, "{certificate}", keyConf.X509Certificate, -1)
-		word = strings.Replace(word, "{pgpcertificate}", keyConf.PgpCertificate, -1)
-		word = strings.Replace(word, "{key}", keyConf.Key, -1)
+		for key, value := range keyConf.Params {
+			key = fmt.Sprintf("{%s}", key)
+			word = strings.Replace(word, key, value, -1)
+		}
 		words[i] = word
 	}
 	return words, nil

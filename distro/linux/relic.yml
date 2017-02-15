@@ -35,11 +35,11 @@ keys:
     label: "label"
     # CKA_ID:
     id: 00112233
-    # Path to a certificate file. This might be:
-    # - PGP public key (ascii-armored or binary)
-    # - X.509 certificate in PEM format, with optional certificate chain
-    certificate: ./keys/rsa1.pub
-    # List of user-roles that are permitted to use this key
+    # Path to a PGP certificate, if PGP signing is desired. Can be ascii-armored or binary.
+    pgpcertificate: ./keys/rsa1.pub
+    # Path to a X509 certificate, if X509 signing is desired. Can be PEM, DER,
+    # or PKCS#7 (p7b) format, with optional certificate chain.
+    x509certificate: ./keys/rsa1.cer
     roles: ['somegroup']
   my_tool_key:
     # Which tool, defined above, to use the key with

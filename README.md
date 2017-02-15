@@ -1,15 +1,27 @@
-relic is a multi-tool for package signing and working with hardware security modules (HSMs).
+relic is a multi-tool and server for package signing and working with PKCS#11 hardware security modules (HSMs).
 
-Its features include:
+It can sign these package types:
 
-* Generating simple PGP keys in a token
-* Signing RPMs using a PGP key in a token
-* Generating X509 certificate requests and self-signed certificates in a token
-* Supports RSA and ECDSA keys
-* Operating as a signing server
-* Remotely invoking arbitrary signing tools, like signtool.exe
+* RPM
+* DEB
+* JAR
+* PE/COFF (Windows executable)
+* PGP (detached or cleartext signature of data)
 
-All features are supported and tested on Linux and Windows, and probably work on other platforms as well.
+Relic can also operate as a signing server, allowing clients to authenticate
+with a TLS certificate and sign packages remotely. Preconfigured tools can also
+be invoked by the server, e.g. signtool.exe, to perform operations not directly
+supported by relic.
+
+Other features include:
+
+* Generating and importing keys in the token
+* Creating X509 certificate signing requests (CSR) and self-signed certificates
+* Creating simple PGP public keys
+* RSA and ECDSA supported for all signature types
+* Verify signatures on all supported package types
+
+Linux and Windows are supported. Other platforms probably work as well.
 
 To install relic:
 
@@ -19,4 +31,4 @@ To install a version without the PKCS#11 features (more easily cross-compileable
 
     go get gerrit-pdt.unx.sas.com/tools/relic.git/relic/relic_notoken
 
-See distro/relic.yml for an example configuration.
+See distro/linux/relic.yml for an example configuration.
