@@ -57,7 +57,7 @@ func OpenFile(path string) (*os.File, error) {
 
 func Fail(err error) error {
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		fmt.Fprintln(os.Stderr, "ERROR:", err)
 		os.Exit(70)
 	}
 	return err

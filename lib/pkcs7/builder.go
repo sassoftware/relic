@@ -51,6 +51,10 @@ func (sb *SignatureBuilder) SetContent(ctype asn1.ObjectIdentifier, data interfa
 	if err != nil {
 		return err
 	}
+	return sb.SetContentInfo(cinfo)
+}
+
+func (sb *SignatureBuilder) SetContentInfo(cinfo ContentInfo) error {
 	blob, err := cinfo.Bytes()
 	if err != nil {
 		return err

@@ -131,6 +131,9 @@ func openToken(tokenName string) (*p11token.Token, error) {
 }
 
 func openTokenByKey(keyName string) (*p11token.Token, error) {
+	if keyName == "" {
+		return nil, errors.New("--key is a required parameter")
+	}
 	err := shared.InitConfig()
 	if err != nil {
 		return nil, err
