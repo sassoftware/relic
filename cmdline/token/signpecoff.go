@@ -17,7 +17,6 @@
 package token
 
 import (
-	"crypto"
 	"errors"
 	"io"
 	"os"
@@ -34,7 +33,10 @@ var SignPeCmd = &cobra.Command{
 	RunE:  signPeCmd,
 }
 
-var argPkcs7 bool
+var (
+	argPkcs7      bool
+	argPageHashes bool
+)
 
 func init() {
 	shared.RootCmd.AddCommand(SignPeCmd)
@@ -43,6 +45,7 @@ func init() {
 	SignPeCmd.Flags().StringVarP(&argFile, "file", "f", "", "Input file to sign")
 	SignPeCmd.Flags().StringVarP(&argOutput, "output", "o", "", "Output file. Defaults to same as input.")
 	SignPeCmd.Flags().BoolVar(&argPkcs7, "pkcs7", false, "Emit PKCS7 signature instead of the signed executable")
+	SignPeCmd.Flags().BoolVar(&argPageHashes, "page-hashes", false, "Add page hashes to signature")
 }
 
 func signPeCmd(cmd *cobra.Command, args []string) (err error) {
@@ -92,11 +95,11 @@ func signPeInput(r io.Reader) ([]byte, error) {
 	if err != nil {
 		return nil, shared.Fail(err)
 	}
-	sums, err := authenticode.DigestPE(r, []crypto.Hash{hash})
+	sum, pagehashes, err := authenticode.DigestPE(r, hash, argPageHashes)
 	if err != nil {
 		return nil, shared.Fail(err)
 	}
-	psd, err := authenticode.SignImprint(sums[0], key, certs, hash)
+	psd, err := authenticode.SignImprint(sum, hash, pagehashes, hash, key, certs)
 	if err != nil {
 		return nil, shared.Fail(err)
 	}

@@ -34,52 +34,53 @@ import (
 
 type PESignature struct {
 	pkcs9.TimestampedSignature
-	Indirect  SpcIndirectDataContent
-	ImageHash crypto.Hash
+	Indirect      *SpcIndirectDataContent
+	ImageHashFunc crypto.Hash
+	PageHashes    []byte
+	PageHashFunc  crypto.Hash
 }
 
 func VerifyPE(r io.ReadSeeker, skipDigests bool) ([]PESignature, error) {
-	_, certStart, certSize, err := findSignatures(r)
+	hvals, err := findSignatures(r)
 	if err != nil {
 		return nil, err
-	} else if certSize == 0 {
+	} else if hvals.certSize == 0 {
 		return nil, errors.New("image does not contain any signatures")
 	}
 	// Read certificate table
-	sigblob := make([]byte, certSize)
-	r.Seek(certStart, 0)
+	sigblob := make([]byte, hvals.certSize)
+	r.Seek(hvals.certStart, 0)
 	if _, err := io.ReadFull(r, sigblob); err != nil {
 		return nil, err
 	}
 	// Parse and verify signatures
 	if skipDigests {
 		r = nil
-	} else {
-		r.Seek(0, 0)
 	}
 	return checkSignatures(sigblob, r)
 }
 
-func findSignatures(r io.ReadSeeker) (posDDCert, certStart, certSize int64, err error) {
+func findSignatures(r io.ReadSeeker) (*peHeaderValues, error) {
 	if _, err := r.Seek(0, 0); err != nil {
-		return 0, 0, 0, err
+		return nil, err
 	}
 	d := ioutil.Discard
 	peStart, err := readDosHeader(r, d)
 	if err != nil {
-		return 0, 0, 0, err
+		return nil, err
 	}
 	r.Seek(peStart, 0)
 	fh, err := readCoffHeader(r, d)
 	if err != nil {
-		return 0, 0, 0, err
+		return nil, err
 	}
-	posDDCert, _, _, certStart, certSize, err = readOptHeader(r, d, peStart, fh)
-	return
+	return readOptHeader(r, d, peStart, fh)
 }
 
-func checkSignatures(blob []byte, image io.Reader) ([]PESignature, error) {
-	values := make(map[crypto.Hash][]byte, 1)
+func checkSignatures(blob []byte, image io.ReadSeeker) ([]PESignature, error) {
+	values := make(map[crypto.Hash][]byte)
+	phvalues := make(map[crypto.Hash][]byte)
+	allhashes := make(map[crypto.Hash]bool)
 	sigs := make([]PESignature, 0, 1)
 	for len(blob) != 0 {
 		wLen := binary.LittleEndian.Uint32(blob[:4])
@@ -95,33 +96,39 @@ func checkSignatures(blob []byte, image io.Reader) ([]PESignature, error) {
 		if err != nil {
 			return nil, err
 		}
-		sigs = append(sigs, *sig)
-		if image == nil {
-			continue
+		allhashes[sig.ImageHashFunc] = true
+		if len(sig.PageHashes) > 0 {
+			phvalues[sig.PageHashFunc] = sig.PageHashes
+			allhashes[sig.PageHashFunc] = true
 		}
+		sigs = append(sigs, *sig)
 		imageDigest := sig.Indirect.MessageDigest.Digest
-		if existing := values[sig.ImageHash]; existing == nil {
-			values[sig.ImageHash] = imageDigest
+		if existing := values[sig.ImageHashFunc]; existing == nil {
+			values[sig.ImageHashFunc] = imageDigest
 		} else if !hmac.Equal(imageDigest, existing) {
 			// they can't both be right...
 			return nil, fmt.Errorf("digest mismatch: %x != %x", imageDigest, existing)
 		}
 	}
-	if image != nil {
-		hashes := make([]crypto.Hash, 0, len(values))
-		for hash := range values {
-			hashes = append(hashes, hash)
+	if image == nil {
+		return sigs, nil
+	}
+	for hash := range allhashes {
+		imagehash := values[hash]
+		pagehashes := phvalues[hash]
+		if _, err := image.Seek(0, 0); err != nil {
+			return nil, err
 		}
-		sums, err := DigestPE(image, hashes)
+		doPageHashes := len(pagehashes) > 0
+		calc, calcph, err := DigestPE(image, hash, doPageHashes)
 		if err != nil {
 			return nil, err
 		}
-		for i, hash := range hashes {
-			value := values[hash]
-			calc := sums[i]
-			if !hmac.Equal(calc, value) {
-				return nil, fmt.Errorf("digest mismatch: %x != %x", calc, value)
-			}
+		if imagehash != nil && !hmac.Equal(calc, imagehash) {
+			return nil, fmt.Errorf("digest mismatch: %x != %x", calc, imagehash)
+		}
+		if pagehashes != nil && !hmac.Equal(calcph, pagehashes) {
+			return nil, fmt.Errorf("page hash mismatch")
 		}
 	}
 	return sigs, nil
@@ -145,17 +152,52 @@ func checkSignature(der []byte) (*PESignature, error) {
 	if err != nil {
 		return nil, err
 	}
-	var indirect SpcIndirectDataContent
-	if err := psd.Content.ContentInfo.Unmarshal(&indirect); err != nil {
+	indirect := new(SpcIndirectDataContent)
+	if err := psd.Content.ContentInfo.Unmarshal(indirect); err != nil {
 		return nil, err
 	}
 	hash, ok := x509tools.PkixDigestToHash(indirect.MessageDigest.DigestAlgorithm)
 	if !ok || !hash.Available() {
 		return nil, fmt.Errorf("unsupported hash algorithm %s", indirect.MessageDigest.DigestAlgorithm.Algorithm)
 	}
-	return &PESignature{
+	pesig := &PESignature{
 		TimestampedSignature: ts,
 		Indirect:             indirect,
-		ImageHash:            hash,
-	}, nil
+		ImageHashFunc:        hash,
+	}
+	if err := readPageHashes(pesig); err != nil {
+		return nil, err
+	}
+	return pesig, nil
+}
+
+func readPageHashes(sig *PESignature) error {
+	serObj := sig.Indirect.Data.Value.File.Moniker
+	if !bytes.Equal(serObj.ClassId, SpcUuidPageHashes) {
+		// not present
+		return nil
+	}
+	// unnecessary SET wrapped around the solitary attribute SEQ
+	var attrRaw asn1.RawValue
+	if _, err := asn1.Unmarshal(serObj.SerializedData, &attrRaw); err != nil {
+		return err
+	}
+	var attr SpcAttributePageHashes
+	if _, err := asn1.Unmarshal(attrRaw.Bytes, &attr); err != nil {
+		return err
+	}
+	switch {
+	case attr.Type.Equal(OidSpcPageHashV1):
+		sig.PageHashFunc = crypto.SHA1
+	case attr.Type.Equal(OidSpcPageHashV2):
+		sig.PageHashFunc = crypto.SHA256
+	default:
+		return errors.New("unknown page hash format")
+	}
+	// unnecessary SET wrapped around the octets too
+	sig.PageHashes = attr.Hashes[0]
+	if len(sig.PageHashes) == 0 || len(sig.PageHashes)%(4+sig.PageHashFunc.Size()) != 0 {
+		return errors.New("malformed page hash")
+	}
+	return nil
 }

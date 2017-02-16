@@ -24,7 +24,7 @@ import (
 	"path"
 )
 
-type AtomicFile interface {
+type Fileish interface {
 	io.Reader
 	io.ReaderAt
 	io.Writer
@@ -32,6 +32,10 @@ type AtomicFile interface {
 	io.Seeker
 	io.Closer
 	Truncate(size int64) error
+}
+
+type AtomicFile interface {
+	Fileish
 	Commit() error
 }
 

@@ -38,8 +38,9 @@ var SignCmd = &cobra.Command{
 }
 
 var (
-	argKeyAlias string
-	argRole     string
+	argKeyAlias   string
+	argRole       string
+	argPageHashes bool
 )
 
 func init() {
@@ -49,6 +50,7 @@ func init() {
 	SignCmd.Flags().StringVarP(&argOutput, "output", "o", "", "Output file. Defaults to same as --file.")
 	SignCmd.Flags().StringVar(&argKeyAlias, "key-alias", "RELIC", "Alias to use for signed manifests (JAR only)")
 	SignCmd.Flags().StringVar(&argRole, "role", "", "Debian package signing role (DEB only)")
+	SignCmd.Flags().BoolVar(&argPageHashes, "page-hashes", false, "Add page hashes (PE only)")
 	shared.AddDigestFlag(SignCmd)
 }
 

@@ -21,22 +21,17 @@ import (
 	"crypto"
 	"crypto/x509"
 	"debug/pe"
+	"encoding/asn1"
 	"encoding/binary"
 	"errors"
 	"io"
 
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/atomicfile"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs7"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
 )
 
-type Fileish interface {
-	io.Reader
-	io.Writer
-	io.Seeker
-	Truncate(size int64) error
-}
-
-func SignImprint(digest []byte, privKey crypto.Signer, certs []*x509.Certificate, hash crypto.Hash) (*pkcs7.ContentInfoSignedData, error) {
+func SignImprint(digest []byte, hash crypto.Hash, pagehashes []byte, pagehashfunc crypto.Hash, privKey crypto.Signer, certs []*x509.Certificate) (*pkcs7.ContentInfoSignedData, error) {
 	alg, ok := x509tools.PkixDigestAlgorithm(hash)
 	if !ok {
 		return nil, errors.New("unsupported digest algorithm")
@@ -44,9 +39,15 @@ func SignImprint(digest []byte, privKey crypto.Signer, certs []*x509.Certificate
 	var indirect SpcIndirectDataContent
 	indirect.Data.Type = OidSpcPeImageData
 	//indirect.Data.Value.Flags = asn1.BitString{[]byte{0x80}, 1}
-	indirect.Data.Value.File.File.Unicode = "<<<Obsolete>>>"
 	indirect.MessageDigest.Digest = digest
 	indirect.MessageDigest.DigestAlgorithm = alg
+	if len(pagehashes) > 0 {
+		if err := imprintPageHashes(&indirect, pagehashes, pagehashfunc); err != nil {
+			return nil, err
+		}
+	} else {
+		indirect.Data.Value.File.File.Unicode = "<<<Obsolete>>>"
+	}
 	sig := pkcs7.NewBuilder(privKey, certs, hash)
 	if err := sig.SetContent(OidSpcIndirectDataContent, indirect); err != nil {
 		return nil, err
@@ -57,7 +58,33 @@ func SignImprint(digest []byte, privKey crypto.Signer, certs []*x509.Certificate
 	return sig.Sign()
 }
 
-func InsertPESignature(f Fileish, sig []byte) error {
+func imprintPageHashes(indirect *SpcIndirectDataContent, pagehashes []byte, hash crypto.Hash) error {
+	var attr SpcAttributePageHashes
+	switch hash {
+	case crypto.SHA1:
+		attr.Type = OidSpcPageHashV1
+	case crypto.SHA256:
+		attr.Type = OidSpcPageHashV2
+	default:
+		return errors.New("unsupported page hash type")
+	}
+	attr.Hashes = make([][]byte, 1)
+	attr.Hashes[0] = pagehashes
+	blob, err := asn1.Marshal(attr)
+	if err != nil {
+		return err
+	}
+	attrRaw := asn1.RawValue{Tag: asn1.TagSet, IsCompound: true, Bytes: blob}
+	serdata, err := asn1.Marshal(attrRaw)
+	if err != nil {
+		return err
+	}
+	indirect.Data.Value.File.Moniker.ClassId = SpcUuidPageHashes
+	indirect.Data.Value.File.Moniker.SerializedData = serdata
+	return nil
+}
+
+func InsertPESignature(f atomicfile.Fileish, sig []byte) error {
 	// pack new cert table
 	padded := (len(sig) + 7) / 8 * 8
 	info := certInfo{
@@ -75,16 +102,16 @@ func InsertPESignature(f Fileish, sig []byte) error {
 	if err != nil {
 		return err
 	}
-	posDDCert, certStart, certSize, err := findSignatures(f)
-	if certSize != 0 {
-		if certStart+certSize != fileSize {
+	hvals, err := findSignatures(f)
+	if hvals.certSize != 0 {
+		if hvals.certStart+hvals.certSize != fileSize {
 			// Even though the signature covers data coming after the
 			// certificate table, there's no way to actually relocate that data
 			// to make room for a bigger or smaller sig without potentially
 			// breaking whatever it is the image does with the data.
 			return errors.New("can't re-sign an image that has data after the existing signature")
 		}
-		fileSize = certStart
+		fileSize = hvals.certStart
 	}
 	if fileSize >= (1 << 32) {
 		return errors.New("PE file is too big")
@@ -101,13 +128,22 @@ func InsertPESignature(f Fileish, sig []byte) error {
 		return err
 	}
 	// go back and update the headers
-	if _, err := f.Seek(posDDCert, 0); err != nil {
+	if _, err := f.Seek(hvals.posDDCert, 0); err != nil {
 		return err
 	}
 	if err := binary.Write(f, binary.LittleEndian, dd); err != nil {
 		return err
 	}
-	// TODO: checksum
+	ck := NewPEChecksum(int(hvals.peStart))
+	if _, err := f.Seek(0, 0); err != nil {
+		return err
+	}
+	if _, err := io.Copy(ck, f); err != nil {
+		return err
+	}
+	if _, err := f.WriteAt(ck.Sum(nil), hvals.peStart+88); err != nil {
+		return err
+	}
 	return nil
 }
 

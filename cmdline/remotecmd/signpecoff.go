@@ -17,6 +17,7 @@
 package remotecmd
 
 import (
+	"crypto"
 	"errors"
 	"fmt"
 	"io"
@@ -46,6 +47,13 @@ func signPeCoff() error {
 	values.Add("filename", path.Base(argFile))
 	if err := setDigestQueryParam(values); err != nil {
 		return err
+	}
+	if argPageHashes {
+		digest, _ := shared.GetDigest()
+		if digest != crypto.SHA256 && digest != crypto.SHA1 {
+			return errors.New("when --page-hashes is set, SHA1 or SHA256 must be used")
+		}
+		values.Add("page-hashes", "1")
 	}
 	response, err := CallRemote("sign", "POST", &values, infile)
 	if err != nil {

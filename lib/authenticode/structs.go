@@ -25,6 +25,10 @@ var (
 	OidSpcIndirectDataContent = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 2, 1, 4}
 	OidSpcSpOpusInfo          = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 2, 1, 12}
 	OidSpcPeImageData         = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 2, 1, 15}
+	OidSpcPageHashV1          = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 2, 3, 1}
+	OidSpcPageHashV2          = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 2, 3, 2}
+
+	SpcUuidPageHashes = []byte{0xa6, 0xb5, 0x86, 0xd5, 0xb4, 0xa1, 0x24, 0x66, 0xae, 0x05, 0xa2, 0x17, 0xda, 0x8e, 0x60, 0xd6}
 )
 
 type SpcIndirectDataContent struct {
@@ -59,8 +63,13 @@ type SpcString struct {
 }
 
 type SpcSerializedObject struct {
-	// not implemented
-	Raw asn1.RawValue
+	ClassId        []byte
+	SerializedData []byte
+}
+
+type SpcAttributePageHashes struct {
+	Type   asn1.ObjectIdentifier
+	Hashes [][]byte `asn1:"set"`
 }
 
 type SpcSpOpusInfo struct {

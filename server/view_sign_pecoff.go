@@ -34,6 +34,9 @@ func (s *Server) signPeCoff(keyConf *config.KeyConfig, request *http.Request, fi
 		"--output", "-",
 	}
 	cmdline = appendDigest(cmdline, request)
+	if request.URL.Query().Get("page-hashes") != "" {
+		cmdline = append(cmdline, "--page-hashes")
+	}
 	stdout, response, err := s.invokeCommand(request, request.Body, "", false, keyConf.GetTimeout(), cmdline)
 	if response != nil || err != nil {
 		return response, err

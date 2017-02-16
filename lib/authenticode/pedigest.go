@@ -17,6 +17,7 @@
 package authenticode
 
 import (
+	"bytes"
 	"crypto"
 	"debug/pe"
 	"encoding/binary"
@@ -29,44 +30,135 @@ import (
 // PE-COFF: https://www.microsoft.com/en-us/download/details.aspx?id=19509
 // PE Authenticode: http://msdn.microsoft.com/en-us/windows/hardware/gg463180.aspx
 
-// Calculate a digest (message imprint) over a PE image.
-// To keep things simple, this won't work if the sections are out-of-order
-func DigestPE(r io.Reader, hashes []crypto.Hash) ([][]byte, error) {
-	digesters := make([]hash.Hash, len(hashes))
-	writers := make([]io.Writer, len(hashes))
-	for i, hash := range hashes {
-		h := hash.New()
-		digesters[i] = h
-		writers[i] = h
-	}
-	d := io.MultiWriter(writers...)
-	peStart, err := readDosHeader(r, d)
+// Calculate a digest (message imprint) over a PE image
+func DigestPE(r io.Reader, hash crypto.Hash, doPageHash bool) ([]byte, []byte, error) {
+	// Read and buffer all the headers
+	buf := bytes.NewBuffer(make([]byte, 0, 4096))
+	peStart, err := readDosHeader(r, buf)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	if _, err := io.CopyN(d, r, peStart-96); err != nil {
-		return nil, err
+	if _, err := io.CopyN(buf, r, peStart-96); err != nil {
+		return nil, nil, err
 	}
-	fh, err := readCoffHeader(r, d)
+	fh, err := readCoffHeader(r, buf)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	_, secTblStart, sizeOfHdr, certStart, certSize, err := readOptHeader(r, d, peStart, fh)
+	hvals, err := readOptHeader(r, buf, peStart, fh)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	lastSection, err := readSections(r, d, fh, secTblStart, sizeOfHdr)
+	sections, err := readSections(r, buf, fh, hvals)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	if err := readTrailer(r, d, lastSection, certStart, certSize); err != nil {
-		return nil, err
+	digester := setupDigester(hash, buf.Bytes(), hvals, sections, doPageHash)
+	// Hash sections
+	nextSection := hvals.sizeOfHdr
+	for _, sh := range sections {
+		if sh.SizeOfRawData == 0 {
+			continue
+		}
+		if int64(sh.PointerToRawData) != nextSection {
+			return nil, nil, errors.New("PE sections are out of order")
+		}
+		if err := digester.section(r, sh); err != nil {
+			return nil, nil, err
+		}
+		nextSection += int64(sh.SizeOfRawData)
 	}
-	sums := make([][]byte, len(digesters))
-	for i, digester := range digesters {
-		sums[i] = digester.Sum(nil)
+	// Hash trailer after the sections and cert table
+	if err := readTrailer(r, digester.imageDigest, nextSection, hvals.certStart, hvals.certSize); err != nil {
+		return nil, nil, err
 	}
-	return sums, nil
+	return digester.finish()
+}
+
+type imageHasher struct {
+	hashFunc    crypto.Hash
+	imageDigest hash.Hash
+	pageHashes  []byte
+	zeroPage    []byte
+	pageBuf     []byte
+	doPageHash  bool
+	lastPage    uint32
+}
+
+func setupDigester(hash crypto.Hash, header []byte, hvals *peHeaderValues, sections []pe.SectionHeader32, doPageHash bool) *imageHasher {
+	imageDigest := hash.New()
+	imageDigest.Write(header)
+	h := &imageHasher{hashFunc: hash, imageDigest: imageDigest, doPageHash: doPageHash}
+	if doPageHash {
+		h.zeroPage = make([]byte, hvals.sectionAlign) // full page of zeroes, for padding
+		h.pageBuf = make([]byte, hvals.sectionAlign)  // scratch space
+		// make space for all the page hashes
+		pages := 2
+		for _, sh := range sections {
+			spage := (sh.SizeOfRawData + uint32(hvals.sectionAlign) - 1) / uint32(hvals.sectionAlign)
+			pages += int(spage)
+		}
+		h.pageHashes = make([]byte, 0, pages*(4+hash.Size()))
+		// the first page is the headers padded out to a full page with the
+		// signature bits snipped out in the same way as for the regular
+		// imprint. the padding is done based on the full size of the
+		// header, so the data being hashed is 12 bytes short of a full
+		// page
+		removed := int(hvals.sizeOfHdr) - len(header)
+		h.addPageHash(0, header, removed)
+	}
+	return h
+}
+
+func (h *imageHasher) section(r io.Reader, sh pe.SectionHeader32) error {
+	if !h.doPageHash {
+		_, err := io.CopyN(h.imageDigest, r, int64(sh.SizeOfRawData))
+		return err
+	}
+	position := sh.PointerToRawData
+	remaining := int(sh.SizeOfRawData)
+	for remaining > 0 {
+		n := remaining
+		if n > len(h.pageBuf) {
+			n = len(h.pageBuf)
+		}
+		buf := h.pageBuf[:n]
+		if _, err := io.ReadFull(r, buf); err != nil {
+			return err
+		}
+		h.imageDigest.Write(buf)
+		if h.doPageHash {
+			h.addPageHash(position, buf, 0)
+		}
+		position += uint32(n)
+		remaining -= n
+		h.lastPage = position
+	}
+	return nil
+}
+
+func (h *imageHasher) finish() ([]byte, []byte, error) {
+	sum := h.imageDigest.Sum(nil)
+	if h.doPageHash {
+		h.addPageHash(h.lastPage, nil, 0)
+	}
+	return sum, h.pageHashes, nil
+}
+
+func (h *imageHasher) addPageHash(offset uint32, blob []byte, removed int) {
+	var obytes [4]byte
+	binary.LittleEndian.PutUint32(obytes[:], offset)
+	h.pageHashes = append(h.pageHashes, obytes[:]...)
+	if len(blob) == 0 {
+		// last "page" has a null digest
+		h.pageHashes = append(h.pageHashes, make([]byte, h.hashFunc.Size())...)
+		return
+	}
+	d := h.hashFunc.New()
+	d.Write(blob)
+	needzero := len(h.zeroPage) - len(blob) - removed
+	d.Write(h.zeroPage[:needzero])
+	h.pageHashes = d.Sum(h.pageHashes)
 }
 
 func readDosHeader(r io.Reader, d io.Writer) (int64, error) {
@@ -97,10 +189,12 @@ func readCoffHeader(r io.Reader, d io.Writer) (*pe.FileHeader, error) {
 	return hdr, nil
 }
 
-func readOptHeader(r io.Reader, d io.Writer, peStart int64, fh *pe.FileHeader) (posDDCert, secTblStart, sizeOfHdr, certStart, certSize int64, err error) {
+func readOptHeader(r io.Reader, d io.Writer, peStart int64, fh *pe.FileHeader) (*peHeaderValues, error) {
+	hvals := new(peHeaderValues)
+	hvals.peStart = peStart
 	buf := make([]byte, fh.SizeOfOptionalHeader)
 	if _, err := r.Read(buf); err != nil {
-		return 0, 0, 0, 0, 0, err
+		return nil, err
 	}
 	// locate the bits that need to be omitted from hash
 	cksumStart := 64
@@ -113,70 +207,62 @@ func readOptHeader(r io.Reader, d io.Writer, peStart int64, fh *pe.FileHeader) (
 		// PE32
 		var opt pe.OptionalHeader32
 		if err := binaryReadBytes(buf, &opt); err != nil {
-			return 0, 0, 0, 0, 0, err
+			return nil, err
 		}
 		if opt.NumberOfRvaAndSizes < 5 {
-			return 0, 0, 0, 0, 0, errors.New("PE header did not leave room for signature")
+			return nil, errors.New("PE header did not leave room for signature")
 		} else {
 			dd = opt.DataDirectory[4]
 		}
 		dd4Start = 128
-		sizeOfHdr = int64(opt.SizeOfHeaders)
+		hvals.sizeOfHdr = int64(opt.SizeOfHeaders)
+		hvals.sectionAlign = int(opt.SectionAlignment)
 	case 0x20b:
 		// PE32+
 		var opt pe.OptionalHeader64
 		if err := binaryReadBytes(buf, &opt); err != nil {
-			return 0, 0, 0, 0, 0, err
+			return nil, err
 		}
 		if opt.NumberOfRvaAndSizes < 5 {
-			return 0, 0, 0, 0, 0, errors.New("PE header did not leave room for signature")
+			return nil, errors.New("PE header did not leave room for signature")
 		} else {
 			dd = opt.DataDirectory[4]
 		}
 		dd4Start = 144
-		sizeOfHdr = int64(opt.SizeOfHeaders)
+		hvals.sizeOfHdr = int64(opt.SizeOfHeaders)
+		hvals.sectionAlign = int(opt.SectionAlignment)
 	default:
-		return 0, 0, 0, 0, 0, errors.New("unrecognized optional header magic")
+		return nil, errors.New("unrecognized optional header magic")
 	}
 	dd4End := dd4Start + 8
-	certStart = int64(dd.VirtualAddress)
-	certSize = int64(dd.Size)
-	secTblStart = peStart + 24 + int64(fh.SizeOfOptionalHeader)
+	hvals.certStart = int64(dd.VirtualAddress)
+	hvals.certSize = int64(dd.Size)
+	hvals.secTblStart = peStart + 24 + int64(fh.SizeOfOptionalHeader)
 	d.Write(buf[:cksumStart])
 	d.Write(buf[cksumEnd:dd4Start])
 	d.Write(buf[dd4End:])
-	posDDCert = peStart + 24 + dd4Start
-	return posDDCert, secTblStart, sizeOfHdr, certStart, certSize, nil
+	hvals.posDDCert = peStart + 24 + dd4Start
+	return hvals, nil
 }
 
-func readSections(r io.Reader, d io.Writer, fh *pe.FileHeader, secTblStart, sizeOfHdr int64) (int64, error) {
-	secTblEnd := secTblStart + int64(40*fh.NumberOfSections)
-	if secTblEnd > sizeOfHdr {
-		return 0, errors.New("PE section overlaps section table")
+func readSections(r io.Reader, d io.Writer, fh *pe.FileHeader, hvals *peHeaderValues) ([]pe.SectionHeader32, error) {
+	// read and hash section table
+	sections := make([]pe.SectionHeader32, fh.NumberOfSections)
+	size := int(fh.NumberOfSections) * 40
+	secTblEnd := hvals.secTblStart + int64(size)
+	if secTblEnd > hvals.sizeOfHdr {
+		return nil, errors.New("PE section overlaps section table")
 	}
-	nextSection := sizeOfHdr
-	// assert that sections appear in-order
-	for i := 0; i < int(fh.NumberOfSections); i++ {
-		var sh pe.SectionHeader32
-		if buf, err := readAndHash(r, d, 40); err != nil {
-			return 0, err
-		} else if err := binaryReadBytes(buf, &sh); err != nil {
-			return 0, err
-		}
-		if sh.SizeOfRawData == 0 {
-			continue
-		}
-		pos2 := int64(sh.PointerToRawData)
-		if pos2 != nextSection {
-			return 0, errors.New("PE sections are out of order or have gaps")
-		}
-		nextSection = pos2 + int64(sh.SizeOfRawData)
+	if buf, err := readAndHash(r, d, size); err != nil {
+		return nil, err
+	} else if err := binaryReadBytes(buf, sections); err != nil {
+		return nil, err
 	}
-	// hash the padding after the section table, then all section contents
-	if _, err := io.CopyN(d, r, nextSection-secTblEnd); err != nil {
-		return 0, err
+	// hash the padding after the section table
+	if _, err := io.CopyN(d, r, hvals.sizeOfHdr-secTblEnd); err != nil {
+		return nil, err
 	}
-	return nextSection, nil
+	return sections, nil
 }
 
 func readTrailer(r io.Reader, d io.Writer, lastSection, certStart, certSize int64) error {
@@ -195,4 +281,19 @@ func readTrailer(r io.Reader, d io.Writer, lastSection, certStart, certSize int6
 		return err
 	}
 	return nil
+}
+
+type peHeaderValues struct {
+	// start of PE header
+	peStart int64
+	// file offset to the data directory entry for the cert table, in the optional header
+	posDDCert int64
+	// file offset to the end of the optional header and the start of the section table
+	secTblStart int64
+	// size of all headers plus padding
+	sizeOfHdr int64
+	// section alignment in memory
+	sectionAlign int
+	// file offset and size of the certificate table
+	certStart, certSize int64
 }
