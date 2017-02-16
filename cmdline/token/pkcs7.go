@@ -62,10 +62,10 @@ func signAndTimestamp(data []byte, key *p11token.Key, opts crypto.SignerOpts, de
 	if err != nil {
 		return nil, err
 	}
-	return timestampPkcs(psd, key, certs, opts.HashFunc())
+	return timestampPkcs(psd, key, certs, opts.HashFunc(), false)
 }
 
-func timestampPkcs(psd *pkcs7.ContentInfoSignedData, key *p11token.Key, certs []*x509.Certificate, hash crypto.Hash) (sig []byte, err error) {
+func timestampPkcs(psd *pkcs7.ContentInfoSignedData, key *p11token.Key, certs []*x509.Certificate, hash crypto.Hash, authenticode bool) (sig []byte, err error) {
 	keyConf := shared.CurrentConfig.Keys[key.Name]
 	if keyConf.Timestamp {
 		signerInfo := &psd.Content.SignerInfos[0]
@@ -98,7 +98,12 @@ func timestampPkcs(psd *pkcs7.ContentInfoSignedData, key *p11token.Key, certs []
 		if err != nil {
 			return nil, fmt.Errorf("Timestamping failed: %s", err)
 		}
-		if err := pkcs9.AddStampToSignedData(signerInfo, *token); err != nil {
+		if authenticode {
+			err = pkcs9.AddStampToSignedAuthenticode(signerInfo, *token)
+		} else {
+			err = pkcs9.AddStampToSignedData(signerInfo, *token)
+		}
+		if err != nil {
 			return nil, fmt.Errorf("Timestamping failed: %s", err)
 		}
 	}

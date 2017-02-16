@@ -25,8 +25,14 @@ import (
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs7"
 )
 
+// Attach a RFC 3161 timestamp to a PKCS#7 SignerInfo
 func AddStampToSignedData(signerInfo *pkcs7.SignerInfo, token pkcs7.ContentInfoSignedData) error {
 	return signerInfo.UnauthenticatedAttributes.Add(OidAttributeTimeStampToken, token)
+}
+
+// Attach a RFC 3161 timestamp to a PKCS#7 SignerInfo using the OID for authenticode signatures
+func AddStampToSignedAuthenticode(signerInfo *pkcs7.SignerInfo, token pkcs7.ContentInfoSignedData) error {
+	return signerInfo.UnauthenticatedAttributes.Add(OidSpcTimeStampToken, token)
 }
 
 // Validated timestamp token

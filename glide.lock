@@ -1,5 +1,5 @@
 hash: 8b11039af346973f322401822631e187789f06a58ea553e49c443152c36b3738
-updated: 2017-02-09T19:42:21.898302783Z
+updated: 2017-02-16T18:16:43.645051284Z
 imports:
 - name: github.com/braintree/manners
   version: 82a8879fc5fd0381fa8b2d8033b19bf255252088
@@ -25,26 +25,26 @@ imports:
 - name: github.com/spf13/pflag
   version: 9ff6c6923cfffbcd502984b8e0c80539a94968b7
 - name: golang.org/x/crypto
-  version: dd96d35c1b251a7ef77f057fc5c4f92ea2b285b4
+  version: 453249f01cfeb54c3d549ddb75ff152ca243f9d8
   subpackages:
   - openpgp
   - openpgp/armor
   - openpgp/packet
   - openpgp/clearsign
-  - ssh/terminal
   - openpgp/errors
   - openpgp/s2k
   - cast5
   - openpgp/elgamal
+  - ssh/terminal
 - name: golang.org/x/net
-  version: a689eb3bc4b53af70390acc3cf68c9f549b6b8d6
+  version: b4690f45fa1cafc47b1c280c2e75116efe40cc13
   subpackages:
   - http2
   - http2/hpack
   - idna
   - lex/httplex
 - name: golang.org/x/sys
-  version: 7a6e5648d140666db5d920909e082ca00a87ba2c
+  version: e24f485414aeafb646f6fca458b0bf869c0880a1
   subpackages:
   - windows/svc
   - windows/svc/debug

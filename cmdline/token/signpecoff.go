@@ -103,7 +103,7 @@ func signPeInput(r io.Reader) ([]byte, error) {
 	if err != nil {
 		return nil, shared.Fail(err)
 	}
-	pkcs, err := timestampPkcs(psd, key, certs, hash)
+	pkcs, err := timestampPkcs(psd, key, certs, hash, true)
 	if err != nil {
 		return nil, shared.Fail(err)
 	}
