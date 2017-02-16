@@ -51,7 +51,7 @@ type TimestampedSignature struct {
 // UnauthenticatedAttributes of the given already-validated signature and check
 // its integrity. The certificate chain is not checked; call VerifyChain() on
 // the result to validate it fully.
-func VerifyTimestamp(sig pkcs7.Signature) (CounterSignature, error) {
+func VerifyTimestamp(sig pkcs7.Signature) (*CounterSignature, error) {
 	var tst pkcs7.ContentInfoSignedData
 	var tsi pkcs7.SignerInfo
 	// check several OIDs for timestamp tokens
@@ -62,41 +62,50 @@ func VerifyTimestamp(sig pkcs7.Signature) (CounterSignature, error) {
 	var verifyBlob []byte
 	certs := sig.Intermediates
 	if err == nil {
-		// timestamptoken is a fully nested signedData
+		// timestamptoken is a fully nested signedData containing a TSTInfo
+		// that digests the parent signature blob
 		if len(tst.Content.SignerInfos) != 1 {
-			return CounterSignature{}, errors.New("counter-signature should have exactly one SignerInfo")
+			return nil, errors.New("timestamp should have exactly one SignerInfo")
 		}
 		tsi = tst.Content.SignerInfos[0]
 		tsicerts, err := tst.Content.Certificates.Parse()
 		if err != nil {
-			return CounterSignature{}, err
+			return nil, err
 		} else if len(tsicerts) != 0 {
 			// keep both sets of certs just in case
 			certs = append(certs, tsicerts...)
 		}
+		// verify the imprint in the TSTInfo
+		if tstinfo, err := UnpackTokenInfo(&tst); err != nil {
+			return nil, err
+		} else if verr := tstinfo.MessageImprint.Verify(sig.SignerInfo.EncryptedDigest); verr != nil {
+			return nil, fmt.Errorf("failed to verify timestamp imprint: %s", verr)
+		}
+		// now the signature is over the TSTInfo blob
 		verifyBlob, err = tst.Content.ContentInfo.Bytes()
 		if err != nil {
-			return CounterSignature{}, err
+			return nil, err
 		}
 	} else if _, ok := err.(pkcs7.ErrNoAttribute); ok {
 		if err := sig.SignerInfo.UnauthenticatedAttributes.GetOne(OidAttributeCounterSign, &tsi); err != nil {
-			return CounterSignature{}, err
+			return nil, err
 		}
-		// counterSignature is just a signerinfo and the certificates come from
-		// the parent signedData
+		// counterSignature is simply a signerinfo. The certificate chain is
+		// included in the parent structure, and the timestamp signs the
+		// signature blob from the parent signerinfo
 		verifyBlob = sig.SignerInfo.EncryptedDigest
 	} else {
-		return CounterSignature{}, err
+		return nil, err
 	}
 	cert, err := tsi.Verify(verifyBlob, false, certs)
 	if err != nil {
-		return CounterSignature{}, err
+		return nil, err
 	}
 	var signingTime time.Time
 	if err := tsi.AuthenticatedAttributes.GetOne(pkcs7.OidAttributeSigningTime, &signingTime); err != nil {
-		return CounterSignature{}, err
+		return nil, err
 	}
-	return CounterSignature{
+	return &CounterSignature{
 		Signature: pkcs7.Signature{
 			SignerInfo:    &tsi,
 			Certificate:   cert,
@@ -118,7 +127,7 @@ func VerifyOptionalTimestamp(sig pkcs7.Signature) (TimestampedSignature, error) 
 	} else if err != nil {
 		return tsig, err
 	} else {
-		tsig.CounterSignature = &ts
+		tsig.CounterSignature = ts
 		return tsig, nil
 	}
 }
