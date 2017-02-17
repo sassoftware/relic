@@ -36,7 +36,7 @@ func SignImprint(digest []byte, hash crypto.Hash, pagehashes []byte, pagehashfun
 	if !ok {
 		return nil, errors.New("unsupported digest algorithm")
 	}
-	var indirect SpcIndirectDataContent
+	var indirect SpcIndirectDataContentPe
 	indirect.Data.Type = OidSpcPeImageData
 	//indirect.Data.Value.Flags = asn1.BitString{[]byte{0x80}, 1}
 	indirect.MessageDigest.Digest = digest
@@ -58,7 +58,7 @@ func SignImprint(digest []byte, hash crypto.Hash, pagehashes []byte, pagehashfun
 	return sig.Sign()
 }
 
-func imprintPageHashes(indirect *SpcIndirectDataContent, pagehashes []byte, hash crypto.Hash) error {
+func imprintPageHashes(indirect *SpcIndirectDataContentPe, pagehashes []byte, hash crypto.Hash) error {
 	var attr SpcAttributePageHashes
 	switch hash {
 	case crypto.SHA1:

@@ -34,7 +34,7 @@ import (
 
 type PESignature struct {
 	pkcs9.TimestampedSignature
-	Indirect      *SpcIndirectDataContent
+	Indirect      *SpcIndirectDataContentPe
 	ImageHashFunc crypto.Hash
 	PageHashes    []byte
 	PageHashFunc  crypto.Hash
@@ -152,7 +152,7 @@ func checkSignature(der []byte) (*PESignature, error) {
 	if err != nil {
 		return nil, err
 	}
-	indirect := new(SpcIndirectDataContent)
+	indirect := new(SpcIndirectDataContentPe)
 	if err := psd.Content.ContentInfo.Unmarshal(indirect); err != nil {
 		return nil, err
 	}

@@ -18,54 +18,15 @@ package verify
 
 import (
 	"crypto/x509"
-	"encoding/asn1"
-	"errors"
-	"io/ioutil"
 	"os"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/comdoc"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs7"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs9"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/authenticode"
 )
 
-const msiSigName = "\x05DigitalSignature"
-
 func verifyMsi(f *os.File) error {
-	if !argNoIntegrityCheck {
-		return errors.New("msi integrity check not supported yet, use --no-integrity-check")
-	}
-	cdf, err := comdoc.NewReader(f)
+	sig, err := authenticode.VerifyMSI(f, argNoIntegrityCheck)
 	if err != nil {
 		return err
 	}
-	var der []byte
-	for _, info := range cdf.Files {
-		if info.Name() == msiSigName {
-			r, err := cdf.ReadStream(info)
-			if err != nil {
-				return err
-			}
-			der, err = ioutil.ReadAll(r)
-			if err != nil {
-				return err
-			}
-			break
-		}
-	}
-	if len(der) == 0 {
-		return errors.New("MSI is not signed")
-	}
-	var psd pkcs7.ContentInfoSignedData
-	if _, err := asn1.Unmarshal(der, &psd); err != nil {
-		return err
-	}
-	sig, err := psd.Content.Verify(nil, false)
-	if err != nil {
-		return err
-	}
-	ts, err := pkcs9.VerifyOptionalTimestamp(sig)
-	if err != nil {
-		return err
-	}
-	return doPkcs(f.Name(), ts, x509.ExtKeyUsageCodeSigning)
+	return doPkcs(f.Name(), sig.TimestampedSignature, x509.ExtKeyUsageCodeSigning)
 }

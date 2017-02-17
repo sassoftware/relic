@@ -25,14 +25,19 @@ var (
 	OidSpcIndirectDataContent = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 2, 1, 4}
 	OidSpcSpOpusInfo          = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 2, 1, 12}
 	OidSpcPeImageData         = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 2, 1, 15}
+	OidSpcSipInfo             = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 2, 1, 30}
 	OidSpcPageHashV1          = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 2, 3, 1}
 	OidSpcPageHashV2          = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 2, 3, 2}
 	OidCertTrustList          = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 10, 1}
 
 	SpcUuidPageHashes = []byte{0xa6, 0xb5, 0x86, 0xd5, 0xb4, 0xa1, 0x24, 0x66, 0xae, 0x05, 0xa2, 0x17, 0xda, 0x8e, 0x60, 0xd6}
+	SpcUuidSipInfoMsi = []byte{0xf1, 0x10, 0x0c, 0x00, 0x00, 0x00, 0x00, 0x00, 0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46}
+
+	msiDigitalSignature   = "\x05DigitalSignature"
+	msiDigitalSignatureEx = "\x05MsiDigitalSignatureEx"
 )
 
-type SpcIndirectDataContent struct {
+type SpcIndirectDataContentPe struct {
 	Data          SpcAttributePeImageData
 	MessageDigest DigestInfo
 }
@@ -76,3 +81,20 @@ type SpcAttributePageHashes struct {
 type SpcSpOpusInfo struct {
 	// TODO
 }
+
+type SpcIndirectDataContentMsi struct {
+	Data          SpcAttributeMsiImageData
+	MessageDigest DigestInfo
+}
+
+type SpcAttributeMsiImageData struct {
+	Type  asn1.ObjectIdentifier
+	Value SpcSipInfo `asn1:"optional"`
+}
+type SpcSipInfo struct {
+	A             int
+	Uuid          []byte
+	B, C, D, E, F int
+}
+
+var defaultSipInfo = SpcSipInfo{1, SpcUuidSipInfoMsi, 0, 0, 0, 0, 0}

@@ -35,6 +35,7 @@ const (
 	DirRoot    DirType = 5
 
 	byteOrderMarker uint16 = 0xfffe
+	msatInHeader           = 109
 )
 
 var fileMagic = []byte{0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1}
@@ -56,17 +57,17 @@ type Header struct {
 	SSATSectorCount  uint32
 	MSATNextSector   SecID
 	MSATSectorCount  uint32
-	MSAT             [109]SecID
+	MSAT             [msatInHeader]SecID
 }
 
-type DirEnt struct {
+type RawDirEnt struct {
 	NameRunes   [32]uint16
 	NameLength  uint16
 	Type        DirType
 	RedIsBlack  uint8
-	LeftChild   uint32
-	RightChild  uint32
-	StorageRoot uint32
+	LeftChild   int32
+	RightChild  int32
+	StorageRoot int32
 	Uid         [16]byte
 	UserFlags   uint32
 	CreateTime  uint64
@@ -76,10 +77,20 @@ type DirEnt struct {
 	_           uint32
 }
 
-func (e DirEnt) Name() string {
+func (e RawDirEnt) Name() string {
 	used := e.NameLength/2 - 1
 	if e.Type == DirEmpty || used > 32 {
 		return ""
 	}
 	return string(utf16.Decode(e.NameRunes[:used]))
+}
+
+type DirEnt struct {
+	RawDirEnt
+	Index int
+	name  string
+}
+
+func (e DirEnt) Name() string {
+	return e.name
 }

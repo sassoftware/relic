@@ -6,6 +6,8 @@ It can sign these package types:
 * DEB
 * JAR
 * PE/COFF (Windows executable)
+* MSI
+* CAT (Windows security catalog)
 * PGP (detached or cleartext signature of data)
 
 Relic can also operate as a signing server, allowing clients to authenticate

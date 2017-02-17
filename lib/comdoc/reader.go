@@ -30,35 +30,55 @@ import (
 // file. This is not correct. If SectorSize > 512 bytes then the 0th sector is
 // SectorSize bytes into the file.
 
-type Reader struct {
+type ComDoc struct {
 	File            io.ReaderAt
 	Header          *Header
 	SectorSize      int
 	ShortSectorSize int
 	FirstSector     int64
 	MSAT, SAT, SSAT []SecID
-	Files           []*DirEnt
-	RootStorage     *DirEnt
+	Files           []DirEnt
 
-	sectorBuf []byte
+	sectorBuf   []byte
+	changed     bool
+	rootStorage int   // index into files
+	rootFiles   []int // index into Files
+	writer      *os.File
 }
 
-func Open(path string) (*Reader, error) {
+func ReadPath(path string) (*ComDoc, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
-	return NewReader(f)
+	return openFile(f, nil)
 }
 
-func NewReader(f io.ReaderAt) (*Reader, error) {
-	header := new(Header)
-	r := &Reader{
-		File:   f,
-		Header: header,
+func WritePath(path string) (*ComDoc, error) {
+	f, err := os.OpenFile(path, os.O_RDWR, 0)
+	if err != nil {
+		return nil, err
 	}
-	hf := io.NewSectionReader(f, 0, 512)
-	if err := binary.Read(hf, binary.LittleEndian, header); err != nil {
+	return openFile(f, f)
+}
+
+func ReadFile(reader io.ReaderAt) (*ComDoc, error) {
+	return openFile(reader, nil)
+}
+
+func WriteFile(f *os.File) (*ComDoc, error) {
+	return openFile(f, f)
+}
+
+func openFile(reader io.ReaderAt, writer *os.File) (*ComDoc, error) {
+	header := new(Header)
+	r := &ComDoc{
+		File:   reader,
+		Header: header,
+		writer: writer,
+	}
+	sr := io.NewSectionReader(reader, 0, 512)
+	if err := binary.Read(sr, binary.LittleEndian, header); err != nil {
 		return nil, err
 	}
 	if !bytes.Equal(header.Magic[:], fileMagic) {
@@ -95,7 +115,7 @@ func NewReader(f io.ReaderAt) (*Reader, error) {
 }
 
 // Convert a sector ID to an absolute file position
-func (r *Reader) sectorToOffset(sector SecID) int64 {
+func (r *ComDoc) sectorToOffset(sector SecID) int64 {
 	if sector < 0 {
 		return -1
 	}
@@ -103,14 +123,14 @@ func (r *Reader) sectorToOffset(sector SecID) int64 {
 }
 
 // Read the specified sector
-func (r *Reader) readSector(sector SecID, buf []byte) error {
+func (r *ComDoc) readSector(sector SecID, buf []byte) error {
 	_, err := r.File.ReadAt(buf, r.sectorToOffset(sector))
 	return err
 }
 
 // Read the specified sector into a binary structure. It must be exactly 1
 // sector in size already.
-func (r *Reader) readSectorStruct(sector SecID, v interface{}) error {
+func (r *ComDoc) readSectorStruct(sector SecID, v interface{}) error {
 	if err := r.readSector(sector, r.sectorBuf); err != nil {
 		return err
 	}
@@ -124,10 +144,10 @@ func (r *Reader) readSectorStruct(sector SecID, v interface{}) error {
 // sector stream" instead of within the file at large. The short sector stream
 // is a regular stream whose first block is pointed to by the root storage
 // dirent.
-func (r *Reader) readShortSector(shortSector SecID, buf []byte) error {
+func (r *ComDoc) readShortSector(shortSector SecID, buf []byte) error {
 	// figure out which big sector holds the short sector
 	bigSectorIndex := int(shortSector) * r.ShortSectorSize / r.SectorSize
-	bigSectorId := r.RootStorage.NextSector
+	bigSectorId := r.Files[r.rootStorage].NextSector
 	for i := 0; i < bigSectorIndex; i++ {
 		bigSectorId = r.SAT[bigSectorId]
 	}
@@ -143,7 +163,7 @@ func (r *Reader) readShortSector(shortSector SecID, buf []byte) error {
 // header holds 109 MSAT entries and MSATNextSector may point to a sector
 // holding yet more. The last entry in each additional sector points to another
 // sector holding more MSAT entries, or -2 if none.
-func (r *Reader) readMSAT() error {
+func (r *ComDoc) readMSAT() error {
 	msat := r.Header.MSAT[:]
 	nextSector := r.Header.MSATNextSector
 	count := r.SectorSize / 4
@@ -165,7 +185,7 @@ func (r *Reader) readMSAT() error {
 // The value held at that index in the SAT either points to the ID of the
 // sector holding the next chunk of data for that stream, or -2 to indicate
 // there are no more sectors.
-func (r *Reader) readSAT() error {
+func (r *ComDoc) readSAT() error {
 	count := r.SectorSize / 4
 	sat := make([]SecID, count*int(r.Header.SATSectors))
 	position := 0
@@ -192,7 +212,7 @@ func (r *Reader) readSAT() error {
 // and those sectors are ShortSectorSize in length instead of SectorSize. It's
 // also stored differently, using the SAT to chain to each subsequent block
 // instead of using the MSAT array, in the same way that any other stream works.
-func (r *Reader) readShortSAT() error {
+func (r *ComDoc) readShortSAT() error {
 	count := r.SectorSize / 4
 	sat := make([]SecID, count*int(r.Header.SSATSectorCount))
 	position := 0
@@ -210,30 +230,69 @@ func (r *Reader) readShortSAT() error {
 }
 
 // Read all directory entries and identify the root storage
-func (r *Reader) readDir() error {
-	var files []*DirEnt
-	values := make([]DirEnt, r.SectorSize/128)
-	valid := make([]*DirEnt, r.SectorSize/128)
+func (r *ComDoc) readDir() error {
+	var files []DirEnt
+	count := r.SectorSize / 128
+	raw := make([]RawDirEnt, count)
+	cooked := make([]DirEnt, count)
+	rootIndex := -1
 	for sector := r.Header.DirNextSector; sector >= 0; sector = r.SAT[sector] {
-		if err := r.readSectorStruct(sector, values); err != nil {
+		if err := r.readSectorStruct(sector, raw); err != nil {
 			return err
 		}
-		valid = valid[:0]
-		for _, dirent := range values {
-			if dirent.Type == DirEmpty {
-				continue
+		for i, raw := range raw {
+			cooked[i] = DirEnt{
+				RawDirEnt: raw,
+				Index:     len(files) + i,
+				name:      raw.Name(),
 			}
-			dptr := new(DirEnt)
-			*dptr = dirent
-			valid = append(valid, dptr)
+			if raw.Type == DirRoot {
+				rootIndex = len(files) + i
+			}
 		}
-		files = append(files, valid...)
+		files = append(files, cooked...)
 	}
-	for _, dptr := range files {
-		if dptr.Type == DirRoot {
-			r.RootStorage = dptr
-		}
+	if rootIndex < 0 {
+		return errors.New("missing root storage")
 	}
 	r.Files = files
+	r.rootStorage = rootIndex
+	rootFiles, err := r.ListDir(nil)
+	if err != nil {
+		return err
+	}
+	r.rootFiles = make([]int, 0, len(r.Files))
+	for _, f := range rootFiles {
+		r.rootFiles = append(r.rootFiles, f.Index)
+	}
 	return nil
+}
+
+func (r *ComDoc) RootStorage() *DirEnt {
+	return &r.Files[r.rootStorage]
+}
+
+func (r *ComDoc) ListDir(parent *DirEnt) ([]*DirEnt, error) {
+	if parent == nil {
+		parent = &r.Files[r.rootStorage]
+	}
+	if parent.Type != DirRoot && parent.Type != DirStorage {
+		return nil, errors.New("ListDir() on a non-directory object")
+	}
+	top := &r.Files[parent.StorageRoot]
+	stack := []*DirEnt{top}
+	var files []*DirEnt
+	for len(stack) > 0 {
+		i := len(stack) - 1
+		item := stack[i]
+		stack = stack[:i]
+		files = append(files, item)
+		if item.LeftChild != -1 {
+			stack = append(stack, &r.Files[item.LeftChild])
+		}
+		if item.RightChild != -1 {
+			stack = append(stack, &r.Files[item.RightChild])
+		}
+	}
+	return files, nil
 }

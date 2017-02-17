@@ -31,7 +31,7 @@ type streamReader struct {
 }
 
 // Open a stream for reading
-func (r *Reader) ReadStream(e *DirEnt) (io.Reader, error) {
+func (r *ComDoc) ReadStream(e *DirEnt) (io.Reader, error) {
 	if e.Type != DirStream {
 		return nil, errors.New("not a stream")
 	}
