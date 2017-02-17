@@ -58,6 +58,8 @@ func (s *Server) serveSign(request *http.Request, writer http.ResponseWriter) (r
 		return s.signJar(keyConf, request, filename)
 	case "pe-coff":
 		return s.signPeCoff(keyConf, request, filename)
+	case "msi-imprint":
+		return s.signMsi(keyConf, request, filename)
 	case "":
 		// look at filename
 	default:

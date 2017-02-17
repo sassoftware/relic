@@ -17,9 +17,15 @@
 package token
 
 import (
+	"crypto"
 	"errors"
+	"fmt"
+	"io"
+	"io/ioutil"
+	"os"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/atomicfile"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/authenticode"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/comdoc"
 	"github.com/spf13/cobra"
@@ -38,25 +44,22 @@ func init() {
 	shared.AddDigestFlag(SignMsiCmd)
 	SignMsiCmd.Flags().StringVarP(&argKeyName, "key", "k", "", "Name of key section in config file to use")
 	SignMsiCmd.Flags().StringVarP(&argFile, "file", "f", "", "Input file to sign")
-	//SignMsiCmd.Flags().StringVarP(&argOutput, "output", "o", "", "Output file. Defaults to same as input.")
+	SignMsiCmd.Flags().StringVarP(&argOutput, "output", "o", "", "Output file. Defaults to same as input.")
 	SignMsiCmd.Flags().BoolVar(&argNoMsiExtended, "no-extended-sig", false, "Don't emit a MsiDigitalSignatureEx digest")
+	SignMsiCmd.Flags().BoolVar(&argPkcs7, "pkcs7", false, "Emit PKCS7 signature instead of the signed executable")
 }
 
-func signMsiCmd(cmd *cobra.Command, args []string) (err error) {
+func signMsiCmd(cmd *cobra.Command, args []string) error {
 	if argFile == "" {
 		return errors.New("--key and --file are required")
-	} else if argFile == "-" { //|| argOutput == "-" {
-		return errors.New("--file and --output must be paths, not -")
+	} else if !argPkcs7 && (argFile == "-" || argOutput == "-") {
+		return errors.New("--file and --output must be a path, not -")
 	}
 	hash, err := shared.GetDigest()
 	if err != nil {
 		return err
 	}
-	cdf, err := comdoc.WritePath(argFile)
-	if err != nil {
-		return shared.Fail(err)
-	}
-	sum, exsig, err := authenticode.DigestMSI(cdf, hash, !argNoMsiExtended)
+	sum, exsig, err := signMsiInput(hash)
 	if err != nil {
 		return shared.Fail(err)
 	}
@@ -77,6 +80,59 @@ func signMsiCmd(cmd *cobra.Command, args []string) (err error) {
 	if err != nil {
 		return shared.Fail(err)
 	}
+	if argPkcs7 {
+		if argOutput == "" {
+			argOutput = "-"
+		}
+		return shared.Fail(atomicfile.WriteFile(argOutput, pkcs))
+	} else {
+		if argOutput == "" {
+			argOutput = argFile
+		}
+		return writeMsi(pkcs, exsig)
+	}
+}
+
+func signMsiInput(hash crypto.Hash) (sum, exsig []byte, err error) {
+	if argPkcs7 && argFile == "-" {
+		// the input is actually the imprint digest
+		sum, err := ioutil.ReadAll(os.Stdin)
+		if err != nil {
+			return nil, nil, err
+		}
+		return sum, nil, nil
+	} else {
+		cdf, err := comdoc.ReadPath(argFile)
+		if err != nil {
+			return nil, nil, shared.Fail(err)
+		}
+		defer cdf.Close()
+		return authenticode.DigestMSI(cdf, hash, !argNoMsiExtended)
+	}
+}
+
+func writeMsi(pkcs, exsig []byte) error {
+	if argFile != argOutput {
+		// make a copy
+		outfile, err := os.Create(argOutput)
+		if err != nil {
+			return shared.Fail(err)
+		}
+		infile, err := os.Open(argFile)
+		if err != nil {
+			return shared.Fail(err)
+		}
+		if _, err := io.Copy(outfile, infile); err != nil {
+			return shared.Fail(err)
+		}
+		infile.Close()
+		outfile.Close()
+	}
+	cdf, err := comdoc.WritePath(argOutput)
+	if err != nil {
+		return shared.Fail(err)
+	}
+	fmt.Printf("ex: %x\n", exsig)
 	if err := authenticode.InsertMSISignature(cdf, pkcs, exsig); err != nil {
 		return shared.Fail(err)
 	}

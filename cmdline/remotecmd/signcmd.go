@@ -38,9 +38,10 @@ var SignCmd = &cobra.Command{
 }
 
 var (
-	argKeyAlias   string
-	argRole       string
-	argPageHashes bool
+	argKeyAlias      string
+	argRole          string
+	argPageHashes    bool
+	argNoMsiExtended bool
 )
 
 func init() {
@@ -51,6 +52,7 @@ func init() {
 	SignCmd.Flags().StringVar(&argKeyAlias, "key-alias", "RELIC", "Alias to use for signed manifests (JAR only)")
 	SignCmd.Flags().StringVar(&argRole, "role", "", "Debian package signing role (DEB only)")
 	SignCmd.Flags().BoolVar(&argPageHashes, "page-hashes", false, "Add page hashes (PE only)")
+	SignCmd.Flags().BoolVar(&argNoMsiExtended, "no-extended-sig", false, "Don't emit a MsiDigitalSignatureEx digest (MSI only)")
 	shared.AddDigestFlag(SignCmd)
 }
 
@@ -67,6 +69,8 @@ func signCmd(cmd *cobra.Command, args []string) (err error) {
 		return signJar()
 	case ".acm", ".ax", ".cpl", ".dll", ".drv", ".efi", ".exe", ".ocx", ".scr", ".sys", ".tsp":
 		return signPeCoff()
+	case ".msi":
+		return signMsi()
 	}
 	// open for writing so in-place patch works
 	infile, err := os.OpenFile(argFile, os.O_RDWR, 0)

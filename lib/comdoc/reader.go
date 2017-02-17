@@ -44,6 +44,7 @@ type ComDoc struct {
 	rootStorage int   // index into files
 	rootFiles   []int // index into Files
 	writer      *os.File
+	closer      io.Closer
 }
 
 func ReadPath(path string) (*ComDoc, error) {
@@ -51,7 +52,7 @@ func ReadPath(path string) (*ComDoc, error) {
 	if err != nil {
 		return nil, err
 	}
-	return openFile(f, nil)
+	return openFile(f, nil, f)
 }
 
 func WritePath(path string) (*ComDoc, error) {
@@ -59,23 +60,24 @@ func WritePath(path string) (*ComDoc, error) {
 	if err != nil {
 		return nil, err
 	}
-	return openFile(f, f)
+	return openFile(f, f, f)
 }
 
 func ReadFile(reader io.ReaderAt) (*ComDoc, error) {
-	return openFile(reader, nil)
+	return openFile(reader, nil, nil)
 }
 
 func WriteFile(f *os.File) (*ComDoc, error) {
-	return openFile(f, f)
+	return openFile(f, f, nil)
 }
 
-func openFile(reader io.ReaderAt, writer *os.File) (*ComDoc, error) {
+func openFile(reader io.ReaderAt, writer *os.File, closer io.Closer) (*ComDoc, error) {
 	header := new(Header)
 	r := &ComDoc{
 		File:   reader,
 		Header: header,
 		writer: writer,
+		closer: closer,
 	}
 	sr := io.NewSectionReader(reader, 0, 512)
 	if err := binary.Read(sr, binary.LittleEndian, header); err != nil {

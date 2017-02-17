@@ -84,6 +84,7 @@ func (r *ComDoc) DeleteFile(name string) error {
 		}
 		// blank out the dirent
 		*item = DirEnt{}
+		r.changed = true
 	}
 	r.rootFiles = keepFiles
 	return nil
@@ -91,6 +92,10 @@ func (r *ComDoc) DeleteFile(name string) error {
 
 func (r *ComDoc) Close() error {
 	if !r.changed {
+		if r.closer != nil {
+			r.closer.Close()
+			r.closer = nil
+		}
 		return nil
 	}
 	if err := r.writeShortSAT(); err != nil {
@@ -185,6 +190,10 @@ func (r *ComDoc) Close() error {
 	binary.Write(buf, binary.LittleEndian, r.Header)
 	if _, err := r.writer.WriteAt(buf.Bytes(), 0); err != nil {
 		return err
+	}
+	if r.closer != nil {
+		r.closer.Close()
+		r.closer = nil
 	}
 	return nil
 }
