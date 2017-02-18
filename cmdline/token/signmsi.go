@@ -19,7 +19,6 @@ package token
 import (
 	"crypto"
 	"errors"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -132,7 +131,6 @@ func writeMsi(pkcs, exsig []byte) error {
 	if err != nil {
 		return shared.Fail(err)
 	}
-	fmt.Printf("ex: %x\n", exsig)
 	if err := authenticode.InsertMSISignature(cdf, pkcs, exsig); err != nil {
 		return shared.Fail(err)
 	}

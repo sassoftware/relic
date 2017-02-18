@@ -1,5 +1,5 @@
 hash: 8b11039af346973f322401822631e187789f06a58ea553e49c443152c36b3738
-updated: 2017-02-16T18:16:43.645051284Z
+updated: 2017-02-18T20:35:22.749198186Z
 imports:
 - name: github.com/braintree/manners
   version: 82a8879fc5fd0381fa8b2d8033b19bf255252088
@@ -21,7 +21,7 @@ imports:
   - cpio
   - fileutil
 - name: github.com/spf13/cobra
-  version: b5d8e8f46a2f829f755b6e33b454e25c61c935e1
+  version: ee4055870c2d5f7ce112642377e32c9929c3bbaf
 - name: github.com/spf13/pflag
   version: 9ff6c6923cfffbcd502984b8e0c80539a94968b7
 - name: golang.org/x/crypto
@@ -37,14 +37,14 @@ imports:
   - openpgp/elgamal
   - ssh/terminal
 - name: golang.org/x/net
-  version: b4690f45fa1cafc47b1c280c2e75116efe40cc13
+  version: 6b27048ae5e6ad1ef927e72e437531493de612fe
   subpackages:
   - http2
   - http2/hpack
   - idna
   - lex/httplex
 - name: golang.org/x/sys
-  version: e24f485414aeafb646f6fca458b0bf869c0880a1
+  version: 075e574b89e4c2d22f2286a7e2b919519c6f3547
   subpackages:
   - windows/svc
   - windows/svc/debug

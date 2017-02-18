@@ -104,3 +104,50 @@ func (sr *streamReader) Read(d []byte) (copied int, err error) {
 	}
 	return copied, nil
 }
+
+// Store a blob as a chain of sectors and return the first sector ID
+func (r *ComDoc) addStream(contents []byte, short bool) (SecID, error) {
+	var sectorSize int
+	var sat, freeList []SecID
+	if short {
+		sectorSize = int(r.ShortSectorSize)
+		needSectors := (len(contents) + sectorSize - 1) / sectorSize
+		freeList = r.makeFreeSectors(needSectors, true)
+		sat = r.SSAT
+	} else {
+		sectorSize = int(r.SectorSize)
+		needSectors := (len(contents) + sectorSize - 1) / sectorSize
+		freeList = r.makeFreeSectors(needSectors, false)
+		sat = r.SAT
+	}
+	first := SecIDEndOfChain
+	previous := first
+	for _, i := range freeList {
+		if previous == SecIDEndOfChain {
+			first = i
+		} else {
+			sat[previous] = i
+		}
+		previous = i
+		// write to file
+		n := sectorSize
+		if n > len(contents) {
+			n = len(contents)
+		}
+		var err error
+		if short {
+			err = r.writeShortSector(i, contents[:n])
+		} else {
+			err = r.writeSector(i, contents[:n])
+		}
+		if err != nil {
+			return 0, err
+		}
+		contents = contents[n:]
+	}
+	sat[previous] = SecIDEndOfChain
+	if len(contents) > 0 {
+		panic("didn't allocate enough sectors")
+	}
+	return first, nil
+}

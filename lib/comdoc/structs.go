@@ -22,6 +22,7 @@ import (
 
 type SecID int32
 type DirType uint8
+type Color uint8
 
 const (
 	SecIDFree       SecID = -1
@@ -33,6 +34,9 @@ const (
 	DirStorage DirType = 1
 	DirStream  DirType = 2
 	DirRoot    DirType = 5
+
+	Red   Color = 0
+	Black Color = 1
 
 	byteOrderMarker uint16 = 0xfffe
 	msatInHeader           = 109
@@ -64,7 +68,7 @@ type RawDirEnt struct {
 	NameRunes   [32]uint16
 	NameLength  uint16
 	Type        DirType
-	RedIsBlack  uint8
+	Color       Color
 	LeftChild   int32
 	RightChild  int32
 	StorageRoot int32
