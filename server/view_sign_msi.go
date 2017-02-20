@@ -17,7 +17,6 @@
 package server
 
 import (
-	"io"
 	"net/http"
 	"os"
 
@@ -35,10 +34,7 @@ func (s *Server) signMsi(keyConf *config.KeyConfig, request *http.Request, filen
 	if intParam(request, "no-extended") != 0 {
 		cmdline = append(cmdline, "--no-extended-sig")
 	}
-	blub, _ := os.Create("blub.tar")
-	defer blub.Close()
-	body := io.TeeReader(request.Body, blub)
-	stdout, response, err := s.invokeCommand(request, body, "", false, keyConf.GetTimeout(), cmdline)
+	stdout, response, err := s.invokeCommand(request, request.Body, "", false, keyConf.GetTimeout(), cmdline)
 	if response != nil || err != nil {
 		return response, err
 	}

@@ -43,7 +43,11 @@ type ReaderGetter interface {
 
 // Make a single API request to a named endpoint, handling directory lookup and failover automatically.
 func CallRemote(endpoint, method string, query *url.Values, body io.ReadSeeker) (*http.Response, error) {
-	return CallRemoteWithGetter(endpoint, method, query, fileProducer{body})
+	var getter ReaderGetter
+	if body != nil {
+		getter = fileProducer{body}
+	}
+	return CallRemoteWithGetter(endpoint, method, query, getter)
 }
 
 // Make a single API request to a named endpoint, handling directory lookup and failover automatically.
