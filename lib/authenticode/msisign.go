@@ -47,9 +47,6 @@ func SignMSIImprint(digest []byte, hash crypto.Hash, privKey crypto.Signer, cert
 }
 
 func InsertMSISignature(cdf *comdoc.ComDoc, pkcs, exsig []byte) error {
-	if err := cdf.AddFile(msiDigitalSignature, pkcs); err != nil {
-		return err
-	}
 	if len(exsig) > 0 {
 		if err := cdf.AddFile(msiDigitalSignatureEx, exsig); err != nil {
 			return err
@@ -59,5 +56,5 @@ func InsertMSISignature(cdf *comdoc.ComDoc, pkcs, exsig []byte) error {
 			return err
 		}
 	}
-	return nil
+	return cdf.AddFile(msiDigitalSignature, pkcs)
 }

@@ -52,10 +52,10 @@ type Header struct {
 	ByteOrder        uint16
 	SectorSize       uint16 // power of 2
 	ShortSectorSize  uint16 // power of 2
-	_                [10]byte
+	Reserved1        [10]byte
 	SATSectors       uint32
 	DirNextSector    SecID
-	_                uint32
+	Reserved2        uint32
 	MinStdStreamSize uint32
 	SSATNextSector   SecID
 	SSATSectorCount  uint32

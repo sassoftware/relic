@@ -163,7 +163,7 @@ func (r *ComDoc) writeDirStream() error {
 			if f.Type != DirEmpty {
 				chunk[k] = f.RawDirEnt
 			} else {
-				chunk[k] = RawDirEnt{}
+				chunk[k] = RawDirEnt{LeftChild: -1, RightChild: -1, StorageRoot: -1}
 			}
 		}
 		buf.Reset()
