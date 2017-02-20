@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"strconv"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
 )
@@ -32,7 +31,7 @@ func (s *Server) signPgp(keyConf *config.KeyConfig, request *http.Request, filen
 		"--config", s.Config.Path(),
 		"--key", keyConf.Name(),
 	}
-	if n, _ := strconv.Atoi(request.URL.Query().Get("armor")); n != 0 {
+	if intParam(request, "armor") != 0 {
 		cmdline = append(cmdline, "--armor")
 	}
 	pgp := request.URL.Query().Get("pgp")

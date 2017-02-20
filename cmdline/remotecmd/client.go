@@ -37,8 +37,17 @@ import (
 
 const connectTimeout = time.Second * 15
 
+type ReaderGetter interface {
+	GetReader() (io.Reader, int64, error)
+}
+
 // Make a single API request to a named endpoint, handling directory lookup and failover automatically.
 func CallRemote(endpoint, method string, query *url.Values, body io.ReadSeeker) (*http.Response, error) {
+	return CallRemoteWithGetter(endpoint, method, query, fileProducer{body})
+}
+
+// Make a single API request to a named endpoint, handling directory lookup and failover automatically.
+func CallRemoteWithGetter(endpoint, method string, query *url.Values, body ReaderGetter) (*http.Response, error) {
 	if err := shared.InitConfig(); err != nil {
 		return nil, err
 	}
@@ -74,7 +83,7 @@ func getDirectory(dirurl string) ([]string, error) {
 }
 
 // Build a HTTP request from various bits and pieces
-func buildRequest(base, endpoint, method string, query *url.Values, bodyFile io.ReadSeeker) (*http.Request, error) {
+func buildRequest(base, endpoint, method string, query *url.Values, bodyFile ReaderGetter) (*http.Request, error) {
 	eurl, err := url.Parse(endpoint)
 	if err != nil {
 		return nil, err
@@ -93,13 +102,14 @@ func buildRequest(base, endpoint, method string, query *url.Values, bodyFile io.
 		Header: http.Header{"User-Agent": []string{config.UserAgent}},
 	}
 	if bodyFile != nil {
-		size, err := bodyFile.Seek(0, io.SeekEnd)
+		stream, size, err := bodyFile.GetReader()
 		if err != nil {
-			return nil, fmt.Errorf("failed to seek input file: %s", err)
+			return nil, err
 		}
-		request.ContentLength = size
-		bodyFile.Seek(0, io.SeekStart)
-		request.Body = ioutil.NopCloser(bodyFile)
+		if size >= 0 {
+			request.ContentLength = size
+		}
+		request.Body = ioutil.NopCloser(stream)
 	}
 	return request, nil
 }
@@ -130,7 +140,7 @@ func makeTlsConfig() (*tls.Config, error) {
 }
 
 // Transact one request, trying multiple servers if necessary. Internal use only.
-func doRequest(bases []string, endpoint, method string, query *url.Values, bodyFile io.ReadSeeker) (response *http.Response, err error) {
+func doRequest(bases []string, endpoint, method string, query *url.Values, bodyFile ReaderGetter) (response *http.Response, err error) {
 	tconf, err := makeTlsConfig()
 	if err != nil {
 		return nil, err
@@ -179,6 +189,19 @@ func setDigestQueryParam(query url.Values) error {
 	}
 	query.Add("digest", shared.ArgDigest)
 	return nil
+}
+
+type fileProducer struct {
+	f io.ReadSeeker
+}
+
+func (p fileProducer) GetReader() (io.Reader, int64, error) {
+	size, err := p.f.Seek(0, io.SeekEnd)
+	if err != nil {
+		return nil, -1, fmt.Errorf("failed to seek input file: %s", err)
+	}
+	p.f.Seek(0, io.SeekStart)
+	return p.f, size, nil
 }
 
 // Check if an error is something recoverable, i.e. if we should continue to

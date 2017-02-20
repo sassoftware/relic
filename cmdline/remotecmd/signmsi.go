@@ -17,8 +17,6 @@
 package remotecmd
 
 import (
-	"bytes"
-	"crypto"
 	"errors"
 	"fmt"
 	"io"
@@ -40,20 +38,30 @@ func signMsi() error {
 	if err != nil {
 		return err
 	}
-	sum, exsig, err := signMsiInput(hash)
+	cdf, err := comdoc.ReadPath(argFile)
 	if err != nil {
 		return shared.Fail(err)
 	}
-	infile := bytes.NewReader(sum)
+	defer cdf.Close()
+	body := msiTarProducer{cdf}
 
 	values := url.Values{}
-	values.Add("sigtype", "msi-imprint")
+	values.Add("sigtype", "msi-tar")
 	values.Add("key", argKeyName)
 	values.Add("filename", path.Base(argFile))
 	if err := setDigestQueryParam(values); err != nil {
 		return err
 	}
-	response, err := CallRemote("sign", "POST", &values, infile)
+	var exsig []byte
+	if argNoMsiExtended {
+		values.Add("no-extended", "1")
+	} else {
+		exsig, err = authenticode.PrehashMSI(cdf, hash)
+		if err != nil {
+			return shared.Fail(err)
+		}
+	}
+	response, err := CallRemoteWithGetter("sign", "POST", &values, body)
 	if err != nil {
 		return shared.Fail(err)
 	}
@@ -73,13 +81,16 @@ func signMsi() error {
 	return nil
 }
 
-func signMsiInput(hash crypto.Hash) (sum, exsig []byte, err error) {
-	cdf, err := comdoc.ReadPath(argFile)
-	if err != nil {
-		return nil, nil, err
-	}
-	defer cdf.Close()
-	return authenticode.DigestMSI(cdf, hash, !argNoMsiExtended)
+type msiTarProducer struct {
+	cdf *comdoc.ComDoc
+}
+
+func (p msiTarProducer) GetReader() (io.Reader, int64, error) {
+	r, w := io.Pipe()
+	go func() {
+		w.CloseWithError(authenticode.MsiToTar(p.cdf, w))
+	}()
+	return r, -1, nil
 }
 
 func writeMsi(pkcs, exsig []byte) error {
@@ -103,7 +114,6 @@ func writeMsi(pkcs, exsig []byte) error {
 	if err != nil {
 		return shared.Fail(err)
 	}
-	fmt.Printf("%x\n", exsig)
 	if err := authenticode.InsertMSISignature(cdf, pkcs, exsig); err != nil {
 		return shared.Fail(err)
 	}

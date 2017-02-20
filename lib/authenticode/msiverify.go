@@ -123,13 +123,10 @@ func VerifyMSI(f io.ReaderAt, skipDigests bool) (*MSISignature, error) {
 func DigestMSI(cdf *comdoc.ComDoc, hash crypto.Hash, extended bool) (imprint, prehash []byte, err error) {
 	d := hash.New()
 	if extended {
-		// Extended signature covers metadata only. the digest is then fed
-		// to the main hash before the rest of the content.
-		d2 := hash.New()
-		if err := prehashMsiDir(cdf, cdf.RootStorage(), d2); err != nil {
+		prehash, err = PrehashMSI(cdf, hash)
+		if err != nil {
 			return nil, nil, err
 		}
-		prehash = d2.Sum(nil)
 		d.Write(prehash)
 	}
 	if err := hashMsiDir(cdf, cdf.RootStorage(), d); err != nil {
@@ -137,6 +134,14 @@ func DigestMSI(cdf *comdoc.ComDoc, hash crypto.Hash, extended bool) (imprint, pr
 	}
 	imprint = d.Sum(nil)
 	return
+}
+
+func PrehashMSI(cdf *comdoc.ComDoc, hash crypto.Hash) ([]byte, error) {
+	d2 := hash.New()
+	if err := prehashMsiDir(cdf, cdf.RootStorage(), d2); err != nil {
+		return nil, err
+	}
+	return d2.Sum(nil), nil
 }
 
 func hashMsiDir(cdf *comdoc.ComDoc, parent *comdoc.DirEnt, d io.Writer) error {

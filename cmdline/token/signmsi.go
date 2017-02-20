@@ -24,7 +24,6 @@ import (
 	"os"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/atomicfile"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/authenticode"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/comdoc"
 	"github.com/spf13/cobra"
@@ -36,6 +35,12 @@ var SignMsiCmd = &cobra.Command{
 	RunE:  signMsiCmd,
 }
 
+var SignMsiTarCmd = &cobra.Command{
+	Use:    "sign-msi-tar",
+	RunE:   signMsiTarCmd,
+	Hidden: true,
+}
+
 var argNoMsiExtended bool
 
 func init() {
@@ -45,13 +50,17 @@ func init() {
 	SignMsiCmd.Flags().StringVarP(&argFile, "file", "f", "", "Input file to sign")
 	SignMsiCmd.Flags().StringVarP(&argOutput, "output", "o", "", "Output file. Defaults to same as input.")
 	SignMsiCmd.Flags().BoolVar(&argNoMsiExtended, "no-extended-sig", false, "Don't emit a MsiDigitalSignatureEx digest")
-	SignMsiCmd.Flags().BoolVar(&argPkcs7, "pkcs7", false, "Emit PKCS7 signature instead of the signed executable")
+
+	shared.RootCmd.AddCommand(SignMsiTarCmd)
+	shared.AddDigestFlag(SignMsiTarCmd)
+	SignMsiTarCmd.Flags().StringVarP(&argKeyName, "key", "k", "", "Name of key section in config file to use")
+	SignMsiTarCmd.Flags().BoolVar(&argNoMsiExtended, "no-extended-sig", false, "Don't emit a MsiDigitalSignatureEx digest")
 }
 
 func signMsiCmd(cmd *cobra.Command, args []string) error {
 	if argFile == "" {
 		return errors.New("--key and --file are required")
-	} else if !argPkcs7 && (argFile == "-" || argOutput == "-") {
+	} else if argFile == "-" || argOutput == "-" {
 		return errors.New("--file and --output must be a path, not -")
 	}
 	hash, err := shared.GetDigest()
@@ -79,17 +88,10 @@ func signMsiCmd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return shared.Fail(err)
 	}
-	if argPkcs7 {
-		if argOutput == "" {
-			argOutput = "-"
-		}
-		return shared.Fail(atomicfile.WriteFile(argOutput, pkcs))
-	} else {
-		if argOutput == "" {
-			argOutput = argFile
-		}
-		return writeMsi(pkcs, exsig)
+	if argOutput == "" {
+		argOutput = argFile
 	}
+	return writeMsi(pkcs, exsig)
 }
 
 func signMsiInput(hash crypto.Hash) (sum, exsig []byte, err error) {
@@ -135,6 +137,38 @@ func writeMsi(pkcs, exsig []byte) error {
 		return shared.Fail(err)
 	}
 	if err := cdf.Close(); err != nil {
+		return shared.Fail(err)
+	}
+	return nil
+}
+
+func signMsiTarCmd(cmd *cobra.Command, args []string) error {
+	hash, err := shared.GetDigest()
+	if err != nil {
+		return err
+	}
+	sum, err := authenticode.DigestMsiTar(os.Stdin, hash, !argNoMsiExtended)
+	if err != nil {
+		return shared.Fail(err)
+	}
+
+	key, err := openKey(argKeyName)
+	if err != nil {
+		return err
+	}
+	certs, err := readCerts(key)
+	if err != nil {
+		return shared.Fail(err)
+	}
+	psd, err := authenticode.SignMSIImprint(sum, hash, key, certs)
+	if err != nil {
+		return shared.Fail(err)
+	}
+	pkcs, err := timestampPkcs(psd, key, certs, hash, true)
+	if err != nil {
+		return shared.Fail(err)
+	}
+	if _, err := os.Stdout.Write(pkcs); err != nil {
 		return shared.Fail(err)
 	}
 	return nil
