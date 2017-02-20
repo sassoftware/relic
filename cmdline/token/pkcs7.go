@@ -22,7 +22,6 @@ import (
 	"encoding/asn1"
 	"fmt"
 	"io/ioutil"
-	"math/rand"
 	"os"
 	"time"
 
@@ -83,10 +82,8 @@ func timestampPkcs(psd *pkcs7.ContentInfoSignedData, key *p11token.Key, certs []
 			Timeout:   time.Second * time.Duration(tconf.Timeout),
 		}
 		var token *pkcs7.ContentInfoSignedData
-		shuf := rand.New(rand.NewSource(time.Now().UnixNano()))
-		order := shuf.Perm(len(tconf.Urls))
-		for _, i := range order {
-			cl.Url = tconf.Urls[i]
+		for _, url := range tconf.Urls {
+			cl.Url = url
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Timestamping failed: %s\nTrying next server %s...\n", err, cl.Url)
 			}
