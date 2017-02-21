@@ -21,7 +21,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
@@ -117,21 +116,19 @@ func loadCerts() error {
 	}
 	trustedCerts = trusted.X509Certs
 	trustedPgp = trusted.PGPCerts
-	if len(trustedCerts) == 0 || argAlsoSystem {
-		var err error
-		trustedPool, err = x509.SystemCertPool()
-		if err != nil {
-			if strings.Index(err.Error(), "not available") < 0 || argAlsoSystem {
+	if len(trustedCerts) > 0 {
+		if argAlsoSystem {
+			var err error
+			trustedPool, err = x509.SystemCertPool()
+			if err != nil {
 				return err
-			} else {
-				trustedPool = x509.NewCertPool()
 			}
+		} else {
+			trustedPool = x509.NewCertPool()
 		}
-	} else {
-		trustedPool = x509.NewCertPool()
-	}
-	for _, cert := range trustedCerts {
-		trustedPool.AddCert(cert)
+		for _, cert := range trustedCerts {
+			trustedPool.AddCert(cert)
+		}
 	}
 	intermediate, err := certloader.LoadAnyCerts(argIntermediateCerts)
 	if err != nil {
