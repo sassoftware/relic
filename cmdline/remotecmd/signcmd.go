@@ -24,10 +24,10 @@ import (
 	"net/url"
 	"os"
 	"path"
-	"strings"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/binpatch"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/magic"
 	"github.com/spf13/cobra"
 )
 
@@ -63,14 +63,24 @@ func signCmd(cmd *cobra.Command, args []string) (err error) {
 	if argOutput == "" {
 		argOutput = argFile
 	}
-	exten := strings.ToLower(path.Ext(argFile))
-	switch exten {
-	case ".jar":
+	var fileType magic.FileType
+	if f, err := os.Open(argFile); err != nil {
+		return shared.Fail(err)
+	} else {
+		fileType = magic.Detect(f)
+		f.Close()
+	}
+	switch fileType {
+	case magic.FileTypeJAR:
 		return signJar()
-	case ".acm", ".ax", ".cpl", ".dll", ".drv", ".efi", ".exe", ".ocx", ".scr", ".sys", ".tsp":
+	case magic.FileTypePECOFF:
 		return signPeCoff()
-	case ".msi":
+	case magic.FileTypeMSI:
 		return signMsi()
+	case magic.FileTypeRPM, magic.FileTypeDEB:
+		// handled below
+	default:
+		return errors.New("Don't know how to sign this type of file")
 	}
 	// open for writing so in-place patch works
 	infile, err := os.OpenFile(argFile, os.O_RDWR, 0)
