@@ -66,8 +66,8 @@ func serveCmd(cmd *cobra.Command, args []string) error {
 	}
 	srv, err := MakeServer()
 	if err != nil {
-		return err
+		return shared.Fail(err)
 	}
 	go watchSignals(srv)
-	return srv.Serve()
+	return shared.Fail(srv.Serve())
 }

@@ -27,14 +27,15 @@ import (
 	"time"
 )
 
+const HealthCheckInterval = time.Second * 60
+const HealthCheckMaxFailures = 2
+const PingTimeout = time.Second * 15
+
 var (
-	healthStatus   bool = true
+	healthStatus   int = HealthCheckMaxFailures
 	healthLastPing time.Time
 	healthMu       sync.Mutex
 )
-
-const HealthCheckInterval = time.Second * 30
-const PingTimeout = time.Second * 5
 
 func (s *Server) startHealthCheck(force bool) error {
 	if !s.healthCheck() && !force {
@@ -75,16 +76,23 @@ func (s *Server) healthCheck() bool {
 			break
 		}
 	}
-	if ok != last {
-		if ok {
-			s.Logf("health status changed to OK")
-		} else {
-			s.Logf("health status changed to ERROR")
+	next := last
+	if ok {
+		if last == 0 {
+			s.Logf("recovered to normal state, status is now OK")
+		} else if last < HealthCheckMaxFailures {
+			s.Logf("recovered to normal state")
+		}
+		next = HealthCheckMaxFailures
+	} else if last > 0 {
+		next--
+		if next == 0 {
+			s.Logf("exceeded maximum health check failures, flagging as ERROR")
 		}
 	}
 	healthMu.Lock()
 	defer healthMu.Unlock()
-	healthStatus = ok
+	healthStatus = next
 	healthLastPing = time.Now()
 	return ok
 }
@@ -118,7 +126,7 @@ func (s *Server) Healthy(request *http.Request) bool {
 		}
 		return false
 	} else {
-		return healthStatus
+		return healthStatus > 0
 	}
 }
 

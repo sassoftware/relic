@@ -38,10 +38,10 @@ func init() {
 func pingCmd(cmd *cobra.Command, args []string) error {
 	token, err := openToken(argToken)
 	if err != nil {
-		return err
+		return shared.Fail(err)
 	}
 	if ok, err := token.IsLoggedIn(); err != nil {
-		return err
+		return shared.Fail(err)
 	} else if !ok {
 		fmt.Println("ERROR: not logged in")
 		os.Exit(1)
