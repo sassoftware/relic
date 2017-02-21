@@ -25,6 +25,7 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+	"strings"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/server/diskmgr"
@@ -69,6 +70,9 @@ func (s *Server) callHandler(request *http.Request, lw *loggingWriter) (response
 		return AccessDeniedResponse, nil
 	} else if !s.Healthy(request) {
 		return ErrorResponse(http.StatusServiceUnavailable), nil
+	}
+	if strings.HasPrefix(request.URL.Path, "/keys/") {
+		return s.serveGetKey(request)
 	}
 	switch request.URL.Path {
 	case "/":
