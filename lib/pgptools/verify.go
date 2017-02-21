@@ -1,0 +1,139 @@
+/*
+ * Copyright (c) SAS Institute Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package pgptools
+
+import (
+	"bytes"
+	"crypto"
+	"errors"
+	"fmt"
+	"io"
+	"io/ioutil"
+	"time"
+
+	"golang.org/x/crypto/openpgp"
+	"golang.org/x/crypto/openpgp/clearsign"
+	"golang.org/x/crypto/openpgp/packet"
+)
+
+type PgpSignature struct {
+	Key          *openpgp.Key
+	CreationTime time.Time
+	Hash         crypto.Hash
+}
+
+func VerifyDetached(signature, signed io.Reader, keyring openpgp.EntityList) (*PgpSignature, error) {
+	packetReader := packet.NewReader(signature)
+	genpkt, err := packetReader.Next()
+	if err == io.EOF {
+		return nil, errors.New("no PGP signature found")
+	} else if err != nil {
+		return nil, err
+	}
+	// parse
+	var hash crypto.Hash
+	var keyId uint64
+	var creationTime time.Time
+	switch pkt := genpkt.(type) {
+	case *packet.SignatureV3:
+		hash = pkt.Hash
+		keyId = pkt.IssuerKeyId
+		creationTime = pkt.CreationTime
+	case *packet.Signature:
+		if pkt.IssuerKeyId == nil {
+			return nil, errors.New("Missing keyId in signature")
+		}
+		hash = pkt.Hash
+		keyId = *pkt.IssuerKeyId
+		creationTime = pkt.CreationTime
+	default:
+		return nil, errors.New("not a PGP signature")
+	}
+	// find key
+	keys := keyring.KeysById(keyId)
+	if len(keys) == 0 {
+		return nil, ErrNoKey(keyId)
+	}
+	// calculate hash
+	if !hash.Available() {
+		return nil, errors.New("signature uses unknown digest")
+	}
+	d := hash.New()
+	if _, err := io.Copy(d, signed); err != nil {
+		return nil, err
+	}
+	// check signature
+	switch pkt := genpkt.(type) {
+	case *packet.SignatureV3:
+		err = keys[0].PublicKey.VerifySignatureV3(d, pkt)
+	case *packet.Signature:
+		err = keys[0].PublicKey.VerifySignature(d, pkt)
+	}
+	return &PgpSignature{&keys[0], creationTime, hash}, err
+}
+
+func VerifyClearSign(f io.Reader, keyring openpgp.EntityList) (*PgpSignature, []byte, error) {
+	blob, err := ioutil.ReadAll(f)
+	if err != nil {
+		return nil, nil, err
+	}
+	csblock, rest := clearsign.Decode(blob)
+	if csblock == nil {
+		return nil, nil, errors.New("malformed clearsign signature")
+	} else if bytes.Contains(rest, []byte("-----BEGIN")) {
+		return nil, nil, errors.New("clearsign contains multiple documents")
+	}
+	sig, err := VerifyDetached(csblock.ArmoredSignature.Body, bytes.NewReader(csblock.Bytes), keyring)
+	return sig, csblock.Bytes, err
+}
+
+func VerifyInline(signature io.Reader, keyring openpgp.EntityList) (*PgpSignature, []byte, error) {
+	md, err := openpgp.ReadMessage(signature, keyring, nil, nil)
+	if err == io.EOF {
+		return nil, nil, ErrNoContent{}
+	} else if err != nil {
+		return nil, nil, err
+	} else if md.SignedBy == nil {
+		return nil, nil, ErrNoKey(md.SignedByKeyId)
+	}
+	body, err := ioutil.ReadAll(md.UnverifiedBody)
+	if err != nil {
+		return nil, nil, err
+	}
+	// reading UnverifiedBody in full triggers the signature validation
+	sig := &PgpSignature{Key: md.SignedBy}
+	if md.Signature != nil {
+		sig.CreationTime = md.Signature.CreationTime
+		sig.Hash = md.Signature.Hash
+	} else if md.SignatureV3 != nil {
+		sig.CreationTime = md.SignatureV3.CreationTime
+		sig.Hash = md.Signature.Hash
+	}
+	return sig, body, md.SignatureError
+}
+
+type ErrNoKey uint64
+
+func (e ErrNoKey) Error() string {
+	return fmt.Sprintf("keyId %x not found", uint64(e))
+}
+
+type ErrNoContent struct{}
+
+func (ErrNoContent) Error() string {
+	return "missing content for detached signature"
+}

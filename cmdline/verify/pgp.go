@@ -18,25 +18,15 @@ package verify
 
 import (
 	"bytes"
-	"crypto"
-	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
-	"time"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pgptools"
-	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/armor"
-	"golang.org/x/crypto/openpgp/clearsign"
-	"golang.org/x/crypto/openpgp/packet"
 )
 
 func verifyPgp(f *os.File) error {
-	if len(trustedPgp) == 0 {
-		return errors.New("Need one or more PGP keys to validate against; use --cert")
-	}
 	var first [34]byte
 	if _, err := f.Read(first[:]); err != nil {
 		return err
@@ -49,7 +39,8 @@ func verifyPgp(f *os.File) error {
 	if first[0] == '-' {
 		if bytes.HasPrefix(first[:], []byte("-----BEGIN PGP SIGNED MESSAGE-----")) {
 			// clearsign
-			return verifyPgpClear(f)
+			sig, _, err := pgptools.VerifyClearSign(f, trustedPgp)
+			return showPgp(sig, f.Name(), err)
 		}
 		block, err := armor.Decode(reader)
 		if err != nil {
@@ -64,111 +55,24 @@ func verifyPgp(f *os.File) error {
 			return err
 		}
 		defer fc.Close()
-		return verifyPgpDetached(f, reader, fc)
+		sig, err := pgptools.VerifyDetached(reader, fc, trustedPgp)
+		return showPgp(sig, f.Name(), err)
 	} else {
 		// inline signature
-		return verifyPgpInline(f, reader)
+		sig, _, err := pgptools.VerifyInline(reader, trustedPgp)
+		return showPgp(sig, f.Name(), err)
 	}
 }
 
-func verifyPgpDetached(f *os.File, signature io.Reader, signed io.ReadSeeker) error {
-	packetReader := packet.NewReader(signature)
-	found := false
-	for {
-		genpkt, err := packetReader.Next()
-		if err == io.EOF {
-			break
-		} else if err != nil {
-			return err
-		}
-		// parse
-		var hash crypto.Hash
-		var keyId uint64
-		var creationTime time.Time
-		switch pkt := genpkt.(type) {
-		case *packet.SignatureV3:
-			hash = pkt.Hash
-			keyId = pkt.IssuerKeyId
-			creationTime = pkt.CreationTime
-		case *packet.Signature:
-			if pkt.IssuerKeyId == nil {
-				return errors.New("Missing keyId in signature")
-			}
-			hash = pkt.Hash
-			keyId = *pkt.IssuerKeyId
-			creationTime = pkt.CreationTime
-		default:
-			continue
-		}
-		// find key
-		keys := trustedPgp.KeysById(keyId)
-		if len(keys) == 0 {
-			return fmt.Errorf("keyid %x not found", keyId)
-		}
-		// calculate hash
-		if !hash.Available() {
-			return errors.New("signature uses unknown digest")
-		}
-		d := hash.New()
-		if _, err := signed.Seek(0, 0); err != nil {
-			return err
-		}
-		if _, err := io.Copy(d, signed); err != nil {
-			return err
-		}
-		// check signature
-		switch pkt := genpkt.(type) {
-		case *packet.SignatureV3:
-			err = keys[0].PublicKey.VerifySignatureV3(d, pkt)
-		case *packet.Signature:
-			err = keys[0].PublicKey.VerifySignature(d, pkt)
-		default:
-			panic("unreachable")
-		}
-		fmt.Printf("%s: OK - %s(%x) [%s]\n", f.Name(), pgptools.EntityName(keys[0].Entity), keyId, creationTime)
-		found = true
-	}
-	if !found {
-		return errors.New("no PGP signatures found")
-	}
-	return nil
-}
-
-func verifyPgpClear(f *os.File) error {
-	blob, err := ioutil.ReadAll(f)
-	if err != nil {
+func showPgp(sig *pgptools.PgpSignature, name string, err error) error {
+	if err == nil {
+		fmt.Printf("%s: OK - %s(%x) [%s]\n", name, pgptools.EntityName(sig.Key.Entity), sig.Key.PublicKey.KeyId, sig.CreationTime)
+		return nil
+	} else if sig != nil {
+		return fmt.Errorf("bad signature from %s(%x) [%s]: %s\n", pgptools.EntityName(sig.Key.Entity), sig.Key.PublicKey.KeyId, sig.CreationTime, err)
+	} else if _, ok := err.(pgptools.ErrNoKey); ok {
+		return fmt.Errorf("%s; use --cert to specify trusted keys", err)
+	} else {
 		return err
 	}
-	csblock, rest := clearsign.Decode(blob)
-	if csblock == nil {
-		return errors.New("malformed clearsign signature")
-	} else if bytes.Contains(rest, []byte("-----BEGIN")) {
-		return errors.New("clearsign contains multiple documents")
-	}
-	return verifyPgpDetached(f, csblock.ArmoredSignature.Body, bytes.NewReader(csblock.Bytes))
-}
-
-func verifyPgpInline(f *os.File, signature io.Reader) error {
-	md, err := openpgp.ReadMessage(signature, trustedPgp, nil, nil)
-	if err == io.EOF {
-		return errors.New("detached signature requires --content")
-	} else if err != nil {
-		return err
-	} else if md.SignedBy == nil {
-		return fmt.Errorf("unknown signer with keyId %x", md.SignedByKeyId)
-	}
-	if _, err := io.Copy(ioutil.Discard, md.UnverifiedBody); err != nil {
-		return err
-	}
-	if md.SignatureError != nil {
-		return err
-	}
-	var creationTime time.Time
-	if md.Signature != nil {
-		creationTime = md.Signature.CreationTime
-	} else if md.SignatureV3 != nil {
-		creationTime = md.SignatureV3.CreationTime
-	}
-	fmt.Printf("%s: OK - %s(%x) [%s]\n", f.Name(), pgptools.EntityName(md.SignedBy.Entity), md.SignedByKeyId, creationTime)
-	return nil
 }

@@ -22,32 +22,21 @@ import (
 	"os"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pgptools"
-
-	"github.com/sassoftware/go-rpmutils"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/signdeb"
 )
 
-func verifyRpm(f *os.File) error {
-	_, sigs, err := rpmutils.Verify(f, trustedPgp)
-	if err != nil {
+func verifyDeb(f *os.File) error {
+	sigmap, err := signdeb.Verify(f, trustedPgp, argNoIntegrityCheck)
+	if _, ok := err.(pgptools.ErrNoKey); ok {
+		return fmt.Errorf("%s; use --cert to specify trusted keys", err)
+	} else if err != nil {
 		return err
 	}
-	if len(sigs) == 0 {
-		return errors.New("RPM is not signed")
+	if len(sigmap) == 0 {
+		return errors.New("DEB is not signed")
 	}
-	seen := make(map[uint64]bool)
-	for _, sig := range sigs {
-		status := "OK"
-		if seen[sig.KeyId] {
-			continue
-		} else if sig.Signer == nil {
-			if argNoChain {
-				status = "UNKNOWN"
-			} else {
-				return fmt.Errorf("unknown keyId %x; use --cert to specify trusted keys", sig.KeyId)
-			}
-		}
-		seen[sig.KeyId] = true
-		fmt.Printf("%s: %s - %s(%x) [%s]\n", f.Name(), status, pgptools.EntityName(sig.Signer), sig.KeyId, sig.CreationTime)
+	for role, sig := range sigmap {
+		showPgp(sig, fmt.Sprintf("%s(%s)", f.Name(), role), nil)
 	}
 	return nil
 }

@@ -63,7 +63,7 @@ func Detect(r io.Reader) FileType {
 	switch {
 	case bytes.HasPrefix(blob, []byte{0xed, 0xab, 0xee, 0xdb}):
 		return FileTypeRPM
-	case bytes.HasPrefix(blob, []byte("=!<arch>\ndebian")):
+	case bytes.HasPrefix(blob, []byte("!<arch>\ndebian")):
 		return FileTypeDEB
 	case bytes.HasPrefix(blob, []byte("-----BEGIN PGP")),
 		bytes.HasPrefix(blob, []byte{0x89, 0x01}),
