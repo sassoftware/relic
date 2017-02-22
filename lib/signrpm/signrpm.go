@@ -18,24 +18,13 @@ package signrpm
 
 import (
 	"crypto"
-	"encoding/json"
-	"fmt"
 	"io"
-	"os"
 	"time"
 
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/binpatch"
 	"github.com/sassoftware/go-rpmutils"
 	"golang.org/x/crypto/openpgp/packet"
 )
-
-type SigInfo struct {
-	Header      *rpmutils.RpmHeader
-	Fingerprint string
-	Timestamp   time.Time
-	KeyName     string
-	ClientName  string
-	ClientIP    string
-}
 
 func defaultOpts(opts *rpmutils.SignatureOptions) *rpmutils.SignatureOptions {
 	var newOpts rpmutils.SignatureOptions
@@ -51,113 +40,20 @@ func defaultOpts(opts *rpmutils.SignatureOptions) *rpmutils.SignatureOptions {
 	return &newOpts
 }
 
-type JsonInfo struct {
-	ClientIP    string    `json:"client_ip,omitempty"`
-	ClientName  string    `json:"client_name,omitempty"`
-	Fingerprint string    `json:"fingerprint"`
-	HeaderSig   []byte    `json:"header_sig,omitempty"`
-	Md5         string    `json:"md5"`
-	Nevra       string    `json:"nevra"`
-	PatchOffset uint64    `json:"patch_offset,omitempty"`
-	PatchLength uint64    `json:"patch_length,omitempty"`
-	PayloadSig  []byte    `json:"payload_sig,omitempty"`
-	Sha1        string    `json:"sha1"`
-	Timestamp   time.Time `json:"timestamp"`
-}
-
-func (info *SigInfo) fillJinfo() *JsonInfo {
-	jinfo := new(JsonInfo)
-	jinfo.Fingerprint = info.Fingerprint
-	nevra, _ := info.Header.GetNEVRA()
-	snevra := nevra.String()
-	jinfo.Nevra = snevra[:len(snevra)-4] // strip .rpm
-	md5, _ := info.Header.GetBytes(rpmutils.SIG_MD5)
-	jinfo.Md5 = fmt.Sprintf("%x", md5)
-	jinfo.Sha1, _ = info.Header.GetString(rpmutils.SIG_SHA1)
-	jinfo.Timestamp = info.Timestamp
-	jinfo.ClientIP = info.ClientIP
-	jinfo.ClientName = info.ClientName
-	return jinfo
-}
-
-func (info *SigInfo) Dump(stream io.Writer) {
-	jinfo := info.fillJinfo()
-	jinfo.HeaderSig, _ = info.Header.GetBytes(rpmutils.SIG_RSA)
-	jinfo.PayloadSig, _ = info.Header.GetBytes(rpmutils.SIG_PGP)
-	jinfo.Dump(stream)
-}
-
-func (jinfo *JsonInfo) Dump(stream io.Writer) {
-	enc := json.NewEncoder(stream)
-	enc.SetIndent("", "  ")
-	enc.Encode(jinfo)
-	stream.Write([]byte{'\n'})
-}
-
-func (info *SigInfo) DumpPatch(stream io.Writer) error {
-	patch, err := info.Header.DumpSignatureHeader(true)
-	if err != nil {
-		return err
-	}
-	jinfo := info.fillJinfo()
-	jinfo.PatchOffset = 0
-	jinfo.PatchLength = uint64(info.Header.OriginalSignatureHeaderSize())
-	enc := json.NewEncoder(stream)
-	enc.Encode(&jinfo)
-	stream.Write([]byte{0})
-	stream.Write(patch)
-	return nil
-}
-
-func LoadJson(blob []byte) (*JsonInfo, error) {
-	jinfo := new(JsonInfo)
-	if err := json.Unmarshal(blob, jinfo); err != nil {
-		return nil, err
-	}
-	return jinfo, nil
-}
-
-func (info *SigInfo) String() string {
-	nevra, _ := info.Header.GetNEVRA()
-	snevra := nevra.String()
-	snevra = snevra[:len(snevra)-4] // strip .rpm
-	md5, _ := info.Header.GetBytes(rpmutils.SIG_MD5)
-	sha1, _ := info.Header.GetString(rpmutils.SIG_SHA1)
-	ret := fmt.Sprintf("Signed RPM: nevra=%s key=%s fp=%s md5=%X sha1=%s", snevra, info.KeyName, info.Fingerprint, md5, sha1)
-	if info.ClientIP != "" || info.ClientName != "" {
-		ret += fmt.Sprintf(" client=%s ip=%s", info.ClientName, info.ClientIP)
-	}
-	return ret
-}
-
-func SignRpmStream(stream io.Reader, key *packet.PrivateKey, opts *rpmutils.SignatureOptions) (*SigInfo, error) {
+func Sign(stream io.Reader, key *packet.PrivateKey, opts *rpmutils.SignatureOptions) (*binpatch.PatchSet, error) {
 	opts = defaultOpts(opts)
 	header, err := rpmutils.SignRpmStream(stream, key, opts)
 	if err != nil {
 		return nil, err
 	}
-	fp := fmt.Sprintf("%X", key.PublicKey.Fingerprint)[:]
-	return &SigInfo{Header: header, Fingerprint: fp, Timestamp: opts.CreationTime}, nil
-}
-
-func SignRpmFile(infile *os.File, outpath string, key *packet.PrivateKey, opts *rpmutils.SignatureOptions) (*SigInfo, error) {
-	opts = defaultOpts(opts)
-	header, err := rpmutils.SignRpmFile(infile, outpath, key, opts)
+	blob, err := header.DumpSignatureHeader(true)
 	if err != nil {
 		return nil, err
 	}
-	fp := fmt.Sprintf("%X", key.PublicKey.Fingerprint)[:]
-	return &SigInfo{Header: header, Fingerprint: fp, Timestamp: opts.CreationTime}, nil
-}
-
-func SignRpmFileWithJson(infile *os.File, outpath string, blob []byte) (*SigInfo, error) {
-	jinfo, err := LoadJson(blob)
-	if err != nil {
-		return nil, err
-	}
-	header, err := rpmutils.RewriteWithSignatures(infile, outpath, jinfo.PayloadSig, jinfo.HeaderSig)
-	if err != nil {
-		return nil, err
-	}
-	return &SigInfo{Header: header, Fingerprint: jinfo.Fingerprint, Timestamp: jinfo.Timestamp}, nil
+	patch := binpatch.New(map[string]interface{}{
+		"fingerprint": key.Fingerprint,
+		"timestamp":   opts.CreationTime.String(),
+	})
+	patch.Add(0, uint32(header.OriginalSignatureHeaderSize()), blob)
+	return patch, nil
 }

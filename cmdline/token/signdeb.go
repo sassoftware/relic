@@ -18,10 +18,10 @@ package token
 
 import (
 	"errors"
+	"fmt"
+	"os"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/atomicfile"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/binpatch"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/signdeb"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/p11token/pgptoken"
 	"github.com/spf13/cobra"
@@ -53,11 +53,11 @@ func signDebCmd(cmd *cobra.Command, args []string) (err error) {
 	if err != nil {
 		return err
 	}
-	inFile, closer, err := binpatch.OpenFile(argFile)
+	infile, err := openForPatching()
 	if err != nil {
 		return err
 	}
-	defer closer()
+	defer infile.Close()
 	key, err := openKey(argKeyName)
 	if err != nil {
 		return err
@@ -66,21 +66,13 @@ func signDebCmd(cmd *cobra.Command, args []string) (err error) {
 	if err != nil {
 		return shared.Fail(err)
 	}
-	patch, err := signdeb.Sign(inFile, entity, hash, argRole)
+	patch, err := signdeb.Sign(infile, entity, hash, argRole)
 	if err != nil {
 		return shared.Fail(err)
 	}
-	if argOutput == "" {
-		argOutput = argFile
+	if err := applyPatch(infile, patch); err != nil {
+		return shared.Fail(err)
 	}
-	if argPatch {
-		if err := atomicfile.WriteFile(argOutput, patch.Dump()); err != nil {
-			return shared.Fail(err)
-		}
-	} else {
-		if err := patch.Apply(inFile, argOutput); err != nil {
-			return shared.Fail(err)
-		}
-	}
+	fmt.Fprintf(os.Stderr, "Signed %s\n", argFile)
 	return nil
 }

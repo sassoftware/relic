@@ -24,7 +24,8 @@ import (
 	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
 )
 
-func (s *Server) signPgp(keyConf *config.KeyConfig, request *http.Request, filename string) (Response, error) {
+func (s *Server) signPgp(keyConf *config.KeyConfig, request *http.Request) (Response, error) {
+	filename := request.URL.Query().Get("filename")
 	cmdline := []string{
 		os.Args[0],
 		"sign-pgp",

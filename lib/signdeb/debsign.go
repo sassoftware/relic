@@ -32,7 +32,7 @@ import (
 	"golang.org/x/crypto/openpgp/packet"
 )
 
-func Sign(r io.Reader, signer *openpgp.Entity, opts crypto.SignerOpts, role string) (*binpatch.PatchInfo, error) {
+func Sign(r io.Reader, signer *openpgp.Entity, opts crypto.SignerOpts, role string) (*binpatch.PatchSet, error) {
 	counter := &readCounter{r: r}
 	now := time.Now().UTC()
 	reader := ar.NewReader(counter)
@@ -42,7 +42,8 @@ func Sign(r io.Reader, signer *openpgp.Entity, opts crypto.SignerOpts, role stri
 	fmt.Fprintln(msg, "Date:", now.Format(time.ANSIC))
 	fmt.Fprintln(msg, "Role:", role)
 	fmt.Fprintln(msg, "Files: ")
-	var patchOffset, patchLength int64
+	var patchOffset int64
+	var patchLength uint32
 	filename := "_gpg" + role
 	for {
 		hdr, err := reader.Next()
@@ -54,7 +55,7 @@ func Sign(r io.Reader, signer *openpgp.Entity, opts crypto.SignerOpts, role stri
 		if hdr.Name == filename {
 			// mark the old signature for removal
 			patchOffset = counter.n - 60
-			patchLength = 60 + ((hdr.Size+1)/2)*2
+			patchLength = uint32(60 + ((hdr.Size+1)/2)*2)
 		}
 		if strings.HasPrefix(hdr.Name, "_gpg") {
 			continue
@@ -94,11 +95,12 @@ func Sign(r io.Reader, signer *openpgp.Entity, opts crypto.SignerOpts, role stri
 	if patchOffset == 0 {
 		patchOffset = counter.n // end of file
 	}
-	data := map[string]interface{}{
+	patch := binpatch.New(map[string]interface{}{
 		"fingerprint": signer.PrimaryKey.Fingerprint,
 		"timestamp":   now.String(),
-	}
-	return binpatch.New(pbuf.Bytes(), patchOffset, patchLength, data), nil
+	})
+	patch.Add(patchOffset, patchLength, pbuf.Bytes())
+	return patch, nil
 }
 
 type readCounter struct {

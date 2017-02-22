@@ -40,28 +40,25 @@ func init() {
 	SignRpmCmd.Flags().StringVarP(&argKeyName, "key", "k", "", "Name of key section in config file to use")
 	SignRpmCmd.Flags().StringVarP(&argFile, "file", "f", "", "Input RPM file to sign")
 	SignRpmCmd.Flags().StringVarP(&argOutput, "output", "o", "", "Output RPM file")
-	SignRpmCmd.Flags().BoolVarP(&argJson, "json-output", "j", false, "Print signature tags instead of writing a RPM")
 	SignRpmCmd.Flags().BoolVarP(&argPatch, "patch", "p", false, "Make a binary patch instead of writing a RPM")
 }
 
 func signRpmCmd(cmd *cobra.Command, args []string) (err error) {
 	if argFile == "" {
 		return errors.New("--key and --file are required")
+	} else if argFile == "-" && !argPatch {
+		return errors.New("--file and --output must not be -")
 	}
 	hash, err := shared.GetDigest()
 	if err != nil {
 		return err
 	}
 	config := &rpmutils.SignatureOptions{Hash: hash}
-	var rpmfile *os.File
-	if argFile == "-" {
-		rpmfile = os.Stdin
-	} else {
-		rpmfile, err = os.Open(argFile)
-		if err != nil {
-			return
-		}
+	infile, err := openForPatching()
+	if err != nil {
+		return shared.Fail(err)
 	}
+	defer infile.Close()
 	key, err := openKey(argKeyName)
 	if err != nil {
 		return err
@@ -70,40 +67,13 @@ func signRpmCmd(cmd *cobra.Command, args []string) (err error) {
 	if err != nil {
 		return shared.Fail(err)
 	}
-	var info *signrpm.SigInfo
-	if argJson || argPatch {
-		info, err = signrpm.SignRpmStream(rpmfile, entity.PrivateKey, config)
-		if err != nil {
-			return err
-		}
-		if argJson {
-			info.Dump(os.Stdout)
-		} else if argPatch {
-			if argOutput == "" || argOutput == "-" {
-				if err := info.DumpPatch(os.Stdout); err != nil {
-					return err
-				}
-			} else {
-				outfile, err := os.Create(argOutput)
-				if err != nil {
-					return err
-				}
-				if err := info.DumpPatch(outfile); err != nil {
-					return err
-				}
-				outfile.Close()
-			}
-		}
-	} else {
-		if argOutput == "" {
-			argOutput = argFile
-		}
-		info, err = signrpm.SignRpmFile(rpmfile, argOutput, entity.PrivateKey, config)
-		if err != nil {
-			return err
-		}
+	patch, err := signrpm.Sign(infile, entity.PrivateKey, config)
+	if err != nil {
+		return shared.Fail(err)
 	}
-	info.KeyName = argKeyName
-	fmt.Fprintf(os.Stderr, "%s\n", info)
+	if err := applyPatch(infile, patch); err != nil {
+		return shared.Fail(err)
+	}
+	fmt.Fprintf(os.Stderr, "Signed %s\n", argFile)
 	return nil
 }

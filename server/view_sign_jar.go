@@ -25,7 +25,7 @@ import (
 	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
 )
 
-func (s *Server) signJar(keyConf *config.KeyConfig, request *http.Request, filename string) (Response, error) {
+func (s *Server) signJar(keyConf *config.KeyConfig, request *http.Request) (Response, error) {
 	cmdline := []string{
 		os.Args[0],
 		"sign-jar-manifest",
@@ -44,6 +44,7 @@ func (s *Server) signJar(keyConf *config.KeyConfig, request *http.Request, filen
 	if response != nil || err != nil {
 		return response, err
 	}
+	filename := request.URL.Query().Get("filename")
 	s.Logr(request, "signed jar manifest: filename=%s key=%s size=%d", filename, keyConf.Name(), stdin.Size())
 	return BytesResponse(stdout, "application/pkcs7-mime"), nil
 }

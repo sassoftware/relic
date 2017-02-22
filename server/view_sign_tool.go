@@ -57,7 +57,8 @@ func (s *Server) allocScratch(keyConf *config.KeyConfig, request *http.Request, 
 	return nil, StringResponse(status, "Disk allocation error\n\n"+why), nil
 }
 
-func (s *Server) signWithTool(keyConf *config.KeyConfig, request *http.Request, filename string, writer http.ResponseWriter) (Response, error) {
+func (s *Server) signWithTool(keyConf *config.KeyConfig, request *http.Request, writer http.ResponseWriter) (Response, error) {
+	filename := request.URL.Query().Get("filename")
 	cancel, response, err := s.allocScratch(keyConf, request, filename)
 	if response != nil || err != nil {
 		return response, err

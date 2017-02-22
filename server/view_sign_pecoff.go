@@ -23,7 +23,7 @@ import (
 	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
 )
 
-func (s *Server) signPeCoff(keyConf *config.KeyConfig, request *http.Request, filename string) (Response, error) {
+func (s *Server) signPeCoff(keyConf *config.KeyConfig, request *http.Request) (Response, error) {
 	cmdline := []string{
 		os.Args[0],
 		"sign-pe",
@@ -41,6 +41,7 @@ func (s *Server) signPeCoff(keyConf *config.KeyConfig, request *http.Request, fi
 	if response != nil || err != nil {
 		return response, err
 	}
+	filename := request.URL.Query().Get("filename")
 	s.Logr(request, "Signed package: filename=%s key=%s", filename, keyConf.Name())
 	return BytesResponse(stdout, "application/pkcs7-mime"), nil
 }

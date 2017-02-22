@@ -25,6 +25,8 @@ import (
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/atomicfile"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/binpatch"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/passprompt"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/p11token"
 	"github.com/spf13/cobra"
@@ -32,7 +34,6 @@ import (
 
 var (
 	argFile      string
-	argJson      bool
 	argPatch     bool
 	argKeyName   string
 	argToken     string
@@ -168,4 +169,23 @@ func formatKeyId(key_id []byte) string {
 		chunks[i] = fmt.Sprintf("%02x", j)
 	}
 	return strings.Join(chunks, ":")
+}
+
+func openForPatching() (*os.File, error) {
+	if argFile == "-" && argPatch {
+		return os.Stdin, nil
+	} else {
+		return os.OpenFile(argFile, os.O_RDWR, 0)
+	}
+}
+
+func applyPatch(infile *os.File, patch *binpatch.PatchSet) error {
+	if argPatch {
+		if argOutput == "" {
+			argOutput = "-"
+		}
+		return atomicfile.WriteFile(argOutput, patch.Dump())
+	} else {
+		return patch.Apply(infile, argOutput)
+	}
 }

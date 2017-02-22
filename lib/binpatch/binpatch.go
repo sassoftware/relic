@@ -18,111 +18,174 @@ package binpatch
 
 import (
 	"bytes"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/atomicfile"
 )
 
-type PatchInfo struct {
-	PatchOffset int64 `json:"patch_offset,omitempty"`
-	PatchLength int64 `json:"patch_length,omitempty"`
-
-	Data map[string]interface{} `json:"data"`
-
-	Patch []byte `json:"-"`
+type PatchSet struct {
+	Patches    []PatchHeader
+	Blobs      [][]byte
+	Attributes map[string]interface{}
 }
 
-func New(blob []byte, offset, length int64, data map[string]interface{}) *PatchInfo {
-	return &PatchInfo{offset, length, data, blob}
+type PatchSetHeader struct {
+	Version, NumPatches uint32
 }
 
-func Load(blob []byte) (*PatchInfo, error) {
-	idx := bytes.IndexByte(blob, 0)
-	if idx < 0 {
-		return nil, errors.New("Did not find null terminator in patch")
+type PatchHeader struct {
+	Offset           int64
+	OldSize, NewSize uint32
+}
+
+func New(attributes map[string]interface{}) *PatchSet {
+	return &PatchSet{nil, nil, attributes}
+}
+
+func (p *PatchSet) Add(offset int64, oldSize uint32, blob []byte) {
+	p.Patches = append(p.Patches, PatchHeader{offset, oldSize, uint32(len(blob))})
+	p.Blobs = append(p.Blobs, blob)
+}
+
+func Load(blob []byte) (*PatchSet, error) {
+	r := bytes.NewReader(blob)
+	var h PatchSetHeader
+	if err := binary.Read(r, binary.BigEndian, &h); err != nil {
+		return nil, err
+	} else if h.Version != 1 {
+		return nil, fmt.Errorf("unsupported binpatch version %d", h.Version)
 	}
-	info := new(PatchInfo)
-	if err := json.Unmarshal(blob[:idx], info); err != nil {
+	num := int(h.NumPatches)
+	p := &PatchSet{
+		Patches: make([]PatchHeader, num),
+		Blobs:   make([][]byte, num),
+	}
+	if err := binary.Read(r, binary.BigEndian, p.Patches); err != nil {
 		return nil, err
 	}
-	info.Patch = blob[idx+1:]
-	return info, nil
+	for i, hdr := range p.Patches {
+		p.Blobs[i] = make([]byte, int(hdr.NewSize))
+		if _, err := io.ReadFull(r, p.Blobs[i]); err != nil {
+			return nil, err
+		}
+	}
+	if attrBlob, err := ioutil.ReadAll(r); err != nil {
+		return nil, err
+	} else if err := json.Unmarshal(attrBlob, &p.Attributes); err != nil {
+		return nil, err
+	}
+	return p, nil
 }
 
-func (p *PatchInfo) Dump() []byte {
-	var buf bytes.Buffer
-	enc := json.NewEncoder(&buf)
-	enc.Encode(p)
-	buf.WriteByte(0)
-	buf.Write(p.Patch)
+func (p *PatchSet) Dump() []byte {
+	buf := new(bytes.Buffer)
+	enc := json.NewEncoder(buf)
+	enc.Encode(p.Attributes)
+	attrBlob := buf.Bytes()
+	header := PatchSetHeader{1, uint32(len(p.Patches))}
+	size := 8 + 16*len(p.Patches) + len(attrBlob)
+	for _, hdr := range p.Patches {
+		size += int(hdr.NewSize)
+	}
+	buf = bytes.NewBuffer(make([]byte, 0, size))
+	binary.Write(buf, binary.BigEndian, header)
+	binary.Write(buf, binary.BigEndian, p.Patches)
+	for _, blob := range p.Blobs {
+		buf.Write(blob)
+	}
+	buf.Write(attrBlob)
 	return buf.Bytes()
 }
 
-func (p *PatchInfo) Apply(infile *os.File, outpath string) error {
+func (p *PatchSet) Apply(infile *os.File, outpath string) error {
 	ininfo, err := infile.Stat()
 	if err != nil {
 		return err
 	}
-	if outpath == "-" {
-		// send to stdout
-		return p.apply(infile, os.Stdout)
-	} else if outpath == "" {
+	if outpath == "" {
 		outpath = infile.Name()
 	}
-	newEnd := p.PatchOffset + int64(len(p.Patch))
-	oldEnd := p.PatchOffset + p.PatchLength
+	// Determine if an in-place overwrite is possible. If any test fails then
+	// fall back to doing a full copy (write-rename).
 	outinfo, err := os.Lstat(outpath)
-	if err == nil && canOverwrite(ininfo, outinfo) && (p.PatchLength == int64(len(p.Patch)) || newEnd >= ininfo.Size() || oldEnd == ininfo.Size()) {
-		return p.applyInPlace(infile, ininfo.Size())
+	if err != nil || !canOverwrite(ininfo, outinfo) {
+		return p.applyRewrite(infile, outpath)
 	}
-	// write-rename
-	out, err := atomicfile.New(outpath)
-	if err != nil {
-		return err
+	size := ininfo.Size()
+	for i, patch := range p.Patches {
+		// All patches except the last must have oldsize == newsize
+		if patch.OldSize == patch.NewSize {
+			continue
+		} else if i != len(p.Patches)-1 {
+			return p.applyRewrite(infile, outpath)
+		}
+		// For the last patch, either oldsize == newsize or the patch must extend
+		// or truncate the file, i.e. the end of the old chunk must coincide
+		// with the end of the file.
+		oldEnd := patch.Offset + int64(patch.OldSize)
+		if oldEnd != ininfo.Size() {
+			return p.applyRewrite(infile, outpath)
+		}
+		size = patch.Offset + int64(patch.NewSize)
 	}
-	defer out.Close()
-	if err := p.apply(infile, out); err != nil {
-		return err
-	}
-	if err := out.Commit(); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (p *PatchInfo) apply(infile io.ReadSeeker, outstream io.Writer) error {
-	if _, err := infile.Seek(0, 0); err != nil {
-		return err
-	}
-	if p.PatchOffset > 0 {
-		if _, err := io.CopyN(outstream, infile, p.PatchOffset); err != nil {
+	// Do in-place rewrite
+	fmt.Fprintln(os.Stderr, "inplace")
+	for i, patch := range p.Patches {
+		if _, err := infile.WriteAt(p.Blobs[i], patch.Offset); err != nil {
 			return err
 		}
 	}
-	if n, err := outstream.Write(p.Patch); err != nil {
-		return err
-	} else if n != len(p.Patch) {
-		return io.ErrShortWrite
-	}
-	if _, err := infile.Seek(p.PatchOffset+p.PatchLength, 0); err != nil {
-		return err
-	}
-	_, err := io.Copy(outstream, infile)
-	return err
+	return infile.Truncate(size)
 }
 
-func (p *PatchInfo) applyInPlace(outfile *os.File, oldSize int64) error {
-	_, err := outfile.WriteAt(p.Patch, p.PatchOffset)
+// Apply a patch by writing the patched result to a new file. This is the
+// fallback case whenever an in-place write isn't possible.
+func (p *PatchSet) applyRewrite(infile *os.File, outpath string) error {
+	fmt.Fprintln(os.Stderr, "rewrite")
+	if _, err := infile.Seek(0, 0); err != nil {
+		return err
+	}
+	outfile, err := atomicfile.New(outpath)
 	if err != nil {
 		return err
 	}
-	if p.PatchOffset+p.PatchLength == oldSize {
-		return outfile.Truncate(p.PatchOffset + int64(len(p.Patch)))
+	defer outfile.Close()
+	var pos int64
+	for i, patch := range p.Patches {
+		blob := p.Blobs[i]
+		delta := patch.Offset - pos
+		if delta < 0 {
+			return errors.New("patches out of order")
+		}
+		// Copy data before the patch
+		if delta > 0 {
+			if _, err := io.CopyN(outfile, infile, delta); err != nil {
+				return err
+			}
+			pos += delta
+		}
+		// Skip the old data on the input file
+		delta = int64(patch.OldSize)
+		if _, err := infile.Seek(delta, io.SeekCurrent); err != nil {
+			return err
+		}
+		pos += delta
+		// Write the new data to the output file
+		if _, err := outfile.Write(blob); err != nil {
+			return err
+		}
 	}
-	return nil
+	// Copy everything after the last patch
+	if _, err := io.Copy(outfile, infile); err != nil {
+		return err
+	}
+	return outfile.Commit()
 }
 
 func canOverwrite(ininfo, outinfo os.FileInfo) bool {

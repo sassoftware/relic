@@ -43,23 +43,23 @@ func (s *Server) serveSign(request *http.Request, writer http.ResponseWriter) (r
 		return AccessDeniedResponse, nil
 	}
 	if keyConf.Tool != "" {
-		return s.signWithTool(keyConf, request, filename, writer)
+		return s.signWithTool(keyConf, request, writer)
 	} else if keyConf.Token == "" {
 		return nil, fmt.Errorf("Key %s needs a tool or token setting", keyName)
 	}
 	switch sigType {
 	case "pgp":
-		return s.signPgp(keyConf, request, filename)
+		return s.signPgp(keyConf, request)
 	case "rpm":
 		return s.signRpm(keyConf, request)
 	case "deb":
-		return s.signDeb(keyConf, request, filename)
+		return s.signDeb(keyConf, request)
 	case "jar-manifest":
-		return s.signJar(keyConf, request, filename)
+		return s.signJar(keyConf, request)
 	case "pe-coff":
-		return s.signPeCoff(keyConf, request, filename)
+		return s.signPeCoff(keyConf, request)
 	case "msi-tar":
-		return s.signMsi(keyConf, request, filename)
+		return s.signMsi(keyConf, request)
 	case "":
 		// look at filename
 	default:
@@ -70,7 +70,7 @@ func (s *Server) serveSign(request *http.Request, writer http.ResponseWriter) (r
 	case ".rpm":
 		return s.signRpm(keyConf, request)
 	case ".deb":
-		return s.signDeb(keyConf, request, filename)
+		return s.signDeb(keyConf, request)
 	default:
 		s.Logr(request, "error: unknown filetype: filename=%s key=%s", filename, keyName)
 		return StringResponse(http.StatusBadRequest, "unknown filetype for key"), nil
