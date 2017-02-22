@@ -17,6 +17,7 @@
 package remotecmd
 
 import (
+	"crypto"
 	"errors"
 	"fmt"
 	"io"
@@ -26,6 +27,7 @@ import (
 	"path"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/authenticode"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/binpatch"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/magic"
 	"github.com/spf13/cobra"
@@ -70,15 +72,18 @@ func signCmd(cmd *cobra.Command, args []string) (err error) {
 		fileType = magic.Detect(f)
 		f.Close()
 	}
+	var sigType string
 	switch fileType {
 	case magic.FileTypeJAR:
 		return signJar()
-	case magic.FileTypePECOFF:
-		return signPeCoff()
 	case magic.FileTypeMSI:
 		return signMsi()
-	case magic.FileTypeRPM, magic.FileTypeDEB:
-		// handled below
+	case magic.FileTypeRPM:
+		sigType = "rpm"
+	case magic.FileTypeDEB:
+		sigType = "deb"
+	case magic.FileTypePECOFF:
+		sigType = "pe-coff"
 	default:
 		return errors.New("Don't know how to sign this type of file")
 	}
@@ -91,11 +96,19 @@ func signCmd(cmd *cobra.Command, args []string) (err error) {
 	values := url.Values{}
 	values.Add("key", argKeyName)
 	values.Add("filename", path.Base(argFile))
+	values.Add("sigtype", sigType)
 	if argRole != "" {
 		values.Add("deb-role", argRole)
 	}
 	if err := setDigestQueryParam(values); err != nil {
 		return err
+	}
+	if argPageHashes {
+		digest, _ := shared.GetDigest()
+		if digest != crypto.SHA256 && digest != crypto.SHA1 {
+			return errors.New("When --page-hashes is set, SHA1 or SHA256 must be used")
+		}
+		values.Add("page-hashes", "1")
 	}
 
 	response, err := CallRemote("sign", "POST", &values, infile)
@@ -103,7 +116,7 @@ func signCmd(cmd *cobra.Command, args []string) (err error) {
 		return shared.Fail(err)
 	}
 	defer response.Body.Close()
-	if response.Header.Get("Content-Type") == "application/x-binary-patch" {
+	if response.Header.Get("Content-Type") == binpatch.MimeType {
 		blob, err := ioutil.ReadAll(response.Body)
 		if err != nil {
 			return shared.Fail(err)
@@ -119,9 +132,20 @@ func signCmd(cmd *cobra.Command, args []string) (err error) {
 	}
 	if err != nil {
 		return shared.Fail(err)
-	} else {
-		fmt.Fprintf(os.Stderr, "Signed %s\n", argFile)
 	}
+
+	if fileType == magic.FileTypePECOFF {
+		f, err := os.OpenFile(argOutput, os.O_RDWR, 0)
+		if err != nil {
+			return shared.Fail(err)
+		}
+		defer f.Close()
+		if err := authenticode.FixPEChecksum(f); err != nil {
+			return shared.Fail(err)
+		}
+	}
+
+	fmt.Fprintf(os.Stderr, "Signed %s\n", argFile)
 	return nil
 }
 

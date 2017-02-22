@@ -21,6 +21,7 @@ import (
 	"os"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/binpatch"
 )
 
 func (s *Server) signDeb(keyConf *config.KeyConfig, request *http.Request) (Response, error) {
@@ -42,5 +43,5 @@ func (s *Server) signDeb(keyConf *config.KeyConfig, request *http.Request) (Resp
 	}
 	filename := request.URL.Query().Get("filename")
 	s.Logr(request, "Signed package: filename=%s key=%s", filename, keyConf.Name())
-	return BytesResponse(stdout, "application/x-binary-patch"), nil
+	return BytesResponse(stdout, binpatch.MimeType), nil
 }

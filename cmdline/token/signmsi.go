@@ -41,7 +41,10 @@ var SignMsiTarCmd = &cobra.Command{
 	Hidden: true,
 }
 
-var argNoMsiExtended bool
+var (
+	argNoMsiExtended bool
+	argPkcs7         bool
+)
 
 func init() {
 	shared.RootCmd.AddCommand(SignMsiCmd)

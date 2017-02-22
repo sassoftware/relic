@@ -21,6 +21,7 @@ import (
 	"os"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/binpatch"
 )
 
 func (s *Server) signPeCoff(keyConf *config.KeyConfig, request *http.Request) (Response, error) {
@@ -29,9 +30,8 @@ func (s *Server) signPeCoff(keyConf *config.KeyConfig, request *http.Request) (R
 		"sign-pe",
 		"--config", s.Config.Path(),
 		"--key", keyConf.Name(),
-		"--pkcs7",
 		"--file", "-",
-		"--output", "-",
+		"--patch",
 	}
 	cmdline = appendDigest(cmdline, request)
 	if intParam(request, "page-hashes") != 0 {
@@ -43,5 +43,5 @@ func (s *Server) signPeCoff(keyConf *config.KeyConfig, request *http.Request) (R
 	}
 	filename := request.URL.Query().Get("filename")
 	s.Logr(request, "Signed package: filename=%s key=%s", filename, keyConf.Name())
-	return BytesResponse(stdout, "application/pkcs7-mime"), nil
+	return BytesResponse(stdout, binpatch.MimeType), nil
 }

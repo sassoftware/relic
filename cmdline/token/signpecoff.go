@@ -18,11 +18,10 @@ package token
 
 import (
 	"errors"
-	"io"
+	"fmt"
 	"os"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/atomicfile"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/authenticode"
 	"github.com/spf13/cobra"
 )
@@ -33,10 +32,7 @@ var SignPeCmd = &cobra.Command{
 	RunE:  signPeCmd,
 }
 
-var (
-	argPkcs7      bool
-	argPageHashes bool
-)
+var argPageHashes bool
 
 func init() {
 	shared.RootCmd.AddCommand(SignPeCmd)
@@ -44,90 +40,65 @@ func init() {
 	SignPeCmd.Flags().StringVarP(&argKeyName, "key", "k", "", "Name of key section in config file to use")
 	SignPeCmd.Flags().StringVarP(&argFile, "file", "f", "", "Input file to sign")
 	SignPeCmd.Flags().StringVarP(&argOutput, "output", "o", "", "Output file. Defaults to same as input.")
-	SignPeCmd.Flags().BoolVar(&argPkcs7, "pkcs7", false, "Emit PKCS7 signature instead of the signed executable")
 	SignPeCmd.Flags().BoolVar(&argPageHashes, "page-hashes", false, "Add page hashes to signature")
+	SignPeCmd.Flags().BoolVar(&argPatch, "patch", false, "Output a binary patch instead")
 }
 
 func signPeCmd(cmd *cobra.Command, args []string) (err error) {
 	if argFile == "" {
 		return errors.New("--key and --file are required")
-	} else if !argPkcs7 && (argFile == "-" || argOutput == "-") {
+	} else if !argPatch && (argFile == "-" || argOutput == "-") {
 		return errors.New("--file and --output must be paths, not -")
 	}
-	var infile *os.File
-	if argFile == "-" {
-		infile = os.Stdin
-	} else {
-		infile, err = os.Open(argFile)
-		if err != nil {
-			return err
-		}
-		defer infile.Close()
-	}
-	pkcs, err := signPeInput(infile)
+	hash, err := shared.GetDigest()
 	if err != nil {
 		return err
 	}
-	if argPkcs7 {
-		if argOutput == "" {
-			argOutput = "-"
-		}
-		err = atomicfile.WriteFile(argOutput, pkcs)
-		return shared.Fail(err)
-	} else {
-		if argOutput == "" {
-			argOutput = argFile
-		}
-		return writePe(infile, pkcs)
-	}
-}
-
-func signPeInput(r io.Reader) ([]byte, error) {
-	hash, err := shared.GetDigest()
+	infile, err := openForPatching()
 	if err != nil {
-		return nil, err
+		return shared.Fail(err)
 	}
+	defer infile.Close()
 	key, err := openKey(argKeyName)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	certs, err := readCerts(key)
 	if err != nil {
-		return nil, shared.Fail(err)
+		return shared.Fail(err)
 	}
-	sum, pagehashes, err := authenticode.DigestPE(r, hash, argPageHashes)
+	digest, err := authenticode.DigestPE(infile, hash, argPageHashes)
 	if err != nil {
-		return nil, shared.Fail(err)
+		return shared.Fail(err)
 	}
-	psd, err := authenticode.SignImprint(sum, hash, pagehashes, hash, key, certs)
+	psd, err := digest.Sign(key, certs)
 	if err != nil {
-		return nil, shared.Fail(err)
+		return shared.Fail(err)
 	}
 	pkcs, err := timestampPkcs(psd, key, certs, hash, true)
 	if err != nil {
-		return nil, shared.Fail(err)
+		return shared.Fail(err)
 	}
-	return pkcs, nil
-}
-
-func writePe(infile *os.File, pkcs []byte) error {
-	outfile, err := atomicfile.New(argOutput)
+	patch, err := digest.MakePatch(pkcs)
 	if err != nil {
 		return shared.Fail(err)
 	}
-	defer outfile.Close()
-	if _, err := infile.Seek(0, 0); err != nil {
+	if err := applyPatch(infile, patch); err != nil {
 		return shared.Fail(err)
 	}
-	if _, err := io.Copy(outfile, infile); err != nil {
-		return shared.Fail(err)
+	if !argPatch {
+		if argOutput == "" {
+			argOutput = argFile
+		}
+		f, err := os.OpenFile(argOutput, os.O_RDWR, 0)
+		if err != nil {
+			return shared.Fail(err)
+		}
+		defer f.Close()
+		if err := authenticode.FixPEChecksum(f); err != nil {
+			return shared.Fail(err)
+		}
 	}
-	if err := authenticode.InsertPESignature(outfile, pkcs); err != nil {
-		return shared.Fail(err)
-	}
-	infile.Close()
-	if err := outfile.Commit(); err != nil {
-		return shared.Fail(err)
-	}
+	fmt.Fprintln(os.Stderr, "Signed", argFile)
 	return nil
 }

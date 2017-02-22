@@ -29,6 +29,8 @@ import (
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/atomicfile"
 )
 
+const MimeType = "application/x-binary-patch"
+
 type PatchSet struct {
 	Patches    []PatchHeader
 	Blobs      [][]byte
@@ -135,7 +137,6 @@ func (p *PatchSet) Apply(infile *os.File, outpath string) error {
 		size = patch.Offset + int64(patch.NewSize)
 	}
 	// Do in-place rewrite
-	fmt.Fprintln(os.Stderr, "inplace")
 	for i, patch := range p.Patches {
 		if _, err := infile.WriteAt(p.Blobs[i], patch.Offset); err != nil {
 			return err
@@ -147,7 +148,6 @@ func (p *PatchSet) Apply(infile *os.File, outpath string) error {
 // Apply a patch by writing the patched result to a new file. This is the
 // fallback case whenever an in-place write isn't possible.
 func (p *PatchSet) applyRewrite(infile *os.File, outpath string) error {
-	fmt.Fprintln(os.Stderr, "rewrite")
 	if _, err := infile.Seek(0, 0); err != nil {
 		return err
 	}
@@ -185,6 +185,7 @@ func (p *PatchSet) applyRewrite(infile *os.File, outpath string) error {
 	if _, err := io.Copy(outfile, infile); err != nil {
 		return err
 	}
+	infile.Close()
 	return outfile.Commit()
 }
 

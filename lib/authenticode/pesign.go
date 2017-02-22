@@ -24,31 +24,30 @@ import (
 	"encoding/asn1"
 	"encoding/binary"
 	"errors"
-	"io"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/atomicfile"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/binpatch"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs7"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
 )
 
-func SignImprint(digest []byte, hash crypto.Hash, pagehashes []byte, pagehashfunc crypto.Hash, privKey crypto.Signer, certs []*x509.Certificate) (*pkcs7.ContentInfoSignedData, error) {
-	alg, ok := x509tools.PkixDigestAlgorithm(hash)
+func (pd *PEDigest) Sign(privKey crypto.Signer, certs []*x509.Certificate) (*pkcs7.ContentInfoSignedData, error) {
+	alg, ok := x509tools.PkixDigestAlgorithm(pd.Hash)
 	if !ok {
 		return nil, errors.New("unsupported digest algorithm")
 	}
 	var indirect SpcIndirectDataContentPe
 	indirect.Data.Type = OidSpcPeImageData
 	//indirect.Data.Value.Flags = asn1.BitString{[]byte{0x80}, 1}
-	indirect.MessageDigest.Digest = digest
+	indirect.MessageDigest.Digest = pd.Imprint
 	indirect.MessageDigest.DigestAlgorithm = alg
-	if len(pagehashes) > 0 {
-		if err := imprintPageHashes(&indirect, pagehashes, pagehashfunc); err != nil {
+	if len(pd.PageHashes) > 0 {
+		if err := pd.imprintPageHashes(&indirect); err != nil {
 			return nil, err
 		}
 	} else {
 		indirect.Data.Value.File.File.Unicode = "<<<Obsolete>>>"
 	}
-	sig := pkcs7.NewBuilder(privKey, certs, hash)
+	sig := pkcs7.NewBuilder(privKey, certs, pd.Hash)
 	if err := sig.SetContent(OidSpcIndirectDataContent, indirect); err != nil {
 		return nil, err
 	}
@@ -58,9 +57,9 @@ func SignImprint(digest []byte, hash crypto.Hash, pagehashes []byte, pagehashfun
 	return sig.Sign()
 }
 
-func imprintPageHashes(indirect *SpcIndirectDataContentPe, pagehashes []byte, hash crypto.Hash) error {
+func (pd *PEDigest) imprintPageHashes(indirect *SpcIndirectDataContentPe) error {
 	var attr SpcAttributePageHashes
-	switch hash {
+	switch pd.Hash {
 	case crypto.SHA1:
 		attr.Type = OidSpcPageHashV1
 	case crypto.SHA256:
@@ -69,7 +68,7 @@ func imprintPageHashes(indirect *SpcIndirectDataContentPe, pagehashes []byte, ha
 		return errors.New("unsupported page hash type")
 	}
 	attr.Hashes = make([][]byte, 1)
-	attr.Hashes[0] = pagehashes
+	attr.Hashes[0] = pd.PageHashes
 	blob, err := asn1.Marshal(attr)
 	if err != nil {
 		return err
@@ -84,7 +83,9 @@ func imprintPageHashes(indirect *SpcIndirectDataContentPe, pagehashes []byte, ha
 	return nil
 }
 
-func InsertPESignature(f atomicfile.Fileish, sig []byte) error {
+// Create a patchset that will add or replace the signature from a previously
+// digested image with a new one
+func (pd *PEDigest) MakePatch(sig []byte) (*binpatch.PatchSet, error) {
 	// pack new cert table
 	padded := (len(sig) + 7) / 8 * 8
 	info := certInfo{
@@ -93,58 +94,24 @@ func InsertPESignature(f atomicfile.Fileish, sig []byte) error {
 		CertificateType: 0x0002,
 	}
 	var buf bytes.Buffer
-	var dd pe.DataDirectory
 	binary.Write(&buf, binary.LittleEndian, info)
 	buf.Write(sig)
 	buf.Write(make([]byte, padded-len(sig)))
-	// find a place for it
-	fileSize, err := f.Seek(0, io.SeekEnd)
-	if err != nil {
-		return err
+	// pack data directory
+	certTbl := buf.Bytes()
+	var dd pe.DataDirectory
+	if pd.OrigSize >= (1 << 32) {
+		return nil, errors.New("PE file is too big")
 	}
-	hvals, err := findSignatures(f)
-	if hvals.certSize != 0 {
-		if hvals.certStart+hvals.certSize != fileSize {
-			// Even though the signature covers data coming after the
-			// certificate table, there's no way to actually relocate that data
-			// to make room for a bigger or smaller sig without potentially
-			// breaking whatever it is the image does with the data.
-			return errors.New("can't re-sign an image that has data after the existing signature")
-		}
-		fileSize = hvals.certStart
-	}
-	if fileSize >= (1 << 32) {
-		return errors.New("PE file is too big")
-	}
-	if err := f.Truncate(fileSize); err != nil {
-		return err
-	}
-	dd.VirtualAddress = uint32(fileSize)
-	dd.Size = uint32(buf.Len())
-	if _, err := f.Seek(fileSize, 0); err != nil {
-		return err
-	}
-	if _, err := f.Write(buf.Bytes()); err != nil {
-		return err
-	}
-	// go back and update the headers
-	if _, err := f.Seek(hvals.posDDCert, 0); err != nil {
-		return err
-	}
-	if err := binary.Write(f, binary.LittleEndian, dd); err != nil {
-		return err
-	}
-	ck := NewPEChecksum(int(hvals.peStart))
-	if _, err := f.Seek(0, 0); err != nil {
-		return err
-	}
-	if _, err := io.Copy(ck, f); err != nil {
-		return err
-	}
-	if _, err := f.WriteAt(ck.Sum(nil), hvals.peStart+88); err != nil {
-		return err
-	}
-	return nil
+	dd.VirtualAddress = uint32(pd.OrigSize)
+	dd.Size = uint32(len(certTbl))
+	var buf2 bytes.Buffer
+	binary.Write(&buf2, binary.LittleEndian, dd)
+	// make patch
+	patch := binpatch.New(nil)
+	patch.Add(pd.markers.posDDCert, 8, buf2.Bytes())
+	patch.Add(pd.OrigSize, uint32(pd.markers.certSize), certTbl)
+	return patch, nil
 }
 
 type certInfo struct {

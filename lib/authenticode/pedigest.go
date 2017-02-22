@@ -30,28 +30,36 @@ import (
 // PE-COFF: https://www.microsoft.com/en-us/download/details.aspx?id=19509
 // PE Authenticode: http://msdn.microsoft.com/en-us/windows/hardware/gg463180.aspx
 
+type PEDigest struct {
+	OrigSize   int64
+	Imprint    []byte
+	PageHashes []byte
+	Hash       crypto.Hash
+	markers    *peHeaderValues
+}
+
 // Calculate a digest (message imprint) over a PE image
-func DigestPE(r io.Reader, hash crypto.Hash, doPageHash bool) ([]byte, []byte, error) {
+func DigestPE(r io.Reader, hash crypto.Hash, doPageHash bool) (*PEDigest, error) {
 	// Read and buffer all the headers
 	buf := bytes.NewBuffer(make([]byte, 0, 4096))
 	peStart, err := readDosHeader(r, buf)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	if _, err := io.CopyN(buf, r, peStart-96); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	fh, err := readCoffHeader(r, buf)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	hvals, err := readOptHeader(r, buf, peStart, fh)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	sections, err := readSections(r, buf, fh, hvals)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	digester := setupDigester(hash, buf.Bytes(), hvals, sections, doPageHash)
 	// Hash sections
@@ -61,18 +69,23 @@ func DigestPE(r io.Reader, hash crypto.Hash, doPageHash bool) ([]byte, []byte, e
 			continue
 		}
 		if int64(sh.PointerToRawData) != nextSection {
-			return nil, nil, errors.New("PE sections are out of order")
+			return nil, errors.New("PE sections are out of order")
 		}
 		if err := digester.section(r, sh); err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		nextSection += int64(sh.SizeOfRawData)
 	}
 	// Hash trailer after the sections and cert table
-	if err := readTrailer(r, digester.imageDigest, nextSection, hvals.certStart, hvals.certSize); err != nil {
-		return nil, nil, err
+	origSize, err := readTrailer(r, digester.imageDigest, nextSection, hvals.certStart, hvals.certSize)
+	if err != nil {
+		return nil, err
 	}
-	return digester.finish()
+	imprint, pagehashes, err := digester.finish()
+	if err != nil {
+		return nil, err
+	}
+	return &PEDigest{origSize, imprint, pagehashes, hash, hvals}, nil
 }
 
 type imageHasher struct {
@@ -265,22 +278,25 @@ func readSections(r io.Reader, d io.Writer, fh *pe.FileHeader, hvals *peHeaderVa
 	return sections, nil
 }
 
-func readTrailer(r io.Reader, d io.Writer, lastSection, certStart, certSize int64) error {
+func readTrailer(r io.Reader, d io.Writer, lastSection, certStart, certSize int64) (int64, error) {
 	if certSize != 0 {
 		if certStart < lastSection {
-			return errors.New("Existing signature overlaps with PE sections")
+			return 0, errors.New("existing signature overlaps with PE sections")
 		}
 		if _, err := io.CopyN(d, r, certStart-lastSection); err != nil {
-			return err
+			return 0, err
 		}
 		if _, err := io.CopyN(ioutil.Discard, r, certSize); err != nil {
-			return err
+			return 0, err
 		}
+		if n, _ := io.Copy(ioutil.Discard, r); n > 0 {
+			return 0, errors.New("trailing garbage after existing certificate")
+		}
+		return certStart, nil
+	} else {
+		n, err := io.Copy(d, r)
+		return lastSection + n, err
 	}
-	if _, err := io.Copy(d, r); err != nil && err != io.EOF {
-		return err
-	}
-	return nil
 }
 
 type peHeaderValues struct {

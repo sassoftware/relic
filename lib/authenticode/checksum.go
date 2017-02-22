@@ -20,10 +20,33 @@ import (
 	"encoding/binary"
 	"errors"
 	"hash"
+	"io"
+	"os"
 )
 
 // An undocumented, non-CRC checksum used in PE images
 // https://www.codeproject.com/Articles/19326/An-Analysis-of-the-Windows-PE-Checksum-Algorithm
+
+func FixPEChecksum(f *os.File) error {
+	if _, err := f.Seek(0, 0); err != nil {
+		return err
+	}
+	peStart, err := readDosHeader(f, nil)
+	if err != nil {
+		return err
+	}
+	ck := NewPEChecksum(int(peStart))
+	if _, err := f.Seek(0, 0); err != nil {
+		return err
+	}
+	if _, err := io.Copy(ck, f); err != nil {
+		return err
+	}
+	if _, err := f.WriteAt(ck.Sum(nil), peStart+88); err != nil {
+		return err
+	}
+	return nil
+}
 
 type peChecksum struct {
 	cksumPos  int
