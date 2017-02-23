@@ -17,6 +17,7 @@
 package server
 
 import (
+	"errors"
 	"net/http"
 	"os"
 
@@ -37,11 +38,14 @@ func (s *Server) signDeb(keyConf *config.KeyConfig, request *http.Request) (Resp
 	if role := request.URL.Query().Get("deb-role"); role != "" {
 		cmdline = append(cmdline, "--role", role)
 	}
-	stdout, response, err := s.invokeCommand(request, request.Body, "", false, keyConf.GetTimeout(), cmdline)
+	stdout, attrs, response, err := s.invokeCommand(request, request.Body, "", false, keyConf.GetTimeout(), cmdline)
 	if response != nil || err != nil {
 		return response, err
 	}
+	if attrs == nil {
+		return nil, errors.New("missing audit info")
+	}
 	filename := request.URL.Query().Get("filename")
-	s.Logr(request, "Signed package: filename=%s key=%s", filename, keyConf.Name())
+	s.Logr(request, "Signed package: filename=%s key=%s pkg=%s_%s_%s", filename, keyConf.Name(), attrs["deb.name"], attrs["deb.version"], attrs["deb.arch"])
 	return BytesResponse(stdout, binpatch.MimeType), nil
 }

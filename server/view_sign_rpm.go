@@ -17,6 +17,7 @@
 package server
 
 import (
+	"errors"
 	"net/http"
 	"os"
 
@@ -34,11 +35,14 @@ func (s *Server) signRpm(keyConf *config.KeyConfig, request *http.Request) (Resp
 		"--patch",
 	}
 	cmdline = appendDigest(cmdline, request)
-	stdout, response, err := s.invokeCommand(request, request.Body, "", false, keyConf.GetTimeout(), cmdline)
+	stdout, attrs, response, err := s.invokeCommand(request, request.Body, "", false, keyConf.GetTimeout(), cmdline)
 	if response != nil || err != nil {
 		return response, err
 	}
+	if attrs == nil {
+		return nil, errors.New("missing audit info")
+	}
 	filename := request.URL.Query().Get("filename")
-	s.Logr(request, "Signed package: filename=%s key=%s", filename, keyConf.Name())
+	s.Logr(request, "Signed package: filename=%s key=%s nevra=%s md5=%s sha1=%s", filename, keyConf.Name(), attrs["rpm.nevra"], attrs["rpm.md5"], attrs["rpm.sha1"])
 	return BytesResponse(stdout, binpatch.MimeType), nil
 }

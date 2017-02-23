@@ -34,7 +34,7 @@ func (s *Server) signMsi(keyConf *config.KeyConfig, request *http.Request) (Resp
 	if intParam(request, "no-extended") != 0 {
 		cmdline = append(cmdline, "--no-extended-sig")
 	}
-	stdout, response, err := s.invokeCommand(request, request.Body, "", false, keyConf.GetTimeout(), cmdline)
+	stdout, _, response, err := s.invokeCommand(request, request.Body, "", false, keyConf.GetTimeout(), cmdline)
 	if response != nil || err != nil {
 		return response, err
 	}

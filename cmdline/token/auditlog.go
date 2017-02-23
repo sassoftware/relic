@@ -25,7 +25,9 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
@@ -172,13 +174,26 @@ func (a auditAttributes) Commit() error {
 	if err != nil {
 		return fmt.Errorf("failed to seal audit log: %s", err)
 	}
-	fmt.Println(string(blob))
 	blob, err = sealAttributes(aconf, blob)
 	if err != nil {
 		return fmt.Errorf("failed to seal audit log: %s", err)
 	}
 	if err := sendAudit(aconf, blob); err != nil {
 		return fmt.Errorf("failed to send audit log: %s", err)
+	}
+	if fdstr := os.Getenv("RELIC_AUDIT_FD"); fdstr != "" {
+		fd, err := strconv.Atoi(fdstr)
+		if err == nil {
+			newfd, err := syscall.Dup(fd)
+			if err == nil {
+				af := os.NewFile(uintptr(newfd), "<audit>")
+				defer af.Close()
+				_, err = af.Write(blob)
+			}
+		}
+		if err != nil {
+			return fmt.Errorf("failed to send audit log: %s", err)
+		}
 	}
 	return nil
 }

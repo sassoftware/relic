@@ -86,7 +86,7 @@ func (s *Server) signWithTool(keyConf *config.KeyConfig, request *http.Request, 
 	} else if err != nil {
 		return nil, err
 	}
-	_, response, err = s.invokeCommand(request, nil, scratchDir, true, keyConf.GetTimeout(), cmdline)
+	_, _, response, err = s.invokeCommand(request, nil, scratchDir, true, keyConf.GetTimeout(), cmdline)
 	if response != nil || err != nil {
 		return response, err
 	}

@@ -40,7 +40,7 @@ func (s *Server) signJar(keyConf *config.KeyConfig, request *http.Request) (Resp
 		return nil, err
 	}
 	stdin := bytes.NewReader(manifest)
-	stdout, response, err := s.invokeCommand(request, stdin, "", false, keyConf.GetTimeout(), cmdline)
+	stdout, _, response, err := s.invokeCommand(request, stdin, "", false, keyConf.GetTimeout(), cmdline)
 	if response != nil || err != nil {
 		return response, err
 	}
