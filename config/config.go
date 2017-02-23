@@ -88,17 +88,23 @@ type ClientConfig struct {
 }
 
 type RemoteConfig struct {
-	Url          string // URL of remote server
-	DirectoryUrl string // URL of directory server
-	KeyFile      string // Path to TLS client key file
-	CertFile     string // Path to TLS client certificate
-	CaCert       string // Path to CA certificate
+	Url          string `,omitempty` // URL of remote server
+	DirectoryUrl string `,omitempty` // URL of directory server
+	KeyFile      string `,omitempty` // Path to TLS client key file
+	CertFile     string `,omitempty` // Path to TLS client certificate
+	CaCert       string `,omitempty` // Path to CA certificate
 }
 
 type TimestampConfig struct {
 	Urls    []string // List of timestamp server URLs
 	Timeout int      // Connect timeout in seconds
 	CaCert  string   // Path to CA certificate
+}
+
+type AmqpConfig struct {
+	Url        string // AMQP URL to report signatures to i.e. amqp://user:password@host
+	SigsXchg   string // Name of exchange to send to (default relic.signatures)
+	SealingKey string // Name of key to seal audit related information
 }
 
 type Config struct {
@@ -109,6 +115,7 @@ type Config struct {
 	Clients   map[string]*ClientConfig `,omitempty`
 	Remote    *RemoteConfig            `,omitempty`
 	Timestamp *TimestampConfig         `,omitempty`
+	Amqp      *AmqpConfig              `,omitempty`
 
 	PinFile string // Optional YAML file with additional token PINs
 

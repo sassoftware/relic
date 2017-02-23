@@ -19,6 +19,7 @@ package token
 import (
 	"encoding/asn1"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 
@@ -38,6 +39,7 @@ var SignCatCmd = &cobra.Command{
 func init() {
 	shared.RootCmd.AddCommand(SignCatCmd)
 	shared.AddDigestFlag(SignCatCmd)
+	addAuditFlags(SignCatCmd)
 	SignCatCmd.Flags().StringVarP(&argKeyName, "key", "k", "", "Name of key section in config file to use")
 	SignCatCmd.Flags().StringVarP(&argFile, "file", "f", "", "Input file to sign")
 	SignCatCmd.Flags().StringVarP(&argOutput, "output", "o", "", "Output file. Defaults to same as input.")
@@ -95,5 +97,8 @@ func signCatCmd(cmd *cobra.Command, args []string) (err error) {
 	if err := atomicfile.WriteFile(argOutput, sigblob); err != nil {
 		return shared.Fail(err)
 	}
-	return nil
+	fmt.Fprintf(os.Stderr, "Signed %s\n", argFile)
+	audit := NewAudit(key, "cat", hash)
+	audit.SetX509Cert(certs[0])
+	return shared.Fail(audit.Commit())
 }

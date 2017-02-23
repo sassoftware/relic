@@ -4,17 +4,25 @@ import:
 - package: github.com/howeyc/gopass
 - package: github.com/mattn/go-shellwords
 - package: github.com/miekg/pkcs11
+- package: github.com/qur/ar
 - package: github.com/sassoftware/go-rpmutils
 - package: github.com/spf13/cobra
+- package: github.com/streadway/amqp
 - package: golang.org/x/crypto
   subpackages:
   - openpgp
   - openpgp/armor
+  - openpgp/clearsign
   - openpgp/packet
+- package: golang.org/x/net
+  subpackages:
+  - http2
 - package: golang.org/x/sys
   subpackages:
+  - windows
   - windows/svc
   - windows/svc/debug
   - windows/svc/eventlog
   - windows/svc/mgr
 - package: gopkg.in/yaml.v2
+- package: xi2.org/x/xz

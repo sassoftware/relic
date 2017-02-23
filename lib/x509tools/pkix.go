@@ -51,6 +51,15 @@ var HashOids = map[crypto.Hash]asn1.ObjectIdentifier{
 	crypto.SHA512: OidDigestSHA512,
 }
 
+var HashNames = map[crypto.Hash]string{
+	crypto.MD5:    "MD5",
+	crypto.SHA1:   "SHA1",
+	crypto.SHA224: "SHA-224",
+	crypto.SHA256: "SHA-256",
+	crypto.SHA384: "SHA-384",
+	crypto.SHA512: "SHA-512",
+}
+
 // Convert a crypto.Hash to a X.509 AlgorithmIdentifier
 func PkixDigestAlgorithm(hash crypto.Hash) (alg pkix.AlgorithmIdentifier, ok bool) {
 	if oid, ok2 := HashOids[hash]; ok2 {

@@ -18,7 +18,9 @@ package signrpm
 
 import (
 	"crypto"
+	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/binpatch"
@@ -40,7 +42,33 @@ func defaultOpts(opts *rpmutils.SignatureOptions) *rpmutils.SignatureOptions {
 	return &newOpts
 }
 
-func Sign(stream io.Reader, key *packet.PrivateKey, opts *rpmutils.SignatureOptions) (*binpatch.PatchSet, error) {
+type RpmSignature struct {
+	Header       *rpmutils.RpmHeader
+	CreationTime time.Time
+	PatchSet     *binpatch.PatchSet
+}
+
+func (s *RpmSignature) NEVRA() string {
+	nevra, _ := s.Header.GetNEVRA()
+	snevra := nevra.String()
+	// strip .rpm
+	snevra = snevra[:len(snevra)-4]
+	// strip zero epoch
+	snevra = strings.Replace(snevra, "-0:", "-", -1)
+	return snevra
+}
+
+func (s *RpmSignature) MD5() string {
+	md5, _ := s.Header.GetBytes(rpmutils.SIG_MD5)
+	return fmt.Sprintf("%x", md5)
+}
+
+func (s *RpmSignature) SHA1() string {
+	sha1, _ := s.Header.GetString(rpmutils.SIG_SHA1)
+	return sha1
+}
+
+func Sign(stream io.Reader, key *packet.PrivateKey, opts *rpmutils.SignatureOptions) (*RpmSignature, error) {
 	opts = defaultOpts(opts)
 	header, err := rpmutils.SignRpmStream(stream, key, opts)
 	if err != nil {
@@ -50,10 +78,7 @@ func Sign(stream io.Reader, key *packet.PrivateKey, opts *rpmutils.SignatureOpti
 	if err != nil {
 		return nil, err
 	}
-	patch := binpatch.New(map[string]interface{}{
-		"fingerprint": key.Fingerprint,
-		"timestamp":   opts.CreationTime.String(),
-	})
+	patch := binpatch.New()
 	patch.Add(0, uint32(header.OriginalSignatureHeaderSize()), blob)
-	return patch, nil
+	return &RpmSignature{header, opts.CreationTime, patch}, nil
 }

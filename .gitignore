@@ -1,6 +1,20 @@
 keys/
 *.yml
 
+*.cab
+*.cat
+*.deb
+*.EC
+*.jar
+*.MF
+*.msi
+*.p7m
+*.p7s
+*.rpm
+*.RSA
+*.SF
+*.SIG
+
 # Created by https://www.gitignore.io/api/go,vim
 
 ### Go ###

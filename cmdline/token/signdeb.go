@@ -38,6 +38,7 @@ var argRole string
 func init() {
 	shared.RootCmd.AddCommand(SignDebCmd)
 	shared.AddDigestFlag(SignDebCmd)
+	addAuditFlags(SignDebCmd)
 	SignDebCmd.Flags().StringVarP(&argKeyName, "key", "k", "", "Name of key section in config file to use")
 	SignDebCmd.Flags().StringVarP(&argFile, "file", "f", "", "Input file to sign")
 	SignDebCmd.Flags().StringVarP(&argOutput, "output", "o", "", "Output file")
@@ -66,13 +67,19 @@ func signDebCmd(cmd *cobra.Command, args []string) (err error) {
 	if err != nil {
 		return shared.Fail(err)
 	}
-	patch, err := signdeb.Sign(infile, entity, hash, argRole)
+	sig, err := signdeb.Sign(infile, entity, hash, argRole)
 	if err != nil {
 		return shared.Fail(err)
 	}
-	if err := applyPatch(infile, patch); err != nil {
+	if err := applyPatch(infile, sig.PatchSet); err != nil {
 		return shared.Fail(err)
 	}
 	fmt.Fprintf(os.Stderr, "Signed %s\n", argFile)
-	return nil
+	audit := NewAudit(key, "deb", hash)
+	audit.SetPgpCert(entity)
+	audit.SetTimestamp(sig.CreationTime)
+	audit["deb.name"] = sig.Info.Package
+	audit["deb.version"] = sig.Info.Version
+	audit["deb.arch"] = sig.Info.Arch
+	return shared.Fail(audit.Commit())
 }

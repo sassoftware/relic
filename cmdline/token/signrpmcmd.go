@@ -37,6 +37,7 @@ var SignRpmCmd = &cobra.Command{
 func init() {
 	shared.RootCmd.AddCommand(SignRpmCmd)
 	shared.AddDigestFlag(SignRpmCmd)
+	addAuditFlags(SignRpmCmd)
 	SignRpmCmd.Flags().StringVarP(&argKeyName, "key", "k", "", "Name of key section in config file to use")
 	SignRpmCmd.Flags().StringVarP(&argFile, "file", "f", "", "Input RPM file to sign")
 	SignRpmCmd.Flags().StringVarP(&argOutput, "output", "o", "", "Output RPM file")
@@ -67,13 +68,19 @@ func signRpmCmd(cmd *cobra.Command, args []string) (err error) {
 	if err != nil {
 		return shared.Fail(err)
 	}
-	patch, err := signrpm.Sign(infile, entity.PrivateKey, config)
+	sig, err := signrpm.Sign(infile, entity.PrivateKey, config)
 	if err != nil {
 		return shared.Fail(err)
 	}
-	if err := applyPatch(infile, patch); err != nil {
+	if err := applyPatch(infile, sig.PatchSet); err != nil {
 		return shared.Fail(err)
 	}
 	fmt.Fprintf(os.Stderr, "Signed %s\n", argFile)
-	return nil
+	audit := NewAudit(key, "rpm", hash)
+	audit.SetPgpCert(entity)
+	audit.SetTimestamp(sig.CreationTime)
+	audit["rpm.nevra"] = sig.NEVRA()
+	audit["rpm.md5"] = sig.MD5()
+	audit["rpm.sha1"] = sig.SHA1()
+	return shared.Fail(audit.Commit())
 }

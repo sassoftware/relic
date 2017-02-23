@@ -19,6 +19,7 @@ package token
 import (
 	"crypto"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -49,6 +50,7 @@ var (
 func init() {
 	shared.RootCmd.AddCommand(SignMsiCmd)
 	shared.AddDigestFlag(SignMsiCmd)
+	addAuditFlags(SignMsiCmd)
 	SignMsiCmd.Flags().StringVarP(&argKeyName, "key", "k", "", "Name of key section in config file to use")
 	SignMsiCmd.Flags().StringVarP(&argFile, "file", "f", "", "Input file to sign")
 	SignMsiCmd.Flags().StringVarP(&argOutput, "output", "o", "", "Output file. Defaults to same as input.")
@@ -56,6 +58,7 @@ func init() {
 
 	shared.RootCmd.AddCommand(SignMsiTarCmd)
 	shared.AddDigestFlag(SignMsiTarCmd)
+	addAuditFlags(SignMsiTarCmd)
 	SignMsiTarCmd.Flags().StringVarP(&argKeyName, "key", "k", "", "Name of key section in config file to use")
 	SignMsiTarCmd.Flags().BoolVar(&argNoMsiExtended, "no-extended-sig", false, "Don't emit a MsiDigitalSignatureEx digest")
 }
@@ -94,7 +97,13 @@ func signMsiCmd(cmd *cobra.Command, args []string) error {
 	if argOutput == "" {
 		argOutput = argFile
 	}
-	return writeMsi(pkcs, exsig)
+	if err := writeMsi(pkcs, exsig); err != nil {
+		return err
+	}
+	fmt.Fprintf(os.Stderr, "Signed %s\n", argFile)
+	audit := NewAudit(key, "msi", hash)
+	audit.SetX509Cert(certs[0])
+	return shared.Fail(audit.Commit())
 }
 
 func signMsiInput(hash crypto.Hash) (sum, exsig []byte, err error) {
@@ -174,5 +183,7 @@ func signMsiTarCmd(cmd *cobra.Command, args []string) error {
 	if _, err := os.Stdout.Write(pkcs); err != nil {
 		return shared.Fail(err)
 	}
-	return nil
+	audit := NewAudit(key, "msi-tar", hash)
+	audit.SetX509Cert(certs[0])
+	return shared.Fail(audit.Commit())
 }

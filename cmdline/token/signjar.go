@@ -19,6 +19,7 @@ package token
 import (
 	"archive/zip"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 
@@ -50,6 +51,7 @@ var (
 func init() {
 	shared.RootCmd.AddCommand(SignJarCmd)
 	shared.AddDigestFlag(SignJarCmd)
+	addAuditFlags(SignJarCmd)
 	SignJarCmd.Flags().StringVarP(&argKeyName, "key", "k", "", "Name of key section in config file to use")
 	SignJarCmd.Flags().StringVarP(&argFile, "file", "f", "", "Input JAR file to sign")
 	SignJarCmd.Flags().StringVarP(&argOutput, "output", "o", "", "Output file for JAR. Defaults to same as input.")
@@ -59,6 +61,7 @@ func init() {
 
 	shared.RootCmd.AddCommand(SignJarManifestCmd)
 	shared.AddDigestFlag(SignJarManifestCmd)
+	addAuditFlags(SignJarManifestCmd)
 	SignJarManifestCmd.Flags().StringVarP(&argKeyName, "key", "k", "", "Name of key section in config file to use")
 	SignJarManifestCmd.Flags().StringVarP(&argFile, "file", "f", "", "Input manifest file to sign")
 	SignJarManifestCmd.Flags().StringVarP(&argOutput, "output", "o", "", "Output file for signature (.RSA or .EC)")
@@ -94,7 +97,7 @@ func signJarCmd(cmd *cobra.Command, args []string) (err error) {
 	if err != nil {
 		return shared.Fail(err)
 	}
-	pkcs, err := signAndTimestamp(sigfile, key, hash, !argInlineSignature)
+	pkcs, audit, err := signAndTimestamp(sigfile, key, hash, "jar", !argInlineSignature)
 	if err != nil {
 		return shared.Fail(err)
 	}
@@ -111,7 +114,11 @@ func signJarCmd(cmd *cobra.Command, args []string) (err error) {
 		return shared.Fail(err)
 	}
 	inz.Close()
-	return w.Commit()
+	if err := w.Commit(); err != nil {
+		return shared.Fail(err)
+	}
+	fmt.Fprintf(os.Stderr, "Signed %s\n", argFile)
+	return shared.Fail(audit.Commit())
 }
 
 func signJarManifestCmd(cmd *cobra.Command, args []string) (err error) {
@@ -141,20 +148,19 @@ func signJarManifestCmd(cmd *cobra.Command, args []string) (err error) {
 		return shared.Fail(err)
 	}
 	detach := !argInlineSignature && argSignFileOutput != ""
-	pkcs, err := signAndTimestamp(sigfile, key, hash, detach)
+	pkcs, audit, err := signAndTimestamp(sigfile, key, hash, "jar-manifest", detach)
 	if err != nil {
 		return shared.Fail(err)
 	}
 	if argSignFileOutput != "" {
-		if err := ioutil.WriteFile(argSignFileOutput, sigfile, 0666); err != nil {
+		if err := atomicfile.WriteFile(argSignFileOutput, sigfile); err != nil {
 			return shared.Fail(err)
 		}
 	}
 
-	if argOutput == "-" {
-		_, err = os.Stdout.Write(pkcs)
-	} else {
-		err = ioutil.WriteFile(argOutput, pkcs, 0666)
+	if err := atomicfile.WriteFile(argOutput, pkcs); err != nil {
+		return shared.Fail(err)
 	}
-	return shared.Fail(err)
+	fmt.Fprintf(os.Stderr, "Signed %s\n", argFile)
+	return shared.Fail(audit.Commit())
 }

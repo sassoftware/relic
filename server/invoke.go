@@ -69,10 +69,16 @@ func (s *Server) invokeCommand(request *http.Request, stdin io.Reader, workDir s
 }
 
 func appendDigest(cmdline []string, request *http.Request) []string {
-	digest := request.URL.Query().Get("digest")
-	if digest != "" {
+	if digest := request.URL.Query().Get("digest"); digest != "" {
 		cmdline = append(cmdline, "--digest", digest)
 	}
+	if filename := request.URL.Query().Get("filename"); filename != "" {
+		cmdline = append(cmdline, "--attr", "client.filename="+filename)
+	}
+	cmdline = append(cmdline,
+		"--attr", "client.ip="+GetClientIP(request),
+		"--attr", "client.name="+GetClientName(request),
+	)
 	return cmdline
 }
 

@@ -44,12 +44,12 @@ func readCerts(key *p11token.Key) ([]*x509.Certificate, error) {
 	return certloader.ParseCertificates(certblob)
 }
 
-func signAndTimestamp(data []byte, key *p11token.Key, opts crypto.SignerOpts, detach bool) (sig []byte, err error) {
+func signAndTimestamp(data []byte, key *p11token.Key, opts crypto.SignerOpts, sigType string, detach bool) (sig []byte, audit auditAttributes, err error) {
 	var psd *pkcs7.ContentInfoSignedData
 	hash := opts.HashFunc()
 	certs, err := readCerts(key)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if detach {
 		d := hash.New()
@@ -59,9 +59,12 @@ func signAndTimestamp(data []byte, key *p11token.Key, opts crypto.SignerOpts, de
 		psd, err = pkcs7.SignData(data, key, certs, opts)
 	}
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return timestampPkcs(psd, key, certs, opts.HashFunc(), false)
+	audit = NewAudit(key, sigType, hash)
+	audit.SetX509Cert(certs[0])
+	pkcs, err := timestampPkcs(psd, key, certs, opts.HashFunc(), false)
+	return pkcs, audit, err
 }
 
 func timestampPkcs(psd *pkcs7.ContentInfoSignedData, key *p11token.Key, certs []*x509.Certificate, hash crypto.Hash, authenticode bool) (sig []byte, err error) {

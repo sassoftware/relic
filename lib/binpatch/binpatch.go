@@ -19,11 +19,9 @@ package binpatch
 import (
 	"bytes"
 	"encoding/binary"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/atomicfile"
@@ -32,9 +30,8 @@ import (
 const MimeType = "application/x-binary-patch"
 
 type PatchSet struct {
-	Patches    []PatchHeader
-	Blobs      [][]byte
-	Attributes map[string]interface{}
+	Patches []PatchHeader
+	Blobs   [][]byte
 }
 
 type PatchSetHeader struct {
@@ -46,8 +43,8 @@ type PatchHeader struct {
 	OldSize, NewSize uint32
 }
 
-func New(attributes map[string]interface{}) *PatchSet {
-	return &PatchSet{nil, nil, attributes}
+func New() *PatchSet {
+	return new(PatchSet)
 }
 
 func (p *PatchSet) Add(offset int64, oldSize uint32, blob []byte) {
@@ -77,31 +74,21 @@ func Load(blob []byte) (*PatchSet, error) {
 			return nil, err
 		}
 	}
-	if attrBlob, err := ioutil.ReadAll(r); err != nil {
-		return nil, err
-	} else if err := json.Unmarshal(attrBlob, &p.Attributes); err != nil {
-		return nil, err
-	}
 	return p, nil
 }
 
 func (p *PatchSet) Dump() []byte {
-	buf := new(bytes.Buffer)
-	enc := json.NewEncoder(buf)
-	enc.Encode(p.Attributes)
-	attrBlob := buf.Bytes()
 	header := PatchSetHeader{1, uint32(len(p.Patches))}
-	size := 8 + 16*len(p.Patches) + len(attrBlob)
+	size := 8 + 16*len(p.Patches)
 	for _, hdr := range p.Patches {
 		size += int(hdr.NewSize)
 	}
-	buf = bytes.NewBuffer(make([]byte, 0, size))
+	buf := bytes.NewBuffer(make([]byte, 0, size))
 	binary.Write(buf, binary.BigEndian, header)
 	binary.Write(buf, binary.BigEndian, p.Patches)
 	for _, blob := range p.Blobs {
 		buf.Write(blob)
 	}
-	buf.Write(attrBlob)
 	return buf.Bytes()
 }
 

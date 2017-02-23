@@ -21,6 +21,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pgptools"
@@ -50,6 +51,7 @@ var (
 func init() {
 	shared.RootCmd.AddCommand(SignPgpCmd)
 	shared.AddDigestFlag(SignPgpCmd)
+	addAuditFlags(SignPgpCmd)
 	SignPgpCmd.Flags().StringVarP(&argPgpUser, "local-user", "u", "", "Specify keyname or cfgfile:keyname")
 	SignPgpCmd.Flags().StringVarP(&argKeyName, "key", "k", "", "Name of key section in config file to use")
 	SignPgpCmd.Flags().StringVarP(&argOutput, "output", "o", "", "Write output to file")
@@ -76,7 +78,11 @@ func signPgpCmd(cmd *cobra.Command, args []string) (err error) {
 	if err != nil {
 		return err
 	}
-	config := &packet.Config{DefaultHash: hash}
+	now := time.Now().UTC()
+	config := &packet.Config{
+		DefaultHash: hash,
+		Time:        func() time.Time { return now },
+	}
 	if argKeyName == "" {
 		if argPgpUser == "" {
 			return errors.New("-u must be set to a keyname or cfgpath:keyname")
@@ -140,5 +146,8 @@ func signPgpCmd(cmd *cobra.Command, args []string) (err error) {
 			err = openpgp.DetachSign(out, entity, infile, config)
 		}
 	}
-	return err
+	audit := NewAudit(key, "pgp", hash)
+	audit.SetPgpCert(entity)
+	audit.SetTimestamp(now)
+	return shared.Fail(audit.Commit())
 }

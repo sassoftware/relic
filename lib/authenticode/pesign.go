@@ -108,7 +108,7 @@ func (pd *PEDigest) MakePatch(sig []byte) (*binpatch.PatchSet, error) {
 	var buf2 bytes.Buffer
 	binary.Write(&buf2, binary.LittleEndian, dd)
 	// make patch
-	patch := binpatch.New(nil)
+	patch := binpatch.New()
 	patch.Add(pd.markers.posDDCert, 8, buf2.Bytes())
 	patch.Add(pd.OrigSize, uint32(pd.markers.certSize), certTbl)
 	return patch, nil

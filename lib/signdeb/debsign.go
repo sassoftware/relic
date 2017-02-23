@@ -19,8 +19,11 @@ package signdeb
 import (
 	"bytes"
 	"crypto"
+	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"path"
 	"strings"
 	"time"
 
@@ -32,7 +35,13 @@ import (
 	"golang.org/x/crypto/openpgp/packet"
 )
 
-func Sign(r io.Reader, signer *openpgp.Entity, opts crypto.SignerOpts, role string) (*binpatch.PatchSet, error) {
+type DebSignature struct {
+	Info         PackageInfo
+	CreationTime time.Time
+	PatchSet     *binpatch.PatchSet
+}
+
+func Sign(r io.Reader, signer *openpgp.Entity, opts crypto.SignerOpts, role string) (*DebSignature, error) {
 	counter := &readCounter{r: r}
 	now := time.Now().UTC()
 	reader := ar.NewReader(counter)
@@ -44,6 +53,7 @@ func Sign(r io.Reader, signer *openpgp.Entity, opts crypto.SignerOpts, role stri
 	fmt.Fprintln(msg, "Files: ")
 	var patchOffset int64
 	var patchLength uint32
+	var info *PackageInfo
 	filename := "_gpg" + role
 	for {
 		hdr, err := reader.Next()
@@ -52,20 +62,47 @@ func Sign(r io.Reader, signer *openpgp.Entity, opts crypto.SignerOpts, role stri
 		} else if err != nil {
 			return nil, err
 		}
-		if hdr.Name == filename {
+		name := path.Clean(hdr.Name)
+		if name == filename {
 			// mark the old signature for removal
 			patchOffset = counter.n - 60
 			patchLength = uint32(60 + ((hdr.Size+1)/2)*2)
 		}
-		if strings.HasPrefix(hdr.Name, "_gpg") {
+		if strings.HasPrefix(name, "_gpg") {
 			continue
+		}
+		save := io.Writer(ioutil.Discard)
+		var infoch chan *PackageInfo
+		var errch chan error
+		if strings.HasPrefix(name, "control.tar") {
+			// use a goroutine pipe to parse the control tarball as it's digested
+			ext := name[11:]
+			r, w := io.Pipe()
+			save = w
+			infoch = make(chan *PackageInfo, 1)
+			errch = make(chan error, 1)
+			go func() {
+				info, err := parseControl(r, ext)
+				infoch <- info
+				errch <- err
+			}()
 		}
 		md5 := crypto.MD5.New()
 		sha1 := crypto.SHA1.New()
-		if _, err := io.Copy(io.MultiWriter(md5, sha1), reader); err != nil {
+		if _, err := io.Copy(io.MultiWriter(md5, sha1, save), reader); err != nil {
 			return nil, err
 		}
 		fmt.Fprintf(msg, "\t%x %x %d %s\n", md5.Sum(nil), sha1.Sum(nil), hdr.Size, hdr.Name)
+		if errch != nil {
+			// retrieve the result of parsing the control file
+			info = <-infoch
+			if err := <-errch; err != nil {
+				return nil, err
+			}
+		}
+	}
+	if info == nil {
+		return nil, errors.New("deb has no control.tar")
 	}
 	fmt.Fprintln(msg)
 	signed := new(bytes.Buffer)
@@ -95,12 +132,9 @@ func Sign(r io.Reader, signer *openpgp.Entity, opts crypto.SignerOpts, role stri
 	if patchOffset == 0 {
 		patchOffset = counter.n // end of file
 	}
-	patch := binpatch.New(map[string]interface{}{
-		"fingerprint": signer.PrimaryKey.Fingerprint,
-		"timestamp":   now.String(),
-	})
+	patch := binpatch.New()
 	patch.Add(patchOffset, patchLength, pbuf.Bytes())
-	return patch, nil
+	return &DebSignature{*info, now, patch}, nil
 }
 
 type readCounter struct {

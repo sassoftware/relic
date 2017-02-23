@@ -81,8 +81,8 @@ func (sb *SignatureBuilder) AddAuthenticatedAttribute(oid asn1.ObjectIdentifier,
 }
 
 func (sb *SignatureBuilder) Sign() (*ContentInfoSignedData, error) {
-	if sb.contentInfo.Raw == nil || sb.digest == nil {
-		return nil, errors.New("AddContent was not called")
+	if sb.digest == nil {
+		return nil, errors.New("SetContent was not called")
 	}
 	digestAlg, ok := x509tools.PkixDigestAlgorithm(sb.signerOpts.HashFunc())
 	if !ok {
