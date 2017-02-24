@@ -136,7 +136,18 @@ func makeTlsConfig() (*tls.Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	tconf := &tls.Config{Certificates: []tls.Certificate{tlscert}}
+	var keyLog io.Writer
+	if klf := os.Getenv("SSLKEYLOGFILE"); klf != "" {
+		fmt.Fprintln(os.Stderr, "WARNING: SSLKEYLOGFILE is set! TLS master secrets will be logged.")
+		keyLog, err = os.OpenFile(klf, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0600)
+		if err != nil {
+			return nil, err
+		}
+	}
+	tconf := &tls.Config{
+		Certificates: []tls.Certificate{tlscert},
+		KeyLogWriter: keyLog,
+	}
 	if err := x509tools.LoadCertPool(config.Remote.CaCert, tconf); err != nil {
 		return nil, err
 	}

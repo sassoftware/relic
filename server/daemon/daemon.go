@@ -19,10 +19,12 @@ package daemon
 import (
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net"
 	"net/http"
+	"os"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
@@ -43,12 +45,22 @@ func makeTlsConfig(config *config.Config) (*tls.Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	var keyLog io.Writer
+	if klf := os.Getenv("SSLKEYLOGFILE"); klf != "" {
+		fmt.Fprintln(os.Stderr, "WARNING: SSLKEYLOGFILE is set! TLS master secrets will be logged.")
+		keyLog, err = os.OpenFile(klf, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return &tls.Config{
 		Certificates:             []tls.Certificate{tlscert},
 		PreferServerCipherSuites: true,
 		SessionTicketsDisabled:   true,
 		ClientAuth:               tls.RequestClientCert,
 		MinVersion:               tls.VersionTLS12,
+		KeyLogWriter:             keyLog,
 	}, nil
 }
 
