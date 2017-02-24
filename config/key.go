@@ -45,11 +45,14 @@ func (keyConf *KeyConfig) GetToolCmd(file string) ([]string, error) {
 		return nil, fmt.Errorf("Failed to parse tool commandline: %s", err)
 	}
 	for i, word := range words {
-		word = strings.Replace(word, "{file}", file, -1)
 		for key, value := range keyConf.Params {
 			key = fmt.Sprintf("{%s}", key)
 			word = strings.Replace(word, key, value, -1)
 		}
+		word = strings.Replace(word, "{file}", file, -1)
+		word = strings.Replace(word, "{key}", keyConf.name, -1)
+		word = strings.Replace(word, "{x509certificate}", keyConf.X509Certificate, -1)
+		word = strings.Replace(word, "{pgpcertificate}", keyConf.PgpCertificate, -1)
 		words[i] = word
 	}
 	return words, nil

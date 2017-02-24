@@ -1,5 +1,5 @@
 hash: a17515b127b68fe2f01d00f410f6af430c111bc2a490aaf4f3d88089de2caf48
-updated: 2017-02-23T22:02:56.87119869Z
+updated: 2017-02-24T16:02:22.939954009Z
 imports:
 - name: github.com/braintree/manners
   version: 82a8879fc5fd0381fa8b2d8033b19bf255252088
@@ -39,14 +39,14 @@ imports:
   - openpgp/elgamal
   - ssh/terminal
 - name: golang.org/x/net
-  version: 6b27048ae5e6ad1ef927e72e437531493de612fe
+  version: dd2d9a67c97da0afa00d5726e28086007a0acce5
   subpackages:
   - http2
   - http2/hpack
   - idna
   - lex/httplex
 - name: golang.org/x/sys
-  version: 075e574b89e4c2d22f2286a7e2b919519c6f3547
+  version: e4594059fe4cde2daf423055a596c2cd1e6c9adf
   subpackages:
   - windows
   - windows/svc
