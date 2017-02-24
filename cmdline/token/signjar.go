@@ -51,7 +51,6 @@ var (
 func init() {
 	shared.RootCmd.AddCommand(SignJarCmd)
 	shared.AddDigestFlag(SignJarCmd)
-	addAuditFlags(SignJarCmd)
 	SignJarCmd.Flags().StringVarP(&argKeyName, "key", "k", "", "Name of key section in config file to use")
 	SignJarCmd.Flags().StringVarP(&argFile, "file", "f", "", "Input JAR file to sign")
 	SignJarCmd.Flags().StringVarP(&argOutput, "output", "o", "", "Output file for JAR. Defaults to same as input.")
@@ -61,7 +60,6 @@ func init() {
 
 	shared.RootCmd.AddCommand(SignJarManifestCmd)
 	shared.AddDigestFlag(SignJarManifestCmd)
-	addAuditFlags(SignJarManifestCmd)
 	SignJarManifestCmd.Flags().StringVarP(&argKeyName, "key", "k", "", "Name of key section in config file to use")
 	SignJarManifestCmd.Flags().StringVarP(&argFile, "file", "f", "", "Input manifest file to sign")
 	SignJarManifestCmd.Flags().StringVarP(&argOutput, "output", "o", "", "Output file for signature (.RSA or .EC)")
@@ -118,7 +116,7 @@ func signJarCmd(cmd *cobra.Command, args []string) (err error) {
 		return shared.Fail(err)
 	}
 	fmt.Fprintf(os.Stderr, "Signed %s\n", argFile)
-	return shared.Fail(audit.Commit())
+	return PublishAudit(audit)
 }
 
 func signJarManifestCmd(cmd *cobra.Command, args []string) (err error) {
@@ -162,5 +160,5 @@ func signJarManifestCmd(cmd *cobra.Command, args []string) (err error) {
 		return shared.Fail(err)
 	}
 	fmt.Fprintf(os.Stderr, "Signed %s\n", argFile)
-	return shared.Fail(audit.Commit())
+	return PublishAudit(audit)
 }

@@ -25,7 +25,11 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-const defaultMaxDocSize = 10000000
+const (
+	defaultMaxDocSize = 10000000
+	defaultSigXchg    = "relic.signatures"
+	sigKey            = "relic.signatures"
+)
 
 var Version = "unknown" // set this at link time
 var UserAgent = "relic/" + Version
@@ -227,4 +231,16 @@ func (config *Config) GetTimestampConfig() (*TimestampConfig, error) {
 	} else {
 		return tconf, nil
 	}
+}
+
+func (aconf *AmqpConfig) ExchangeName() string {
+	if aconf.SigsXchg != "" {
+		return aconf.SigsXchg
+	} else {
+		return defaultSigXchg
+	}
+}
+
+func (aconf *AmqpConfig) RoutingKey() string {
+	return sigKey
 }

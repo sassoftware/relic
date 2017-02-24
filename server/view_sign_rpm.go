@@ -43,6 +43,6 @@ func (s *Server) signRpm(keyConf *config.KeyConfig, request *http.Request) (Resp
 		return nil, errors.New("missing audit info")
 	}
 	filename := request.URL.Query().Get("filename")
-	s.Logr(request, "Signed package: filename=%s key=%s nevra=%s md5=%s sha1=%s", filename, keyConf.Name(), attrs["rpm.nevra"], attrs["rpm.md5"], attrs["rpm.sha1"])
+	s.Logr(request, "Signed package: filename=%s key=%s nevra=%s md5=%s sha1=%s", filename, keyConf.Name(), attrs.Attributes["rpm.nevra"], attrs.Attributes["rpm.md5"], attrs.Attributes["rpm.sha1"])
 	return BytesResponse(stdout, binpatch.MimeType), nil
 }

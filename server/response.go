@@ -30,6 +30,7 @@ type Response interface {
 type bytesResponse struct {
 	StatusCode  int
 	ContentType string
+	Headers     map[string]string
 	Body        []byte
 }
 

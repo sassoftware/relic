@@ -65,27 +65,35 @@ func signCmd(cmd *cobra.Command, args []string) (err error) {
 	if argOutput == "" {
 		argOutput = argFile
 	}
-	var fileType magic.FileType
-	if f, err := os.Open(argFile); err != nil {
-		return shared.Fail(err)
-	} else {
-		fileType = magic.Detect(f)
-		f.Close()
+	// check if an external tool will be used. if so we want to upload the file
+	// as-is, even for filetypes we'd normally transform first.
+	info, err := getKeyInfo(argKeyName)
+	if err != nil {
+		return shared.Fail(fmt.Errorf("failed to get info about key %s: %s", argKeyName, err))
 	}
 	var sigType string
-	switch fileType {
-	case magic.FileTypeJAR:
-		return signJar()
-	case magic.FileTypeMSI:
-		return signMsi()
-	case magic.FileTypeRPM:
-		sigType = "rpm"
-	case magic.FileTypeDEB:
-		sigType = "deb"
-	case magic.FileTypePECOFF:
-		sigType = "pe-coff"
-	default:
-		return errors.New("Don't know how to sign this type of file")
+	var fileType magic.FileType
+	if !info.ExternalTool {
+		if f, err := os.Open(argFile); err != nil {
+			return shared.Fail(err)
+		} else {
+			fileType = magic.Detect(f)
+			f.Close()
+		}
+		switch fileType {
+		case magic.FileTypeJAR:
+			return signJar()
+		case magic.FileTypeMSI:
+			return signMsi()
+		case magic.FileTypeRPM:
+			sigType = "rpm"
+		case magic.FileTypeDEB:
+			sigType = "deb"
+		case magic.FileTypePECOFF:
+			sigType = "pe-coff"
+		default:
+			return errors.New("Don't know how to sign this type of file")
+		}
 	}
 	// open for writing so in-place patch works
 	infile, err := os.OpenFile(argFile, os.O_RDWR, 0)
@@ -96,14 +104,16 @@ func signCmd(cmd *cobra.Command, args []string) (err error) {
 	values := url.Values{}
 	values.Add("key", argKeyName)
 	values.Add("filename", path.Base(argFile))
-	values.Add("sigtype", sigType)
-	if argRole != "" {
+	if sigType != "" {
+		values.Add("sigtype", sigType)
+	}
+	if fileType == magic.FileTypeDEB && argRole != "" {
 		values.Add("deb-role", argRole)
 	}
 	if err := setDigestQueryParam(values); err != nil {
 		return err
 	}
-	if argPageHashes {
+	if fileType == magic.FileTypePECOFF && argPageHashes {
 		digest, _ := shared.GetDigest()
 		if digest != crypto.SHA256 && digest != crypto.SHA1 {
 			return errors.New("When --page-hashes is set, SHA1 or SHA256 must be used")

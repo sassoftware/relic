@@ -37,7 +37,6 @@ var argPageHashes bool
 func init() {
 	shared.RootCmd.AddCommand(SignPeCmd)
 	shared.AddDigestFlag(SignPeCmd)
-	addAuditFlags(SignPeCmd)
 	SignPeCmd.Flags().StringVarP(&argKeyName, "key", "k", "", "Name of key section in config file to use")
 	SignPeCmd.Flags().StringVarP(&argFile, "file", "f", "", "Input file to sign")
 	SignPeCmd.Flags().StringVarP(&argOutput, "output", "o", "", "Output file. Defaults to same as input.")
@@ -103,5 +102,5 @@ func signPeCmd(cmd *cobra.Command, args []string) (err error) {
 	fmt.Fprintln(os.Stderr, "Signed", argFile)
 	audit := NewAudit(key, "pe-coff", hash)
 	audit.SetX509Cert(certs[0])
-	return shared.Fail(audit.Commit())
+	return PublishAudit(audit)
 }

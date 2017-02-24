@@ -46,6 +46,6 @@ func (s *Server) signDeb(keyConf *config.KeyConfig, request *http.Request) (Resp
 		return nil, errors.New("missing audit info")
 	}
 	filename := request.URL.Query().Get("filename")
-	s.Logr(request, "Signed package: filename=%s key=%s pkg=%s_%s_%s", filename, keyConf.Name(), attrs["deb.name"], attrs["deb.version"], attrs["deb.arch"])
+	s.Logr(request, "Signed package: filename=%s key=%s pkg=%s_%s_%s", filename, keyConf.Name(), attrs.Attributes["deb.name"], attrs.Attributes["deb.version"], attrs.Attributes["deb.arch"])
 	return BytesResponse(stdout, binpatch.MimeType), nil
 }

@@ -19,45 +19,52 @@ package server
 import (
 	"bytes"
 	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"os/exec"
 	"strings"
 	"time"
+
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/audit"
 )
 
-type auditAttributes map[string]interface{}
-
-func (s *Server) invokeCommand(request *http.Request, stdin io.Reader, workDir string, combined bool, timeout time.Duration, cmdline []string) ([]byte, auditAttributes, Response, error) {
+func (s *Server) invokeCommand(request *http.Request, stdin io.Reader, workDir string, combined bool, timeout time.Duration, cmdline []string) ([]byte, *audit.AuditInfo, Response, error) {
 	ctx, cancel := context.WithTimeout(request.Context(), timeout)
 	defer cancel()
 	hangup := &hangupDetector{r: stdin, cancel: cancel}
 	if stdin != nil {
 		stdin = hangup
 	}
-
+	// setup cmdline and stdio
 	var stdout, stderr bytes.Buffer
 	proc := exec.CommandContext(ctx, cmdline[0], cmdline[1:]...)
 	proc.Dir = workDir
 	proc.Stdin = stdin
 	proc.Stdout = &stdout
 	proc.Stderr = &stderr
-	audit, err := openAuditPipe(proc)
+	// stuff extra audit parameters into the environment and setup a pipe for
+	// receiving the sealed audit blob
+	extra := make(map[string]string)
+	extra["client.ip"] = GetClientIP(request)
+	extra["client.name"] = GetClientName(request)
+	if filename := request.URL.Query().Get("filename"); filename != "" {
+		extra["client.filename"] = filename
+	}
+	apipe, err := audit.AttachCmd(proc, extra)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	defer audit.Close()
+	defer apipe.Close()
+	// run the command
 	if err := proc.Start(); err != nil {
 		return nil, nil, nil, err
 	}
-	audit.Start()
+	apipe.Start()
 	err = proc.Wait()
 	if err == nil {
-		attrs, err := audit.Get()
+		// success
+		attrs, err := apipe.Get()
 		if err != nil {
 			return nil, nil, nil, fmt.Errorf("failed to parse audit info: %s", err)
 		}
@@ -91,13 +98,6 @@ func appendDigest(cmdline []string, request *http.Request) []string {
 	if digest := request.URL.Query().Get("digest"); digest != "" {
 		cmdline = append(cmdline, "--digest", digest)
 	}
-	if filename := request.URL.Query().Get("filename"); filename != "" {
-		cmdline = append(cmdline, "--attr", "client.filename="+filename)
-	}
-	cmdline = append(cmdline,
-		"--attr", "client.ip="+GetClientIP(request),
-		"--attr", "client.name="+GetClientName(request),
-	)
 	return cmdline
 }
 
@@ -110,75 +110,6 @@ func formatCmdline(cmdline []string) string {
 		words[i] = word
 	}
 	return strings.Join(words, " ")
-}
-
-type auditState struct {
-	r, w   *os.File
-	errch  chan error
-	blobch chan []byte
-}
-
-// Make a pipe to receive audit data from the signing tool
-func openAuditPipe(proc *exec.Cmd) (*auditState, error) {
-	r, w, err := os.Pipe()
-	if err != nil {
-		return nil, err
-	}
-	fdno := 3 + len(proc.ExtraFiles)
-	proc.ExtraFiles = append(proc.ExtraFiles, w)
-	if proc.Env == nil {
-		proc.Env = os.Environ()
-	}
-	proc.Env = append(proc.Env, fmt.Sprintf("RELIC_AUDIT_FD=%d", fdno))
-	errch := make(chan error, 1)
-	blobch := make(chan []byte, 1)
-	go func() {
-		var buf bytes.Buffer
-		_, err := io.Copy(&buf, r)
-		blobch <- buf.Bytes()
-		errch <- err
-	}()
-	return &auditState{r, w, errch, blobch}, nil
-}
-
-// Called after the process starts to close the write end of the pipe, which
-// belongs to the child process now.
-func (audit *auditState) Start() {
-	audit.w.Close()
-	audit.w = nil
-}
-
-// Get audit result after the process has exited
-func (audit *auditState) Get() (auditAttributes, error) {
-	blob := <-audit.blobch
-	err := <-audit.errch
-	if err != nil {
-		return nil, err
-	} else if len(blob) == 0 {
-		return nil, nil
-	}
-	var doc struct{ Attributes, Seal []byte }
-	if err := json.Unmarshal(blob, &doc); err != nil {
-		return nil, err
-	}
-	if len(doc.Attributes) == 0 {
-		return nil, errors.New("missing attributes")
-	}
-	var result auditAttributes
-	err = json.Unmarshal(doc.Attributes, &result)
-	return result, err
-}
-
-func (audit *auditState) Close() error {
-	if audit.w != nil {
-		audit.w.Close()
-		audit.w = nil
-	}
-	if audit.r != nil {
-		audit.r.Close()
-		audit.r = nil
-	}
-	return nil
 }
 
 // When a stream is being shovelled into a process' stdin and that stream gets

@@ -17,8 +17,10 @@
 package remotecmd
 
 import (
+	"encoding/json"
 	"errors"
-	"io"
+	"fmt"
+	"io/ioutil"
 	"net/url"
 	"os"
 
@@ -36,19 +38,43 @@ func init() {
 	RemoteCmd.AddCommand(GetKeyCmd)
 }
 
+type keyInfo struct {
+	ExternalTool    bool
+	X509Certificate string
+	PGPCertificate  string
+}
+
+func getKeyInfo(keyName string) (keyInfo, error) {
+	response, err := CallRemote("keys/"+url.PathEscape(keyName), "GET", nil, nil)
+	if err != nil {
+		return keyInfo{}, err
+	}
+	blob, err := ioutil.ReadAll(response.Body)
+	response.Body.Close()
+	if err != nil {
+		return keyInfo{}, err
+	}
+	var info keyInfo
+	if err := json.Unmarshal(blob, &info); err != nil {
+		return keyInfo{}, err
+	}
+	return info, nil
+}
+
 func getKeyCmd(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
 		return errors.New("Specify one or more key names. See also 'list-keys'.")
 	}
 	for _, keyName := range args {
-		response, err := CallRemote("keys/"+url.PathEscape(keyName), "GET", nil, nil)
+		info, err := getKeyInfo(keyName)
 		if err != nil {
 			return shared.Fail(err)
 		}
-		if _, err := io.Copy(os.Stdout, response.Body); err != nil {
-			return shared.Fail(err)
+		if info.X509Certificate == "" && info.PGPCertificate == "" && info.ExternalTool {
+			fmt.Fprintln(os.Stderr, keyName, "is an external tool and has no certificates")
 		}
-		response.Body.Close()
+		os.Stdout.WriteString(info.X509Certificate)
+		os.Stdout.WriteString(info.PGPCertificate)
 	}
 	return nil
 }

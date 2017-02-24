@@ -27,6 +27,12 @@ import (
 	"golang.org/x/crypto/openpgp/armor"
 )
 
+type keyInfo struct {
+	ExternalTool    bool
+	X509Certificate string
+	PGPCertificate  string
+}
+
 func (s *Server) serveGetKey(request *http.Request) (res Response, err error) {
 	if request.Method != "GET" {
 		return ErrorResponse(http.StatusMethodNotAllowed), nil
@@ -44,6 +50,8 @@ func (s *Server) serveGetKey(request *http.Request) (res Response, err error) {
 		s.Logr(request, "access denied to key %s\n", keyName)
 		return AccessDeniedResponse, nil
 	}
+	var info keyInfo
+	info.ExternalTool = keyConf.Tool != ""
 	var paths []string
 	if keyConf.PgpCertificate != "" {
 		paths = append(paths, keyConf.PgpCertificate)
@@ -55,8 +63,8 @@ func (s *Server) serveGetKey(request *http.Request) (res Response, err error) {
 	if err != nil {
 		return nil, err
 	}
-	var buf bytes.Buffer
 	if len(certs.PGPCerts) != 0 {
+		var buf bytes.Buffer
 		w, err := armor.Encode(&buf, "PGP PUBLIC KEY BLOCK", nil)
 		if err != nil {
 			return nil, err
@@ -70,14 +78,17 @@ func (s *Server) serveGetKey(request *http.Request) (res Response, err error) {
 			return nil, err
 		}
 		buf.WriteString("\n")
+		info.PGPCertificate = buf.String()
 	}
 	if len(certs.X509Certs) != 0 {
+		var buf bytes.Buffer
 		for _, cert := range certs.X509Certs {
 			block := &pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw}
 			if err := pem.Encode(&buf, block); err != nil {
 				return nil, err
 			}
 		}
+		info.X509Certificate = buf.String()
 	}
-	return BytesResponse(buf.Bytes(), "text/plain"), nil
+	return JsonResponse(info)
 }

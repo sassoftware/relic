@@ -27,6 +27,7 @@ import (
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/audit"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs7"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs9"
@@ -44,7 +45,7 @@ func readCerts(key *p11token.Key) ([]*x509.Certificate, error) {
 	return certloader.ParseCertificates(certblob)
 }
 
-func signAndTimestamp(data []byte, key *p11token.Key, opts crypto.SignerOpts, sigType string, detach bool) (sig []byte, audit auditAttributes, err error) {
+func signAndTimestamp(data []byte, key *p11token.Key, opts crypto.SignerOpts, sigType string, detach bool) (sig []byte, attrs *audit.AuditInfo, err error) {
 	var psd *pkcs7.ContentInfoSignedData
 	hash := opts.HashFunc()
 	certs, err := readCerts(key)
@@ -61,10 +62,10 @@ func signAndTimestamp(data []byte, key *p11token.Key, opts crypto.SignerOpts, si
 	if err != nil {
 		return nil, nil, err
 	}
-	audit = NewAudit(key, sigType, hash)
-	audit.SetX509Cert(certs[0])
+	attrs = NewAudit(key, sigType, hash)
+	attrs.SetX509Cert(certs[0])
 	pkcs, err := timestampPkcs(psd, key, certs, opts.HashFunc(), false)
-	return pkcs, audit, err
+	return pkcs, attrs, err
 }
 
 func timestampPkcs(psd *pkcs7.ContentInfoSignedData, key *p11token.Key, certs []*x509.Certificate, hash crypto.Hash, authenticode bool) (sig []byte, err error) {

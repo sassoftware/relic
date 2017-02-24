@@ -51,7 +51,6 @@ var (
 func init() {
 	shared.RootCmd.AddCommand(SignPgpCmd)
 	shared.AddDigestFlag(SignPgpCmd)
-	addAuditFlags(SignPgpCmd)
 	SignPgpCmd.Flags().StringVarP(&argPgpUser, "local-user", "u", "", "Specify keyname or cfgfile:keyname")
 	SignPgpCmd.Flags().StringVarP(&argKeyName, "key", "k", "", "Name of key section in config file to use")
 	SignPgpCmd.Flags().StringVarP(&argOutput, "output", "o", "", "Write output to file")
@@ -149,5 +148,5 @@ func signPgpCmd(cmd *cobra.Command, args []string) (err error) {
 	audit := NewAudit(key, "pgp", hash)
 	audit.SetPgpCert(entity)
 	audit.SetTimestamp(now)
-	return shared.Fail(audit.Commit())
+	return PublishAudit(audit)
 }

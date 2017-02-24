@@ -26,13 +26,14 @@ import (
 	"path"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/audit"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/server/diskmgr"
 )
 
 func (s *Server) allocScratch(keyConf *config.KeyConfig, request *http.Request, filename string) (diskmgr.CancelFunc, Response, error) {
 	if request.ContentLength < 0 {
 		s.Logr(request, "error: missing content-length: filename=%s key=%s", filename, keyConf.Name())
-		return nil, StringResponse(http.StatusLengthRequired, "Length Required\n\nContent-Length is required when using clearsign"), nil
+		return nil, StringResponse(http.StatusLengthRequired, "Length Required\n\nContent-Length is required when using this signature type"), nil
 	}
 	allocate := uint64(request.ContentLength) * 2
 	info := fmt.Sprintf("filename=%s client=%s ip=%s", filename, GetClientName(request), GetClientIP(request))
@@ -90,6 +91,9 @@ func (s *Server) signWithTool(keyConf *config.KeyConfig, request *http.Request, 
 	if response != nil || err != nil {
 		return response, err
 	}
+	if err := s.auditTool(keyConf, request, filename); err != nil {
+		return nil, fmt.Errorf("failed to publish audit info: %s", err)
+	}
 	s.Logr(request, "Signed package: filename=%s key=%s size=%d", filename, keyConf.Name(), size)
 	return nil, sendFile(writer, scratchPath)
 }
@@ -118,4 +122,16 @@ func sendFile(writer http.ResponseWriter, path string) error {
 	writer.WriteHeader(http.StatusOK)
 	io.Copy(writer, f)
 	return nil
+}
+
+func (s *Server) auditTool(keyConf *config.KeyConfig, request *http.Request, filename string) error {
+	info := audit.New(keyConf.Name(), "tool:"+keyConf.Tool, 0)
+	info.Attributes["client.filename"] = filename
+	info.Attributes["client.ip"] = GetClientIP(request)
+	info.Attributes["client.name"] = GetClientName(request)
+	aconf := s.Config.Amqp
+	if aconf == nil || aconf.Url == "" {
+		return nil
+	}
+	return info.Publish(aconf.Url, aconf.ExchangeName(), "fanout", aconf.RoutingKey())
 }
