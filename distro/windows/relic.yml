@@ -6,15 +6,18 @@ tools:
     # - {file} - Path to the file to be signed
     # - {key} - defined in the key section below
     # - {certificate} - defined in the key section below
-    command: '"C:\\signtool.exe" sign /f {certificate} /csp myprovider /kc {key} {file}'
+    command: '"C:\\signtool.exe" sign /f {x509certificate} /ac {cross_sign_root} /csp myprovider /kc {key} {file}'
 keys:
   my_tool_key:
     # Which tool, defined above, to use the key with
     tool: mytool
     # Arbitrary string to substitute for {key}
     key: keyname
-    # Arbitrary string to substitute for {certificate}
-    certificate: c:/mycert.cer
+    # x509 certificate, substituted for {x509certificate} but also fetchable with "relic remote get-key"
+    x509certificate: c:/mycert.cer
+    # Optional, arbitrary parameters to substitute into the command-line:
+    params:
+      cross_sign_root: c:/cross_sign_root.cer
     # List of user-roles that are permitted to use this key
     roles: ['somegroup']
 server:

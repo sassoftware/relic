@@ -7,7 +7,7 @@ tokens:
     # Optional selectors to pick a token from those the provider offers
     label: alpha
     serial: 99999
-    # PIN is optional for command-line use, but required for servers
+    # PIN is optional for command-line use, but required for servers. See also 'pinfile'.
     pin: 123456
     #pin: "" # blank PIN, without prompting
 
@@ -40,14 +40,16 @@ keys:
     # Path to a X509 certificate, if X509 signing is desired. Can be PEM, DER,
     # or PKCS#7 (p7b) format, with optional certificate chain.
     x509certificate: ./keys/rsa1.cer
+    # true if a RFC 3161 timestamp should be attached, see 'timestamp' below
+    timestamp: false
     roles: ['somegroup']
   my_tool_key:
     # Which tool, defined above, to use the key with
     tool: mytool
     # Arbitrary string to substitute for {key}
     key: keyname
-    # Arbitrary string to substitute for {certificate}
-    certificate: c:/mycert.cer
+    # Arbitrary string to substitute for {x509certificate}
+    x509certificate: c:/mycert.cer
     # List of user-roles that are permitted to use this key
     roles: ['somegroup']
 server:
@@ -63,6 +65,30 @@ server:
   logfile: /var/log/relic/server.log
   # Maximum number of bytes to buffer in RAM (i.e. for PGP clearsign)
   maxdocsize: 10000000
+# Instead of including token PINs in this file, you can specify an alternate
+# "pin file" which is a YAML file holding key-value pairs where the key is the
+# name of the token and the value is the PIN.
+#pinfile: /etc/relic/pin.yaml
+timestamp:
+  # RFC 3161 timestamp server(s). If more than one is provided then they will
+  # be tried in the order given until one succeeds. Only keys with 'timestamp:
+  # true' are affected, and only when performing signature types that accept a
+  # timestamp.
+  urls:
+    - http://mytimestamp.server/rfc3161
+  # Optional timeout for each timestamp request
+  timeout: 60
+  # Optional alternate CA certificate file for contacting timestamp servers
+  # cacert: /etc/pki/tls/mychain.pem
+amqp:
+  # Optional audit logging to an AMQP broker
+  #url: amqp://guest:guest@127.0.0.1:5672
+  # "fanout" type exchange to send audit messages to, default relic.signatures
+  # sigsXchg: relic.signatures
+  # Name of key to use to "seal" audit messages using a PKCS#7 signedData
+  # structure
+  #sealingKey: my_token_key
+
 clients:
   # Authentication to the server is via client certificate. Certificates are
   # identified by their fingerprint. Fingerprints can be obtained by using the
