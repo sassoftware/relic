@@ -2,13 +2,11 @@
 Description=Relic package signing auditor
 
 [Service]
-User=relic
-Group=relic
+User=relic-audit
+Group=relic-audit
 Type=notify
 WorkingDirectory=/
-ExecStart=/usr/bin/relic -c /etc/relic/relic.yml serve
-KillSignal=QUIT
+ExecStart=/usr/bin/relic-audit -d /etc/relic/audit.d
 
 [Install]
-Also=relic.socket
 WantedBy=multi-user.target

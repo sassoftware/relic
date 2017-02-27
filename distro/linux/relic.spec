@@ -21,7 +21,7 @@ server.
 %autosetup -n relic-redhat-%{version}
 
 %install
-mkdir -p %{buildroot}%{systemddir} %{buildroot}%{confdir}/{certs,server} %{buildroot}%{_localstatedir}/log/relic
+mkdir -p %{buildroot}%{systemddir} %{buildroot}%{confdir}/{certs,server,audit.d} %{buildroot}%{_localstatedir}/log/relic
 install -D relic %{buildroot}%{_bindir}/relic
 install -D relic-audit %{buildroot}%{_bindir}/relic-audit
 install -D relic.yml %{buildroot}%{confdir}/relic.yml
@@ -37,6 +37,7 @@ rm -rf %{buildroot}
 %attr(0644,root,root)           %{systemddir}/relic-audit.service
 %attr(0644,root,root)           %{systemddir}/relic.socket
 %attr(0755,root,root) %dir      %{confdir}
+%attr(0755,root,root) %dir      %{confdir}/audit.d
 %attr(0755,root,root) %dir      %{confdir}/certs
 %attr(0640,root,relic) %config  %{confdir}/relic.yml
 %attr(0750,root,relic) %dir     %{confdir}/server

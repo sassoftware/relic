@@ -20,10 +20,13 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path"
+	"sort"
 	"time"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/audit"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/server/activation"
 	"github.com/spf13/cobra"
 	"github.com/streadway/amqp"
 )
@@ -33,9 +36,29 @@ var AuditCmd = &cobra.Command{
 	RunE:  auditCmd,
 }
 
+var argConfigsDir string
+
+func init() {
+	AuditCmd.Flags().StringVarP(&argConfigsDir, "configs-dir", "d", "", "Directory of audit config files to load")
+}
+
 func auditCmd(cmd *cobra.Command, args []string) error {
-	if len(args) == 0 {
-		return errors.New("provide one or more config files as arguments")
+	if argConfigsDir != "" {
+		dir, err := os.Open(argConfigsDir)
+		if err != nil {
+			return err
+		}
+		defer dir.Close()
+		names, err := dir.Readdirnames(-1)
+		if err != nil {
+			return err
+		}
+		sort.Strings(names)
+		for _, name := range names {
+			args = append(args, path.Join(argConfigsDir, name))
+		}
+	} else if len(args) == 0 {
+		return errors.New("provide one or more config files as arguments, or pass --configs-dir")
 	}
 	for _, path := range args {
 		cfg, err := config.ReadFile(path)
@@ -49,6 +72,7 @@ func auditCmd(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("%s: %s", path, err)
 		}
 	}
+	activation.DaemonReady()
 	time.Sleep(1<<63 - 1)
 	return nil
 }
