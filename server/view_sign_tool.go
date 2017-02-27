@@ -133,5 +133,5 @@ func (s *Server) auditTool(keyConf *config.KeyConfig, request *http.Request, fil
 	if aconf == nil || aconf.Url == "" {
 		return nil
 	}
-	return info.Publish(aconf.Url, aconf.ExchangeName(), "fanout", aconf.RoutingKey())
+	return info.Publish(aconf)
 }

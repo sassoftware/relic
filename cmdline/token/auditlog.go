@@ -49,7 +49,7 @@ func PublishAudit(info *audit.AuditInfo) error {
 			return shared.Fail(fmt.Errorf("failed to seal audit log: %s", err))
 		}
 	}
-	if err := info.Publish(aconf.Url, aconf.ExchangeName(), "fanout", aconf.RoutingKey()); err != nil {
+	if err := info.Publish(aconf); err != nil {
 		return shared.Fail(fmt.Errorf("failed to publish audit log: %s", err))
 	}
 	if err := info.WriteFd(); err != nil {

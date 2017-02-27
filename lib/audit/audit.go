@@ -18,6 +18,7 @@ package audit
 
 import (
 	"crypto"
+	"crypto/tls"
 	"crypto/x509"
 	"encoding/asn1"
 	"encoding/json"
@@ -27,6 +28,8 @@ import (
 	"strings"
 	"time"
 
+	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pgptools"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs7"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
@@ -122,7 +125,7 @@ func (info *AuditInfo) Marshal() ([]byte, error) {
 	return json.Marshal(sealedDoc{blob, nil})
 }
 
-func (info *AuditInfo) Publish(amqpUrl, exchangeName, exchangeType, routingKey string) error {
+func (info *AuditInfo) Publish(aconf *config.AmqpConfig) error {
 	blob, err := info.Marshal()
 	if err != nil {
 		return err
@@ -133,7 +136,7 @@ func (info *AuditInfo) Publish(amqpUrl, exchangeName, exchangeType, routingKey s
 		ContentType:  "application/json",
 		Body:         blob,
 	}
-	conn, err := amqp.Dial(amqpUrl)
+	conn, err := Connect(aconf)
 	if err != nil {
 		return err
 	}
@@ -143,12 +146,12 @@ func (info *AuditInfo) Publish(amqpUrl, exchangeName, exchangeType, routingKey s
 		return err
 	}
 	defer ch.Close()
-	if err := ch.ExchangeDeclare(exchangeName, exchangeType, true, false, false, false, nil); err != nil {
+	if err := ch.ExchangeDeclare(aconf.ExchangeName(), amqp.ExchangeFanout, true, false, false, false, nil); err != nil {
 		return err
 	}
 	ch.Confirm(false)
 	notify := ch.NotifyPublish(make(chan amqp.Confirmation, 1))
-	if err := ch.Publish(exchangeName, routingKey, false, false, msg); err != nil {
+	if err := ch.Publish(aconf.ExchangeName(), aconf.RoutingKey(), false, false, msg); err != nil {
 		return err
 	}
 	confirm := <-notify
@@ -172,3 +175,38 @@ func Parse(blob []byte) (*AuditInfo, error) {
 	err := json.Unmarshal(doc.Attributes, &info.Attributes)
 	return info, err
 }
+
+func Connect(aconf *config.AmqpConfig) (*amqp.Connection, error) {
+	tconf := &tls.Config{}
+	if aconf.CaCert != "" {
+		if err := x509tools.LoadCertPool(aconf.CaCert, tconf); err != nil {
+			return nil, err
+		}
+	}
+	if aconf.CertFile != "" {
+		tlscert, err := certloader.LoadX509KeyPair(aconf.CertFile, aconf.KeyFile)
+		if err != nil {
+			return nil, err
+		}
+		tconf.Certificates = []tls.Certificate{tlscert}
+	}
+	x509tools.SetKeyLogFile(tconf)
+	uri, err := amqp.ParseURI(aconf.Url)
+	if err != nil {
+		return nil, err
+	}
+	var auth []amqp.Authentication
+	if len(tconf.Certificates) != 0 {
+		auth = append(auth, externalAuth{})
+	}
+	if uri.Password != "" {
+		auth = append(auth, uri.PlainAuth())
+	}
+	qconf := amqp.Config{SASL: auth, TLSClientConfig: tconf}
+	return amqp.DialConfig(aconf.Url, qconf)
+}
+
+type externalAuth struct{}
+
+func (externalAuth) Mechanism() string { return "EXTERNAL" }
+func (externalAuth) Response() string  { return "" }

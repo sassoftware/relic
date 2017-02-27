@@ -28,6 +28,7 @@ import (
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/server"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/server/activation"
 	"github.com/braintree/manners"
@@ -54,14 +55,16 @@ func makeTlsConfig(config *config.Config) (*tls.Config, error) {
 		}
 	}
 
-	return &tls.Config{
+	tconf := &tls.Config{
 		Certificates:             []tls.Certificate{tlscert},
 		PreferServerCipherSuites: true,
 		SessionTicketsDisabled:   true,
 		ClientAuth:               tls.RequestClientCert,
 		MinVersion:               tls.VersionTLS12,
 		KeyLogWriter:             keyLog,
-	}, nil
+	}
+	x509tools.SetKeyLogFile(tconf)
+	return tconf, nil
 }
 
 func getListener(laddr string, tconf *tls.Config) (net.Listener, error) {

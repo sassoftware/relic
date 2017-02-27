@@ -1,16 +1,12 @@
 Name: relic
-Version: 1.2.0
+Version: 1.0
 Release: 1%{?dist}
 Summary: Secure package signing service
 License: Apache 2.0
 URL: http://github.com/sassoftware/relic
-Source0: relic
-Source1: relic.service
-Source2: relic.socket
-Source3: relic.yml
+Source0: https://jenkins2.unx.sas.com/view/Licensing/job/licensing-relic/lastSuccessfulBuild/artifact/build/relic-redhat-%{version}.tar.gz
 Group: Utilities/File
 BuildArch: x86_64
-Packager: Michael Tharp <michael.tharp@sas.com>
 
 %define confdir %{_sysconfdir}/relic
 %define systemddir %{_prefix}/lib/systemd/system
@@ -22,20 +18,23 @@ creating keys, manipulating tokens, and a client for accessing a remote signing
 server.
 
 %prep
+%autosetup
 
 %install
-install -D %{SOURCE0} %{buildroot}%{_bindir}/relic
-install -D %{SOURCE1} %{buildroot}%{systemddir}/relic.service
-install -D %{SOURCE2} %{buildroot}%{systemddir}/relic.socket
-install -D %{SOURCE3} %{buildroot}%{confdir}/relic.yml
-mkdir -p %{buildroot}%{confdir}/{certs,server} %{buildroot}%{_localstatedir}/log/relic
+mkdir -p %{buildroot}%{systemddir} %{buildroot}%{confdir}/{certs,server} %{buildroot}%{_localstatedir}/log/relic
+install -D relic %{buildroot}%{_bindir}/relic
+install -D relic-audit %{buildroot}%{_bindir}/relic-audit
+install -D relic.yml %{buildroot}%{confdir}/relic.yml
+install relic.service relic.socket relic-audit.service %{buildroot}%{systemddir}/
 
 %clean
 rm -rf %{buildroot}
 
 %files
 %attr(0755,root,root)           %{_bindir}/relic
+%attr(0755,root,root)           %{_bindir}/relic-audit
 %attr(0644,root,root)           %{systemddir}/relic.service
+%attr(0644,root,root)           %{systemddir}/relic-audit.service
 %attr(0644,root,root)           %{systemddir}/relic.socket
 %attr(0755,root,root) %dir      %{confdir}
 %attr(0755,root,root) %dir      %{confdir}/certs
@@ -49,6 +48,9 @@ rm -rf %{buildroot}
 getent group relic >/dev/null || groupadd -r relic
 getent passwd relic >/dev/null || useradd -r -g relic \
     -d / relic -s /sbin/nologin -c "relic package signing service"
+getent group relic-audit >/dev/null || groupadd -r relic-audit
+getent passwd relic-audit >/dev/null || useradd -r -g relic-audit \
+    -d / relic-audit -s /sbin/nologin -c "relic audit service"
 
 %post
 /bin/systemctl daemon-reload
@@ -56,11 +58,12 @@ getent passwd relic >/dev/null || useradd -r -g relic \
 %preun
 if [ $1 -eq 0 ] ; then
         # removal, not upgrade
-        systemctl --no-reload disable --now relic.service relic.socket > /dev/null 2>&1 || :
+        systemctl --no-reload disable --now relic.service relic.socket relic-audit.service > /dev/null 2>&1 || :
 fi
 
 %postun
 if [ $1 -ge 1 ] ; then
         # upgrade, not removal
         systemctl try-restart relic.service >/dev/null 2>&1 || :
+        systemctl try-restart relic-audit.service >/dev/null 2>&1 || :
 fi
