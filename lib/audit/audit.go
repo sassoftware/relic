@@ -125,6 +125,10 @@ func (info *AuditInfo) Marshal() ([]byte, error) {
 	return json.Marshal(sealedDoc{blob, nil})
 }
 
+func (info *AuditInfo) GetSealed() ([]byte, []byte) {
+	return info.sealed, info.seal
+}
+
 func (info *AuditInfo) Publish(aconf *config.AmqpConfig) error {
 	blob, err := info.Marshal()
 	if err != nil {
@@ -177,27 +181,30 @@ func Parse(blob []byte) (*AuditInfo, error) {
 }
 
 func Connect(aconf *config.AmqpConfig) (*amqp.Connection, error) {
-	tconf := &tls.Config{}
-	if aconf.CaCert != "" {
-		if err := x509tools.LoadCertPool(aconf.CaCert, tconf); err != nil {
-			return nil, err
-		}
-	}
-	if aconf.CertFile != "" {
-		tlscert, err := certloader.LoadX509KeyPair(aconf.CertFile, aconf.KeyFile)
-		if err != nil {
-			return nil, err
-		}
-		tconf.Certificates = []tls.Certificate{tlscert}
-	}
-	x509tools.SetKeyLogFile(tconf)
 	uri, err := amqp.ParseURI(aconf.Url)
 	if err != nil {
 		return nil, err
 	}
+	var tconf *tls.Config
 	var auth []amqp.Authentication
-	if len(tconf.Certificates) != 0 {
-		auth = append(auth, externalAuth{})
+	if uri.Scheme == "amqps" {
+		tconf = &tls.Config{}
+		if aconf.CaCert != "" {
+			if err := x509tools.LoadCertPool(aconf.CaCert, tconf); err != nil {
+				return nil, err
+			}
+		}
+		if aconf.CertFile != "" {
+			tlscert, err := certloader.LoadX509KeyPair(aconf.CertFile, aconf.KeyFile)
+			if err != nil {
+				return nil, err
+			}
+			tconf.Certificates = []tls.Certificate{tlscert}
+		}
+		x509tools.SetKeyLogFile(tconf)
+		if len(tconf.Certificates) != 0 {
+			auth = append(auth, externalAuth{})
+		}
 	}
 	if uri.Password != "" {
 		auth = append(auth, uri.PlainAuth())

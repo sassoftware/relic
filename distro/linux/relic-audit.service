@@ -1,12 +1,14 @@
 [Unit]
 Description=Relic package signing auditor
+Wants=postgresql.service
+After=postgresql.service
 
 [Service]
 User=relic-audit
 Group=relic-audit
 Type=notify
 WorkingDirectory=/
-ExecStart=/usr/bin/relic-audit -d /etc/relic/audit.d
+ExecStart=/usr/bin/relic-audit -c /etc/relic/audit.yml
 
 [Install]
 WantedBy=multi-user.target
