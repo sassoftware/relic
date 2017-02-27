@@ -28,11 +28,16 @@ GOOS=linux go build -v -ldflags "$ldflags" -o $WORKDIR/build/relic-audit $module
 GOOS=windows go build -v -ldflags "$ldflags" -o $WORKDIR/build/relic.exe $module/relic/relic_notoken
 
 cd $WORKDIR/build
-mkdir dist-redhat dist-windows
-cp -a $WORKDIR/checkout/distro/linux/* relic relic-audit dist-redhat/
-sed -i -e "s/^Version:.*/Version: $version/" dist-redhat/relic.spec
-tar -czf relic-redhat-${version}.tar.gz dist-redhat
-cp -a $WORKDIR/checkout/distro/windows/* relic.exe dist-windows/
-sed -i -e "s/ Version=[^ >]*/ Version='$version'/" dist-windows/relic.wxs
-zip -rq relic-windows-${version}.zip dist-windows
-rm -rf dist-*
+rhname=relic-redhat-$version
+mkdir relic-redhat-$version
+cp -a $WORKDIR/checkout/distro/linux/* relic relic-audit $rhname/
+sed -i -e "s/^Version:.*/Version: $version/" $rhname/relic.spec
+tar -czf ${rhname}.tar.gz $rhname
+
+winname=relic-windows-$version
+mkdir $winname
+cp -a $WORKDIR/checkout/distro/windows/* relic.exe $winname/
+sed -i -e "s/ Version=[^ >]*/ Version='$version'/" $winname/relic.wxs
+zip -rq ${winname}.zip $winname
+
+rm -rf $rhname $winname

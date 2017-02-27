@@ -18,7 +18,7 @@ creating keys, manipulating tokens, and a client for accessing a remote signing
 server.
 
 %prep
-%autosetup
+%autosetup -n relic-redhat-%{version}
 
 %install
 mkdir -p %{buildroot}%{systemddir} %{buildroot}%{confdir}/{certs,server} %{buildroot}%{_localstatedir}/log/relic
