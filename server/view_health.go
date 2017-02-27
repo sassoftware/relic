@@ -38,7 +38,7 @@ var (
 )
 
 func (s *Server) startHealthCheck(force bool) error {
-	if !s.healthCheck() && !force {
+	if !s.healthCheck() && !force && !s.Config.Server.Disabled {
 		return errors.New("health check failed")
 	}
 	go s.healthCheckLoop()
@@ -77,7 +77,12 @@ func (s *Server) healthCheck() bool {
 		}
 	}
 	next := last
-	if ok {
+	if s.Config.Server.Disabled {
+		if last != 0 {
+			s.Logf("server is disabled by configuration")
+		}
+		next = 0
+	} else if ok {
 		if last == 0 {
 			s.Logf("recovered to normal state, status is now OK")
 		} else if last < HealthCheckMaxFailures {

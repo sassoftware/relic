@@ -64,7 +64,10 @@ func (lw *loggingWriter) WriteHeader(status int) {
 	if ua == "" {
 		ua = "-"
 	}
-	lw.s.Logr(lw.r, "%s \"%s\" %d %s %s", lw.r.Method, lw.r.URL, status, cl, ua)
+	path := lw.r.URL.Path
+	if path != "/health" {
+		lw.s.Logr(lw.r, "%s \"%s\" %d %s %s", lw.r.Method, lw.r.URL, status, cl, ua)
+	}
 	lw.ResponseWriter.WriteHeader(status)
 }
 

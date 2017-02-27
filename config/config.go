@@ -79,6 +79,7 @@ type ServerConfig struct {
 	MaxDocSize     int64 // Largest request that will be spooled to RAM
 	MaxDiskUsage   uint  // Max disk usage in megabytes
 	DebugDiskUsage bool
+	Disabled       bool // Always return 503 Service Unavailable
 
 	// URLs to all servers in the cluster. If a client uses DirectoryUrl to
 	// point to this server (or a load balancer), then we will give them these
