@@ -22,6 +22,7 @@ import (
 	"os"
 	"path"
 	"sort"
+	"strings"
 	"time"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
@@ -55,7 +56,9 @@ func auditCmd(cmd *cobra.Command, args []string) error {
 		}
 		sort.Strings(names)
 		for _, name := range names {
-			args = append(args, path.Join(argConfigsDir, name))
+			if strings.HasSuffix(name, ".yml") {
+				args = append(args, path.Join(argConfigsDir, name))
+			}
 		}
 	} else if len(args) == 0 {
 		return errors.New("provide one or more config files as arguments, or pass --configs-dir")
@@ -136,7 +139,7 @@ func NewListener(aconf *config.AmqpConfig) (*Listener, error) {
 	}
 	qname := "audit." + hostname
 	l := &Listener{aconf, conn, ch, qname}
-	if err := ch.ExchangeDeclare(aconf.ExchangeName(), amqp.ExchangeFanout, true, false, false, false, nil); err != nil {
+	if err := ch.ExchangeDeclarePassive(aconf.ExchangeName(), amqp.ExchangeFanout, true, false, false, false, nil); err != nil {
 		l.Close()
 		return nil, err
 	}
