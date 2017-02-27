@@ -1,5 +1,5 @@
 hash: a17515b127b68fe2f01d00f410f6af430c111bc2a490aaf4f3d88089de2caf48
-updated: 2017-02-24T16:02:22.939954009Z
+updated: 2017-02-27T23:35:21.52899404Z
 imports:
 - name: github.com/braintree/manners
   version: 82a8879fc5fd0381fa8b2d8033b19bf255252088
@@ -7,6 +7,10 @@ imports:
   version: bf9dde6d0d2c004a008c27aaee91170c786f6db8
 - name: github.com/inconshreveable/mousetrap
   version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
+- name: github.com/lib/pq
+  version: ba5d4f7a35561e22fbdf7a39aa0070f4d460cfc0
+  subpackages:
+  - oid
 - name: github.com/mattn/go-shellwords
   version: 005a0944d84452842197c2108bd9168ced206f78
 - name: github.com/miekg/pkcs11
@@ -15,6 +19,8 @@ imports:
   version: 970db520ece77730c7e4724c61121037378659d9
 - name: github.com/qur/ar
   version: 282534b917707a0e6639276266fa6421c634af2d
+- name: github.com/robertkowalski/graylog-golang
+  version: e5295cfa28272ada50cb9b5d97696ee06e49ed42
 - name: github.com/sassoftware/go-rpmutils
   version: 95f7d12b6fa9b166d98f9b926101d1e2d1e4353d
   subpackages:
@@ -39,7 +45,7 @@ imports:
   - openpgp/elgamal
   - ssh/terminal
 - name: golang.org/x/net
-  version: dd2d9a67c97da0afa00d5726e28086007a0acce5
+  version: 906cda9512f77671ab44f8c8563b13a8e707b230
   subpackages:
   - http2
   - http2/hpack
