@@ -43,6 +43,7 @@ rm -rf %{buildroot}
 %attr(0755,root,root) %dir      %{confdir}/audit.d
 %attr(0755,root,root) %dir      %{confdir}/certs
 %attr(0640,root,relic) %config  %{confdir}/relic.yml
+%attr(0640,root,relic) %config  %{confdir}/audit.yml
 %attr(0750,root,relic) %dir     %{confdir}/server
 %attr(0750,relic,relic) %dir    %{_localstatedir}/log/relic
 %attr(0750,relic-audit,relic-audit) %dir    %{_localstatedir}/log/relic-audit
