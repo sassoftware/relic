@@ -60,6 +60,8 @@ func (s *Server) serveSign(request *http.Request, writer http.ResponseWriter) (r
 		return s.signPeCoff(keyConf, request)
 	case "msi-tar":
 		return s.signMsi(keyConf, request)
+	case "cat":
+		return s.signCat(keyConf, request)
 	case "":
 		// look at filename
 	default:

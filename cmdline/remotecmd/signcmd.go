@@ -91,6 +91,14 @@ func signCmd(cmd *cobra.Command, args []string) (err error) {
 			sigType = "deb"
 		case magic.FileTypePECOFF:
 			sigType = "pe-coff"
+		case magic.FileTypePKCS7:
+			if blob, err := ioutil.ReadFile(argFile); err != nil {
+				return shared.Fail(err)
+			} else if authenticode.IsSecurityCatalog(blob) {
+				sigType = "cat"
+			} else {
+				return errors.New("Don't know how to sign this type of file")
+			}
 		default:
 			return errors.New("Don't know how to sign this type of file")
 		}

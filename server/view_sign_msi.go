@@ -21,6 +21,7 @@ import (
 	"os"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs7"
 )
 
 func (s *Server) signMsi(keyConf *config.KeyConfig, request *http.Request) (Response, error) {
@@ -40,5 +41,5 @@ func (s *Server) signMsi(keyConf *config.KeyConfig, request *http.Request) (Resp
 	}
 	filename := request.URL.Query().Get("filename")
 	s.Logr(request, "Signed package: filename=%s key=%s", filename, keyConf.Name())
-	return BytesResponse(stdout, "application/pkcs7-mime"), nil
+	return BytesResponse(stdout, pkcs7.MimeType), nil
 }

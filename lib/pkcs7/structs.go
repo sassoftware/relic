@@ -30,6 +30,8 @@ var (
 	OidAttributeSigningTime   = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 9, 5}
 )
 
+const MimeType = "application/pkcs7-mime"
+
 type ContentInfo struct {
 	Raw         asn1.RawContent
 	ContentType asn1.ObjectIdentifier
