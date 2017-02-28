@@ -17,26 +17,19 @@
 package auditor
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/audit"
-	gelf "github.com/robertkowalski/graylog-golang"
 )
 
-type gelfMessage struct {
-	Version      string `json:"version"`
-	Host         string `json:"host"`
-	ShortMessage string `json:"short_message"`
-	Timestamp    int64  `json:"timestamp"`
-	Level        int    `json:"level"`
-}
-
-func logGraylog(info *audit.AuditInfo, rowid int64) {
-	if auditConfig.GraylogHostname == "" {
-		return
+func logGraylog(info *audit.AuditInfo, rowid int64) error {
+	if auditConfig.GraylogUrl == "" {
+		return nil
 	}
 	msg := map[string]interface{}{
 		"version":       "1.1",
@@ -57,11 +50,16 @@ func logGraylog(info *audit.AuditInfo, rowid int64) {
 		k = strings.Replace(k, ".", "_", -1)
 		msg["_"+k] = v
 	}
-	blob, _ := json.Marshal(msg)
-	fmt.Println(string(blob))
-	g := gelf.New(gelf.Config{
-		GraylogHostname: auditConfig.GraylogHostname,
-		GraylogPort:     auditConfig.GraylogPort,
-	})
-	g.Log(string(blob))
+	blob, err := json.Marshal(msg)
+	if err != nil {
+		return err
+	}
+	resp, err := http.Post(auditConfig.GraylogUrl, "application/json", bytes.NewReader(blob))
+	if err != nil {
+		return err
+	} else if resp.StatusCode >= 300 {
+		return fmt.Errorf("error posting to graylog: %s", resp.Status)
+	}
+	resp.Body.Close()
+	return nil
 }

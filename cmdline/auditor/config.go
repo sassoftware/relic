@@ -30,11 +30,11 @@ import (
 )
 
 type AuditConfig struct {
-	ConfigDir       string
-	DatabaseUri     string
-	LogFile         string
-	GraylogHostname string
-	GraylogPort     int
+	ConfigDir   string
+	DatabaseUri string
+	LogFile     string
+	GraylogUrl  string
+	CaCert      string
 }
 
 var auditConfig AuditConfig

@@ -175,27 +175,34 @@ func (l *Listener) Loop(db *sql.DB) error {
 			d.Ack(false)
 			continue
 		}
-		rowid, err := insertRow(db, info)
-		if err != nil {
+		if err := logToAll(db, info); err != nil {
+			// reject the message, disconnect, and start a timeout
+			fmt.Fprintf(os.Stderr, "ERROR: %s\n", err)
 			d.Reject(true)
 			return err
 		}
-		formatted := fmtRow(info, rowid)
 		d.Ack(false)
-		logGraylog(info, rowid)
-		if auditConfig.LogFile != "" {
-			f, err := os.OpenFile(auditConfig.LogFile, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
-			if err == nil {
-				fmt.Fprintln(f, formatted)
-				f.Close()
-			} else {
-				fmt.Fprintln(os.Stderr, "ERROR: failed to write log:", err)
-			}
-		} else {
-			fmt.Println(formatted)
-		}
 	}
 	return <-errch
+}
+
+func logToAll(db *sql.DB, info *audit.AuditInfo) (err error) {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	rowid, err := insertRow(db, info)
+	if err != nil {
+		return err
+	}
+	if err := logGraylog(info, rowid); err != nil {
+		return err
+	}
+	if err := logToFile(info, rowid); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func insertRow(db *sql.DB, info *audit.AuditInfo) (int64, error) {
@@ -225,6 +232,23 @@ func insertRow(db *sql.DB, info *audit.AuditInfo) (int64, error) {
 		return 0, err
 	}
 	return rowid, nil
+}
+
+func logToFile(info *audit.AuditInfo, rowid int64) error {
+	formatted := fmtRow(info, rowid)
+	if auditConfig.LogFile != "" {
+		f, err := os.OpenFile(auditConfig.LogFile, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		if _, err := fmt.Fprintln(f, formatted); err != nil {
+			return err
+		}
+	} else {
+		fmt.Println(formatted)
+	}
+	return nil
 }
 
 func fmtRow(info *audit.AuditInfo, rowid int64) string {
