@@ -125,7 +125,7 @@ type Config struct {
 	Timestamp *TimestampConfig         `,omitempty`
 	Amqp      *AmqpConfig              `,omitempty`
 
-	PinFile string // Optional YAML file with additional token PINs
+	PinFile string `,omitempty` // Optional YAML file with additional token PINs
 
 	path string
 }

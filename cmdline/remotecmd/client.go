@@ -129,8 +129,8 @@ func makeTlsConfig() (*tls.Config, error) {
 		return nil, errors.New("Missing remote section in config file")
 	} else if config.Remote.Url == "" && config.Remote.DirectoryUrl == "" {
 		return nil, errors.New("url or DirectoryUrl must be set in 'remote' section of configuration")
-	} else if config.Remote.CertFile == "" || config.Remote.KeyFile == "" || config.Remote.CaCert == "" {
-		return nil, errors.New("certfile, keyfile, and cacert are required settings in 'remote' section of configuration")
+	} else if config.Remote.CertFile == "" || config.Remote.KeyFile == "" {
+		return nil, errors.New("certfile and keyfile are required settings in 'remote' section of configuration")
 	}
 	tlscert, err := tls.LoadX509KeyPair(config.Remote.CertFile, config.Remote.KeyFile)
 	if err != nil {

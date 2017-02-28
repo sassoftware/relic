@@ -34,6 +34,7 @@ import (
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
 	"gopkg.in/yaml.v2"
 
 	"github.com/spf13/cobra"
@@ -48,16 +49,20 @@ var RegisterCmd = &cobra.Command{
 var (
 	argRemoteUrl string
 	argCaCert    string
+	argDirectory bool
+	argForce     bool
 )
 
 func init() {
 	RemoteCmd.AddCommand(RegisterCmd)
 	RegisterCmd.Flags().StringVarP(&argRemoteUrl, "url", "u", "", "URL of remote server to register to")
 	RegisterCmd.Flags().StringVarP(&argCaCert, "ca-cert", "C", "", "Path to CA certificate file (will be copied)")
+	RegisterCmd.Flags().BoolVarP(&argDirectory, "directory", "D", false, "Remote URL is a cluster directory")
+	RegisterCmd.Flags().BoolVarP(&argForce, "force", "f", false, "Overwrite existing configuration file")
 }
 
 func registerCmd(cmd *cobra.Command, args []string) error {
-	if argRemoteUrl == "" || argCaCert == "" {
+	if argRemoteUrl == "" {
 		return errors.New("--url and --ca-cert are required")
 	}
 	if shared.ArgConfig == "" {
@@ -66,27 +71,36 @@ func registerCmd(cmd *cobra.Command, args []string) error {
 			return errors.New("Unable to determine default config location")
 		}
 	}
-	if fileExists(shared.ArgConfig) {
+	if fileExists(shared.ArgConfig) && !argForce {
 		fmt.Fprintf(os.Stderr, "Config file %s already exists\n", shared.ArgConfig)
 		return nil
 	}
 	defaultDir := path.Dir(shared.ArgConfig)
 	keyPath := path.Join(defaultDir, "client.pem")
 	if fileExists(keyPath) {
-		return shared.Fail(fmt.Errorf("Key file %s already exists", keyPath))
+		if !argForce {
+			return shared.Fail(fmt.Errorf("Key file %s already exists", keyPath))
+		}
+		if err := readKeyPair(keyPath); err != nil {
+			return shared.Fail(err)
+		}
+	} else {
+		if err := writeKeyPair(keyPath); err != nil {
+			return shared.Fail(err)
+		}
 	}
-	if err := writeKeyPair(keyPath); err != nil {
-		return shared.Fail(err)
+	var capath string
+	if argCaCert != "" {
+		cacert, err := ioutil.ReadFile(argCaCert)
+		if err != nil {
+			return shared.Fail(fmt.Errorf("Error reading cacert: %s", err))
+		}
+		capath = path.Join(defaultDir, "cacert.pem")
+		if err := ioutil.WriteFile(capath, cacert, 0644); err != nil {
+			return shared.Fail(err)
+		}
 	}
-	cacert, err := ioutil.ReadFile(argCaCert)
-	if err != nil {
-		return shared.Fail(fmt.Errorf("Error reading cacert: %s", err))
-	}
-	capath := path.Join(defaultDir, "cacert.pem")
-	if err = writeConfig(shared.ArgConfig, argRemoteUrl, keyPath, capath); err != nil {
-		return shared.Fail(err)
-	}
-	if err = ioutil.WriteFile(capath, cacert, 0644); err != nil {
+	if err := writeConfig(shared.ArgConfig, argRemoteUrl, keyPath, capath); err != nil {
 		return shared.Fail(err)
 	}
 	return nil
@@ -99,7 +113,11 @@ func fileExists(path string) bool {
 
 func writeConfig(cfgPath, url, keyPath, caPath string) error {
 	newConfig := &config.Config{Remote: &config.RemoteConfig{}}
-	newConfig.Remote.Url = url
+	if argDirectory {
+		newConfig.Remote.DirectoryUrl = url
+	} else {
+		newConfig.Remote.Url = url
+	}
 	newConfig.Remote.CertFile = keyPath
 	newConfig.Remote.KeyFile = keyPath
 	newConfig.Remote.CaCert = caPath
@@ -134,6 +152,17 @@ func writeKeyPair(keyPath string) error {
 		return err
 	}
 	fmt.Println("New key fingerprint:", fingerprint)
+	return nil
+}
+
+func readKeyPair(keyPath string) error {
+	cert, err := certloader.LoadX509KeyPair(keyPath, keyPath)
+	if err != nil {
+		return err
+	}
+	digest := sha256.Sum256(cert.Leaf.RawSubjectPublicKeyInfo)
+	encoded := hex.EncodeToString(digest[:])
+	fmt.Println("Existing key fingerprint:", encoded)
 	return nil
 }
 
