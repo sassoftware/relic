@@ -1,5 +1,5 @@
 hash: a17515b127b68fe2f01d00f410f6af430c111bc2a490aaf4f3d88089de2caf48
-updated: 2017-02-27T23:35:21.52899404Z
+updated: 2017-02-28T23:19:11.908731679Z
 imports:
 - name: github.com/braintree/manners
   version: 82a8879fc5fd0381fa8b2d8033b19bf255252088
@@ -19,15 +19,13 @@ imports:
   version: 970db520ece77730c7e4724c61121037378659d9
 - name: github.com/qur/ar
   version: 282534b917707a0e6639276266fa6421c634af2d
-- name: github.com/robertkowalski/graylog-golang
-  version: e5295cfa28272ada50cb9b5d97696ee06e49ed42
 - name: github.com/sassoftware/go-rpmutils
   version: 95f7d12b6fa9b166d98f9b926101d1e2d1e4353d
   subpackages:
   - cpio
   - fileutil
 - name: github.com/spf13/cobra
-  version: 92ea23a837e66f46ac9e7d04fa826602b7b0a42d
+  version: fcd0c5a1df88f5d6784cb4feead962c3f3d0b66c
 - name: github.com/spf13/pflag
   version: 9ff6c6923cfffbcd502984b8e0c80539a94968b7
 - name: github.com/streadway/amqp
@@ -52,7 +50,7 @@ imports:
   - idna
   - lex/httplex
 - name: golang.org/x/sys
-  version: e4594059fe4cde2daf423055a596c2cd1e6c9adf
+  version: 21f2569f6feb83b68a25c98c1b20eca5d4e1e6ae
   subpackages:
   - windows
   - windows/svc
