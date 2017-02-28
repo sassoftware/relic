@@ -19,6 +19,7 @@ package auditor
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/audit"
@@ -50,6 +51,10 @@ func logGraylog(info *audit.AuditInfo, rowid int64) {
 		if v == nil {
 			continue
 		}
+		// graylog quietly changes dots to underscores, but only after running
+		// stream filters. that gets confusing real quickly so change it to
+		// underscore now.
+		k = strings.Replace(k, ".", "_", -1)
 		msg["_"+k] = v
 	}
 	blob, _ := json.Marshal(msg)
