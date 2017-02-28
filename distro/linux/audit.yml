@@ -1,4 +1,4 @@
 ---
 ConfigDir: /etc/relic/audit.d
 DatabaseUri: host=/var/run/postgresql
-LogFile: /var/log/audit-relic/audit.log
+LogFile: /var/log/relic-audit/audit.log
