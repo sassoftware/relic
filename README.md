@@ -7,6 +7,7 @@ It can sign these package types:
 * JAR
 * PE/COFF (Windows executable)
 * MSI
+* CAB (Windows cabinet file)
 * CAT (Windows security catalog)
 * PGP (detached or cleartext signature of data)
 

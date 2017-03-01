@@ -75,7 +75,6 @@ func VerifyMSI(f io.ReaderAt, skipDigests bool) (*MSISignature, error) {
 	}
 	var psd pkcs7.ContentInfoSignedData
 	if rest, err := asn1.Unmarshal(sig, &psd); err != nil {
-		panic(err)
 		return nil, err
 	} else if len(bytes.TrimRight(rest, "\x00")) != 0 {
 		return nil, errors.New("trailing garbage after signature")
@@ -93,7 +92,6 @@ func VerifyMSI(f io.ReaderAt, skipDigests bool) (*MSISignature, error) {
 	}
 	indirect := new(SpcIndirectDataContentMsi)
 	if err := psd.Content.ContentInfo.Unmarshal(indirect); err != nil {
-		panic(err)
 		return nil, err
 	}
 	hash, ok := x509tools.PkixDigestToHash(indirect.MessageDigest.DigestAlgorithm)
@@ -200,9 +198,7 @@ func prehashMsiDir(cdf *comdoc.ComDoc, parent *comdoc.DirEnt, d io.Writer) error
 
 func prehashMsiDirent(item *comdoc.DirEnt, d io.Writer) {
 	buf := bytes.NewBuffer(make([]byte, 0, 128))
-	if err := binary.Write(buf, binary.LittleEndian, item.RawDirEnt); err != nil {
-		panic(err)
-	}
+	binary.Write(buf, binary.LittleEndian, item.RawDirEnt)
 	enc := buf.Bytes()
 	// Name
 	if item.Type != comdoc.DirRoot {

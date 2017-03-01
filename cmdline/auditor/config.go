@@ -34,7 +34,6 @@ type AuditConfig struct {
 	DatabaseUri string
 	LogFile     string
 	GraylogUrl  string
-	CaCert      string
 }
 
 var auditConfig AuditConfig

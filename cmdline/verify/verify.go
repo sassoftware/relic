@@ -105,6 +105,8 @@ func verifyOne(path string) error {
 		return verifyPeCoff(f)
 	case magic.FileTypeMSI:
 		return verifyMsi(f)
+	case magic.FileTypeCAB:
+		return verifyCab(f)
 	}
 	return errors.New("unknown filetype")
 }

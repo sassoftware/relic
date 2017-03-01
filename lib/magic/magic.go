@@ -33,6 +33,7 @@ const (
 	FileTypePKCS7
 	FileTypePECOFF
 	FileTypeMSI
+	FileTypeCAB
 )
 
 func embiggen(r io.Reader, d []byte, have, need int) ([]byte, error) {
@@ -90,6 +91,8 @@ func Detect(r io.Reader) FileType {
 		}
 	case bytes.HasPrefix(blob, []byte{0xd0, 0xcf}):
 		return FileTypeMSI
+	case bytes.HasPrefix(blob, []byte("MSCF")):
+		return FileTypeCAB
 	}
 	return FileTypeUnknown
 }
