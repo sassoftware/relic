@@ -5,11 +5,12 @@ It can sign these package types:
 * RPM
 * DEB
 * JAR
-* PE/COFF (Windows executable)
+* PE/COFF - Windows executable
 * MSI
-* CAB (Windows cabinet file)
-* CAT (Windows security catalog)
-* PGP (detached or cleartext signature of data)
+* CAB Windows cabinet file
+* CAT Windows security catalog
+* PS1, PS1XML, MOF, etc. - Microsoft Powershell script
+* PGP - detached or cleartext signature of data
 
 Relic can also operate as a signing server, allowing clients to authenticate
 with a TLS certificate and sign packages remotely. Preconfigured tools can also

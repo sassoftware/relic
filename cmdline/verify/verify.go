@@ -23,6 +23,7 @@ import (
 	"os"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/authenticode"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/magic"
 	"github.com/spf13/cobra"
@@ -107,6 +108,9 @@ func verifyOne(path string) error {
 		return verifyMsi(f)
 	case magic.FileTypeCAB:
 		return verifyCab(f)
+	}
+	if style, ok := authenticode.GetSigStyle(path); ok {
+		return verifyPowershell(f, style)
 	}
 	return errors.New("unknown filetype")
 }

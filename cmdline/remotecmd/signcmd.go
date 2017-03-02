@@ -71,7 +71,7 @@ func signCmd(cmd *cobra.Command, args []string) (err error) {
 	if err != nil {
 		return shared.Fail(fmt.Errorf("failed to get info about key %s: %s", argKeyName, err))
 	}
-	var sigType string
+	var sigType, sigStyle string
 	var fileType magic.FileType
 	if !info.ExternalTool {
 		if f, err := os.Open(argFile); err != nil {
@@ -101,8 +101,14 @@ func signCmd(cmd *cobra.Command, args []string) (err error) {
 			} else {
 				return errors.New("Don't know how to sign this type of file")
 			}
-		default:
-			return errors.New("Don't know how to sign this type of file")
+		}
+		if sigType == "" {
+			if _, ok := authenticode.GetSigStyle(argFile); ok {
+				sigType = "ps"
+				sigStyle = path.Ext(argFile)
+			} else {
+				return errors.New("Don't know how to sign this type of file")
+			}
 		}
 	}
 	// open for writing so in-place patch works
@@ -116,6 +122,9 @@ func signCmd(cmd *cobra.Command, args []string) (err error) {
 	values.Add("filename", path.Base(argFile))
 	if sigType != "" {
 		values.Add("sigtype", sigType)
+	}
+	if sigStyle != "" {
+		values.Add("ps-style", sigStyle)
 	}
 	if fileType == magic.FileTypeDEB && argRole != "" {
 		values.Add("deb-role", argRole)

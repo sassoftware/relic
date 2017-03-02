@@ -33,7 +33,16 @@ var (
 	OidCertTrustList          = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 10, 1}
 
 	SpcUuidPageHashes = []byte{0xa6, 0xb5, 0x86, 0xd5, 0xb4, 0xa1, 0x24, 0x66, 0xae, 0x05, 0xa2, 0x17, 0xda, 0x8e, 0x60, 0xd6}
+
+	// SIP or Subject Interface Package is an internal Microsoft API for
+	// transforming arbitrary files into a digestible stream. These ClassIDs
+	// are found in the indirect data section and identify the type of processor needed to validate the signature.
+	// SIP related DLLs are registered at
+	// HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Cryptography\OID\EncodingType 0\CryptSIPDllCreateIndirectData
+	// although these particular ClassIDs do not seem to appear there.
+	// Relevant DLLs include: WINTRUST.DLL, MSISIP.DLL, pwrshsip.dll
 	SpcUuidSipInfoMsi = []byte{0xf1, 0x10, 0x0c, 0x00, 0x00, 0x00, 0x00, 0x00, 0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46}
+	SpcUuidSipInfoPs  = []byte{0x1f, 0xcc, 0x3b, 0x60, 0x59, 0x4b, 0x08, 0x4e, 0xb7, 0x24, 0xd2, 0xc6, 0x29, 0x7e, 0xf3, 0x51}
 
 	msiDigitalSignature   = "\x05DigitalSignature"
 	msiDigitalSignatureEx = "\x05MsiDigitalSignatureEx"
@@ -100,3 +109,4 @@ type SpcSipInfo struct {
 }
 
 var defaultSipInfo = SpcSipInfo{1, SpcUuidSipInfoMsi, 0, 0, 0, 0, 0}
+var psSipInfo = SpcSipInfo{65536, SpcUuidSipInfoPs, 0, 0, 0, 0, 0}
