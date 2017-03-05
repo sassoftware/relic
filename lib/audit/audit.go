@@ -77,8 +77,8 @@ func (info *AuditInfo) SetPgpCert(entity *openpgp.Entity) {
 }
 
 func (info *AuditInfo) SetX509Cert(cert *x509.Certificate) {
-	info.Attributes["sig.x509.subject"] = x509tools.FormatRDNSequence(cert.Subject.ToRDNSequence())
-	info.Attributes["sig.x509.issuer"] = x509tools.FormatRDNSequence(cert.Issuer.ToRDNSequence())
+	info.Attributes["sig.x509.subject"] = x509tools.FormatSubject(cert)
+	info.Attributes["sig.x509.issuer"] = x509tools.FormatIssuer(cert)
 	d := crypto.SHA1.New()
 	d.Write(cert.Raw)
 	info.Attributes["sig.x509.fingerprint"] = fmt.Sprintf("%x", d.Sum(nil))
@@ -195,11 +195,11 @@ func Connect(aconf *config.AmqpConfig) (*amqp.Connection, error) {
 			}
 		}
 		if aconf.CertFile != "" {
-			tlscert, err := certloader.LoadX509KeyPair(aconf.CertFile, aconf.KeyFile)
+			cert, err := certloader.LoadX509KeyPair(aconf.CertFile, aconf.KeyFile)
 			if err != nil {
 				return nil, err
 			}
-			tconf.Certificates = []tls.Certificate{tlscert}
+			tconf.Certificates = []tls.Certificate{cert.TLS()}
 		}
 		x509tools.SetKeyLogFile(tconf)
 		if len(tconf.Certificates) != 0 {

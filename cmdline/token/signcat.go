@@ -20,7 +20,6 @@ import (
 	"encoding/asn1"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
@@ -48,12 +47,7 @@ func signCatCmd(cmd *cobra.Command, args []string) (err error) {
 	if argFile == "" {
 		return errors.New("--key and --file are required")
 	}
-	var blob []byte
-	if argFile == "-" {
-		blob, err = ioutil.ReadAll(os.Stdin)
-	} else {
-		blob, err = ioutil.ReadFile(argFile)
-	}
+	blob, err := shared.ReadFile(argFile)
 	if err != nil {
 		return err
 	}

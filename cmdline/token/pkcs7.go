@@ -34,7 +34,7 @@ import (
 	"gerrit-pdt.unx.sas.com/tools/relic.git/p11token"
 )
 
-func readCerts(key *p11token.Key) ([]*x509.Certificate, error) {
+func readCert(key *p11token.Key) (*certloader.Certificate, error) {
 	if key.X509Certificate == "" {
 		return nil, p11token.ErrNoCertificate{"X509"}
 	}
@@ -43,6 +43,15 @@ func readCerts(key *p11token.Key) ([]*x509.Certificate, error) {
 		return nil, err
 	}
 	return certloader.ParseCertificates(certblob)
+}
+
+func readCerts(key *p11token.Key) ([]*x509.Certificate, error) {
+	cert, err := readCert(key)
+	if err != nil {
+		return nil, err
+	} else {
+		return cert.Chain(), nil
+	}
 }
 
 func signAndTimestamp(data []byte, key *p11token.Key, opts crypto.SignerOpts, sigType string, detach bool) (sig []byte, attrs *audit.AuditInfo, err error) {

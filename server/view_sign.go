@@ -66,6 +66,8 @@ func (s *Server) serveSign(request *http.Request, writer http.ResponseWriter) (r
 		return s.signCat(keyConf, request)
 	case "ps":
 		return s.signPs(keyConf, request)
+	case "app-manifest":
+		return s.signAppManifest(keyConf, request)
 	case "":
 		// look at filename
 	default:

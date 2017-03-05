@@ -35,6 +35,45 @@ import (
 const asn1Magic = 0x30 // weak but good enough?
 var pkcs7SignedData = []byte{0x06, 0x09, 0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x01, 0x07, 0x02}
 
+type Certificate struct {
+	Leaf         *x509.Certificate
+	Certificates []*x509.Certificate
+	PrivateKey   crypto.PrivateKey
+}
+
+func (s *Certificate) Chain() []*x509.Certificate {
+	var chain []*x509.Certificate
+	for i, cert := range s.Certificates {
+		if i > 0 && bytes.Equal(cert.RawIssuer, cert.RawSubject) {
+			// omit root CA
+			continue
+		}
+		chain = append(chain, cert)
+	}
+	return chain
+}
+
+func (s *Certificate) Issuer() *x509.Certificate {
+	for _, cert := range s.Certificates {
+		if bytes.Equal(cert.RawSubject, s.Leaf.RawIssuer) {
+			return cert
+		}
+	}
+	return nil
+}
+
+func (s *Certificate) Signer() crypto.Signer {
+	return s.PrivateKey.(crypto.Signer)
+}
+
+func (s *Certificate) TLS() tls.Certificate {
+	var raw [][]byte
+	for _, cert := range s.Certificates {
+		raw = append(raw, cert.Raw)
+	}
+	return tls.Certificate{Leaf: s.Leaf, Certificate: raw, PrivateKey: s.PrivateKey}
+}
+
 // Parse a private key from a blob of PEM or DER data
 func ParsePrivateKey(pemData []byte) (crypto.PrivateKey, error) {
 	if len(pemData) >= 1 && pemData[0] == asn1Magic {
@@ -74,7 +113,7 @@ func parsePrivateKey(der []byte) (crypto.PrivateKey, error) {
 }
 
 // Parse a list of certificates, PEM or DER, X509 or PKCS#7
-func ParseCertificates(pemData []byte) ([]*x509.Certificate, error) {
+func ParseCertificates(pemData []byte) (*Certificate, error) {
 	if len(pemData) >= 1 && pemData[0] == asn1Magic {
 		// already in DER form
 		return parseCertificates(pemData)
@@ -90,60 +129,56 @@ func ParseCertificates(pemData []byte) ([]*x509.Certificate, error) {
 			if err != nil {
 				return nil, err
 			}
-			certs = append(certs, newcerts...)
+			certs = append(certs, newcerts.Certificates...)
 		}
 	}
 	if len(certs) == 0 {
 		return nil, ErrNoCerts
 	}
-	return certs, nil
+	return &Certificate{Leaf: certs[0], Certificates: certs}, nil
 }
 
 // Parse certificates from DER
-func parseCertificates(der []byte) ([]*x509.Certificate, error) {
+func parseCertificates(der []byte) (*Certificate, error) {
+	var certs []*x509.Certificate
+	var err error
 	if bytes.Contains(der[:32], pkcs7SignedData) {
-		return pkcs7.ParseCertificates(der)
+		certs, err = pkcs7.ParseCertificates(der)
 	} else {
-		return x509.ParseCertificates(der)
+		certs, err = x509.ParseCertificates(der)
+	}
+	if err != nil {
+		return nil, err
+	} else if len(certs) == 0 {
+		return nil, ErrNoCerts
+	} else {
+		return &Certificate{Leaf: certs[0], Certificates: certs}, nil
 	}
 }
 
 // Extends the tls version of this function by parsing p7b files
-func LoadX509KeyPair(certFile, keyFile string) (tls.Certificate, error) {
-	var tcert tls.Certificate
+func LoadX509KeyPair(certFile, keyFile string) (*Certificate, error) {
 	keyblob, err := ioutil.ReadFile(keyFile)
 	if err != nil {
-		return tcert, err
+		return nil, err
 	}
 	certblob, err := ioutil.ReadFile(certFile)
 	if err != nil {
-		return tcert, err
+		return nil, err
 	}
 	key, err := ParsePrivateKey(keyblob)
 	if err != nil {
-		return tcert, err
+		return nil, err
 	}
-	tcert.PrivateKey = key
-	certs, err := ParseCertificates(certblob)
+	cert, err := ParseCertificates(certblob)
 	if err != nil {
-		return tcert, err
+		return nil, err
 	}
-	for i, cert := range certs {
-		if i == 0 {
-			tcert.Leaf = cert
-		} else if bytes.Equal(cert.RawSubject, cert.RawIssuer) {
-			// omit root CA from the chain
-			continue
-		}
-		tcert.Certificate = append(tcert.Certificate, cert.Raw)
+	if !x509tools.SameKey(cert.Leaf.PublicKey, key) {
+		return nil, errors.New("Private key does not match certificate")
 	}
-	if tcert.Leaf == nil {
-		return tcert, errors.New("No certificates found in chain")
-	}
-	if !x509tools.SameKey(tcert.Leaf.PublicKey, key) {
-		return tcert, errors.New("Private key does not match certificate")
-	}
-	return tcert, nil
+	cert.PrivateKey = key
+	return cert, nil
 }
 
 type errNoCerts struct{}

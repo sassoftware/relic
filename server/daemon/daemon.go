@@ -42,7 +42,7 @@ type Daemon struct {
 }
 
 func makeTlsConfig(config *config.Config) (*tls.Config, error) {
-	tlscert, err := certloader.LoadX509KeyPair(config.Server.CertFile, config.Server.KeyFile)
+	cert, err := certloader.LoadX509KeyPair(config.Server.CertFile, config.Server.KeyFile)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +56,7 @@ func makeTlsConfig(config *config.Config) (*tls.Config, error) {
 	}
 
 	tconf := &tls.Config{
-		Certificates:             []tls.Certificate{tlscert},
+		Certificates:             []tls.Certificate{cert.TLS()},
 		PreferServerCipherSuites: true,
 		SessionTicketsDisabled:   true,
 		ClientAuth:               tls.RequestClientCert,

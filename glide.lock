@@ -1,6 +1,8 @@
 hash: a17515b127b68fe2f01d00f410f6af430c111bc2a490aaf4f3d88089de2caf48
-updated: 2017-02-28T23:19:11.908731679Z
+updated: 2017-03-05T03:36:51.589356304Z
 imports:
+- name: github.com/beevik/etree
+  version: 1095c300fba68cb7f7895c0f96b2d34927f8115b
 - name: github.com/braintree/manners
   version: 82a8879fc5fd0381fa8b2d8033b19bf255252088
 - name: github.com/howeyc/gopass
@@ -29,9 +31,9 @@ imports:
 - name: github.com/spf13/pflag
   version: 9ff6c6923cfffbcd502984b8e0c80539a94968b7
 - name: github.com/streadway/amqp
-  version: d75c3a341ff43309ad0cb69ac8bdbd1d8772775f
+  version: ce1c69d94c3efdb1f287015f851b17db8fa205b1
 - name: golang.org/x/crypto
-  version: 453249f01cfeb54c3d549ddb75ff152ca243f9d8
+  version: 40541ccb1c6e64c947ed6f606b8a6cb4b67d7436
   subpackages:
   - openpgp
   - openpgp/armor
@@ -43,14 +45,14 @@ imports:
   - openpgp/elgamal
   - ssh/terminal
 - name: golang.org/x/net
-  version: 906cda9512f77671ab44f8c8563b13a8e707b230
+  version: d379faa25cbdc04d653984913a2ceb43b0bc46d7
   subpackages:
   - http2
   - http2/hpack
   - idna
   - lex/httplex
 - name: golang.org/x/sys
-  version: 21f2569f6feb83b68a25c98c1b20eca5d4e1e6ae
+  version: e48874b42435b4347fc52bdee0424a52abc974d7
   subpackages:
   - windows
   - windows/svc

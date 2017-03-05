@@ -19,6 +19,7 @@ package shared
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
@@ -52,6 +53,16 @@ func OpenFile(path string) (*os.File, error) {
 		return os.Stdin, nil
 	} else {
 		return os.Open(path)
+	}
+}
+
+func ReadFile(path string) ([]byte, error) {
+	f, err := OpenFile(path)
+	if err != nil {
+		return nil, err
+	} else {
+		defer f.Close()
+		return ioutil.ReadAll(f)
 	}
 }
 

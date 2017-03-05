@@ -93,6 +93,8 @@ func signCmd(cmd *cobra.Command, args []string) (err error) {
 			sigType = "pe-coff"
 		case magic.FileTypeCAB:
 			sigType = "cab"
+		case magic.FileTypeAppManifest:
+			sigType = "app-manifest"
 		case magic.FileTypePKCS7:
 			if blob, err := ioutil.ReadFile(argFile); err != nil {
 				return shared.Fail(err)

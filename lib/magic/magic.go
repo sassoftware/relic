@@ -17,6 +17,7 @@
 package magic
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/binary"
 	"io"
@@ -34,65 +35,68 @@ const (
 	FileTypePECOFF
 	FileTypeMSI
 	FileTypeCAB
+	FileTypeAppManifest
 )
 
-func embiggen(r io.Reader, d []byte, have, need int) ([]byte, error) {
-	if need <= have {
-		return d, nil
+func hasPrefix(br *bufio.Reader, blob []byte) bool {
+	d, _ := br.Peek(len(blob))
+	if len(d) < len(blob) {
+		return false
 	}
-	buf := make([]byte, need)
-	copy(buf, d)
-	if n, err := r.Read(buf[have:need]); n < (need - have) {
-		if err == nil {
-			err = io.EOF
-		}
-		return nil, err
+	return bytes.Equal(d, blob)
+}
+
+func contains(br *bufio.Reader, blob []byte, n int) bool {
+	d, _ := br.Peek(n)
+	if len(d) < len(blob) {
+		return false
 	}
-	return buf, nil
+	return bytes.Contains(d, blob)
 }
 
 func Detect(r io.Reader) FileType {
-	var buf [256]byte
-	blob := buf[:]
-	have, err := r.Read(blob)
-	if err != nil && err != io.EOF {
-		return FileTypeUnknown
-	}
-	// don't truncate blob to match the number of bytes read, otherwise every
-	// check below there that indexes into it would have to test length. easier
-	// to just leave the excess zeroed or whatever.
+	br := bufio.NewReader(r)
 	switch {
-	case bytes.HasPrefix(blob, []byte{0xed, 0xab, 0xee, 0xdb}):
+	case hasPrefix(br, []byte{0xed, 0xab, 0xee, 0xdb}):
 		return FileTypeRPM
-	case bytes.HasPrefix(blob, []byte("!<arch>\ndebian")):
+	case hasPrefix(br, []byte("!<arch>\ndebian")):
 		return FileTypeDEB
-	case bytes.HasPrefix(blob, []byte("-----BEGIN PGP")),
-		bytes.HasPrefix(blob, []byte{0x89, 0x01}),
-		bytes.HasPrefix(blob, []byte{0xc2, 0xc0}):
+	case hasPrefix(br, []byte("-----BEGIN PGP")),
+		hasPrefix(br, []byte{0x89, 0x01}),
+		hasPrefix(br, []byte{0xc2, 0xc0}):
 		return FileTypePGP
-	case bytes.HasPrefix(blob, []byte{0x50, 0x4b, 0x03, 0x04}):
-		fnLen := binary.LittleEndian.Uint16(blob[26:28])
-		if blob, err := embiggen(r, blob, have, 31+int(fnLen)); err == nil {
-			if blob[31+fnLen] == 0xca && blob[30+fnLen] == 0xfe {
-				return FileTypeJAR
-			}
-			if bytes.Index(blob, []byte("META-INF/")) >= 0 {
-				return FileTypeJAR
+	case hasPrefix(br, []byte{0x50, 0x4b, 0x03, 0x04}):
+		blob, _ := br.Peek(28)
+		if len(blob) == 28 {
+			fnLen := binary.LittleEndian.Uint16(blob[26:28])
+			if blob, err := br.Peek(31 + int(fnLen)); err == nil {
+				if blob[31+fnLen] == 0xca && blob[30+fnLen] == 0xfe {
+					return FileTypeJAR
+				}
+				if bytes.Index(blob, []byte("META-INF/")) >= 0 {
+					return FileTypeJAR
+				}
 			}
 		}
-	case bytes.Index(blob, []byte{0x06, 0x09, 0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x01, 0x07, 0x02}) >= 0:
+	case contains(br, []byte{0x06, 0x09, 0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x01, 0x07, 0x02}, 256):
 		return FileTypePKCS7
-	case bytes.HasPrefix(blob, []byte("MZ")):
-		reloc := binary.LittleEndian.Uint16(blob[0x3c:0x3e])
-		if blob, err := embiggen(r, blob, have, int(reloc)+4); err == nil {
-			if bytes.Equal(blob[reloc:reloc+4], []byte("PE\x00\x00")) {
-				return FileTypePECOFF
+	case hasPrefix(br, []byte("MZ")):
+		blob, _ := br.Peek(0x3e)
+		if len(blob) == 0x3e {
+			reloc := binary.LittleEndian.Uint16(blob[0x3c:0x3e])
+			if blob, err := br.Peek(int(reloc) + 4); err == nil {
+				if bytes.Equal(blob[reloc:reloc+4], []byte("PE\x00\x00")) {
+					return FileTypePECOFF
+				}
 			}
 		}
-	case bytes.HasPrefix(blob, []byte{0xd0, 0xcf}):
+	case hasPrefix(br, []byte{0xd0, 0xcf}):
 		return FileTypeMSI
-	case bytes.HasPrefix(blob, []byte("MSCF")):
+	case hasPrefix(br, []byte("MSCF")):
 		return FileTypeCAB
+	case contains(br, []byte("<assembly "), 256),
+		contains(br, []byte(":assembly "), 256):
+		return FileTypeAppManifest
 	}
 	return FileTypeUnknown
 }

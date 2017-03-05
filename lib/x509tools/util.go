@@ -21,7 +21,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/rsa"
-	"crypto/sha256"
+	"crypto/sha1"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
@@ -68,7 +68,7 @@ func SubjectKeyId(pub crypto.PublicKey) ([]byte, error) {
 	} else if len(rest) != 0 {
 		return nil, errors.New("trailing garbage on public key")
 	}
-	digest := sha256.Sum256(pki.BitString.Bytes)
+	digest := sha1.Sum(pki.BitString.RightAlign())
 	return digest[:], nil
 }
 

@@ -10,6 +10,7 @@ It can sign these package types:
 * CAB Windows cabinet file
 * CAT Windows security catalog
 * PS1, PS1XML, MOF, etc. - Microsoft Powershell script
+* .manifest, .application - Microsoft ClickOnce manifest
 * PGP - detached or cleartext signature of data
 
 Relic can also operate as a signing server, allowing clients to authenticate

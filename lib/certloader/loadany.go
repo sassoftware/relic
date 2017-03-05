@@ -40,7 +40,7 @@ func LoadAnyCerts(paths []string) (any AnyCerts, err error) {
 		}
 		x509certs, err := ParseCertificates(blob)
 		if err == nil {
-			any.X509Certs = append(any.X509Certs, x509certs...)
+			any.X509Certs = append(any.X509Certs, x509certs.Certificates...)
 			continue
 		} else if err != ErrNoCerts {
 			return any, fmt.Errorf("%s: %s", path, err)

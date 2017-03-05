@@ -58,15 +58,15 @@ func verifyPkcs(f *os.File) error {
 func doPkcs(name string, ts pkcs9.TimestampedSignature, usage x509.ExtKeyUsage) error {
 	if !argNoChain {
 		if err := ts.VerifyChain(trustedPool, intermediateCerts, usage); err != nil {
-			fmt.Printf("%s(timestamp): UNTRUSTED - %s\n", name, x509tools.FormatRDNSequence(ts.Certificate.Subject.ToRDNSequence()))
+			fmt.Printf("%s(timestamp): UNTRUSTED - %s\n", name, x509tools.FormatSubject(ts.Certificate))
 			return err
 		}
 	}
 	if ts.CounterSignature == nil {
 		fmt.Printf("%s(timestamp): not present\n", name)
 	} else {
-		fmt.Printf("%s(timestamp): OK - [%s] %s\n", name, ts.CounterSignature.SigningTime, x509tools.FormatRDNSequence(ts.CounterSignature.Certificate.Subject.ToRDNSequence()))
+		fmt.Printf("%s(timestamp): OK - [%s] %s\n", name, ts.CounterSignature.SigningTime, x509tools.FormatSubject(ts.CounterSignature.Certificate))
 	}
-	fmt.Printf("%s: OK - %s\n", name, x509tools.FormatRDNSequence(ts.Signature.Certificate.Subject.ToRDNSequence()))
+	fmt.Printf("%s: OK - %s\n", name, x509tools.FormatSubject(ts.Signature.Certificate))
 	return nil
 }
