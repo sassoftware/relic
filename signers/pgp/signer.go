@@ -16,6 +16,8 @@
 
 package pgp
 
+// Sign arbitrary data using PGP detached or cleartext signatures
+
 import (
 	"bufio"
 	"bytes"

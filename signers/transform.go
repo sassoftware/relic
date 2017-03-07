@@ -19,7 +19,10 @@ package signers
 // Some package types can't be signed as a stream as-is, so we transform them
 // into something else (a tarball) and upload that to the server. The server
 // signs the tar, returns the signature blob, and the client inserts the blob
-// into the original file.
+// into the original file. This mechanism can also be used for cases that don't
+// need a transform on the upload but do need special processing on the result
+// side. A default implementation that handles patching, copying, and
+// overwriting is provided.
 
 import (
 	"fmt"
@@ -32,15 +35,25 @@ import (
 )
 
 type Transformer interface {
+	// Return a stream that will be uploaded to a remote server. This may be
+	// called multiple times in case of failover. If the size is not known then
+	// return -1
 	GetReader() (stream io.Reader, size int64, err error)
+	// Apply a HTTP response to the named destination file
 	Apply(dest, mimetype string, result io.Reader) error
 }
 
+// Return the transform for the given module if it has one, otherwise return
+// the default transform.
 func (s *Signer) GetTransform(f *os.File, opts SignOpts) (Transformer, error) {
 	if s != nil && s.Transform != nil {
 		return s.Transform(f, opts)
 	}
 	return fileProducer{f}, nil
+}
+
+func DefaultTransform(f *os.File) Transformer {
+	return fileProducer{f}
 }
 
 // Dummy implementation that sends the original file as a request, and
@@ -60,6 +73,8 @@ func (p fileProducer) GetReader() (io.Reader, int64, error) {
 	return p.f, size, nil
 }
 
+// If the response is a binpatch, apply it. Otherwise overwrite the destination
+// file with the response
 func (p fileProducer) Apply(dest, mimetype string, result io.Reader) error {
 	if mimetype == binpatch.MimeType {
 		blob, err := ioutil.ReadAll(result)

@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
+// PKCS#8 is a specification for encoding private keys into an ASN.1 structure.
+// See RFC 5208
+//
+// The Go standard library implements parsing PKCS#8 keys but does not support
+// marshalling them; this module provides that function.
 package pkcs8
 
 import (
@@ -34,6 +39,7 @@ type privateKeyInfo struct {
 	PrivateKey          []byte
 }
 
+// Marshal a RSA or ECDSA private key as an unencrypted PKCS#8 blob
 func MarshalPKCS8PrivateKey(priv crypto.PrivateKey) ([]byte, error) {
 	switch pkey := priv.(type) {
 	case *rsa.PrivateKey:

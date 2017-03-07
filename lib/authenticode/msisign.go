@@ -26,6 +26,7 @@ import (
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
 )
 
+// Create the Authenticode structure for a MSI file signature using a previously-calculated digest (imprint).
 func SignMSIImprint(digest []byte, hash crypto.Hash, privKey crypto.Signer, certs []*x509.Certificate) (*pkcs7.ContentInfoSignedData, error) {
 	alg, ok := x509tools.PkixDigestAlgorithm(hash)
 	if !ok {
@@ -46,6 +47,8 @@ func SignMSIImprint(digest []byte, hash crypto.Hash, privKey crypto.Signer, cert
 	return sig.Sign()
 }
 
+// Add a signature blob to an open MSI file. The extended signature blob is
+// added or updated if provided, or deleted if nil.
 func InsertMSISignature(cdf *comdoc.ComDoc, pkcs, exsig []byte) error {
 	if len(exsig) > 0 {
 		if err := cdf.AddFile(msiDigitalSignatureEx, exsig); err != nil {

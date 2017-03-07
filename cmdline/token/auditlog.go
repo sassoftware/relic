@@ -24,6 +24,7 @@ import (
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/audit"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/p11token"
 )
 
@@ -63,9 +64,9 @@ func sealAudit(info *audit.AuditInfo, aconf *config.AmqpConfig) error {
 	if err != nil {
 		return err
 	}
-	certs, err := readCerts(key)
+	cert, err := certloader.LoadTokenCertificates(key, key.X509Certificate, "")
 	if err != nil {
 		return err
 	}
-	return info.Seal(key, certs, crypto.SHA256)
+	return info.Seal(cert.Signer(), cert.Chain(), crypto.SHA256)
 }

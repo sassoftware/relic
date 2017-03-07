@@ -72,7 +72,7 @@ func (r *ComDoc) RootStorage() *DirEnt {
 // List the items in a storage. If parent is nil, the root storage is used.
 func (r *ComDoc) ListDir(parent *DirEnt) ([]*DirEnt, error) {
 	if parent == nil {
-		parent = &r.Files[r.rootStorage]
+		parent = r.RootStorage()
 	}
 	if parent.Type != DirRoot && parent.Type != DirStorage {
 		return nil, errors.New("ListDir() on a non-directory object")
@@ -183,6 +183,8 @@ func (r *ComDoc) writeDirStream() error {
 	return nil
 }
 
+// Rebuild the red-black directory tree of the root storage after files have
+// been added or removed
 func (r *ComDoc) rebuildTree(parent int, files []int) {
 	tree := redblack.New(lessDirEnt)
 	for _, i := range files {

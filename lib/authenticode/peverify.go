@@ -40,6 +40,7 @@ type PESignature struct {
 	PageHashFunc  crypto.Hash
 }
 
+// Extract and verify the signature from a PE/COFF image file. Does not check X509 chains.
 func VerifyPE(r io.ReadSeeker, skipDigests bool) ([]PESignature, error) {
 	hvals, err := findSignatures(r)
 	if err != nil {
@@ -135,11 +136,9 @@ func checkSignatures(blob []byte, image io.ReadSeeker) ([]PESignature, error) {
 }
 
 func checkSignature(der []byte) (*PESignature, error) {
-	var psd pkcs7.ContentInfoSignedData
-	if rest, err := asn1.Unmarshal(der, &psd); err != nil {
+	psd, err := pkcs7.Unmarshal(der)
+	if err != nil {
 		return nil, err
-	} else if len(bytes.TrimRight(rest, "\x00")) != 0 {
-		return nil, errors.New("trailing garbage after signature")
 	}
 	if !psd.Content.ContentInfo.ContentType.Equal(OidSpcIndirectDataContent) {
 		return nil, errors.New("not an authenticode signature")

@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+// Socket activation functions for Go daemons. Supports systemd, einhorn,
+// socketmaster, and crank.
 package activation
 
 import (

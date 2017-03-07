@@ -22,7 +22,6 @@ import (
 	"crypto"
 	"crypto/hmac"
 	"crypto/x509"
-	"encoding/asn1"
 	"encoding/base64"
 	"encoding/binary"
 	"errors"
@@ -39,11 +38,15 @@ import (
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
 )
 
+// Type of signature formatting used for different PowerShell file formats
 type PsSigStyle int
 
 const (
+	// "Hash" style used by e.g. .ps1 files
 	SigStyleHash PsSigStyle = iota + 1
+	// XML style used by e.g. .ps1xml files
 	SigStyleXml
+	// C# style used by .mof files
 	SigStyleC
 )
 
@@ -68,11 +71,13 @@ var psStyles = map[PsSigStyle]sigStyle{
 	SigStyleC:    sigStyle{"/* ", " */"},
 }
 
+// Get the PowerShell signature style for a filename or extension
 func GetSigStyle(filename string) (PsSigStyle, bool) {
 	style, ok := psExtMap[path.Ext(filename)]
 	return style, ok
 }
 
+// Return all supported PowerShell signature styles
 func AllSigStyles() []string {
 	var ret []string
 	for k := range psExtMap {
@@ -89,9 +94,9 @@ type PsDigest struct {
 	IsUtf16           bool
 }
 
-// Digest a powershell script from a stream, returning the sum and the length of the digested bytes.
+// Digest a PowerShell script from a stream, returning the sum and the length of the digested bytes.
 //
-// Powershell scripts are digested in UTF-16-LE format so, unless already in
+// PowerShell scripts are digested in UTF-16-LE format so, unless already in
 // that format, the text is converted first. Existing signatures are discarded.
 func DigestPowershell(r io.Reader, style PsSigStyle, hash crypto.Hash) (*PsDigest, error) {
 	si, ok := psStyles[style]
@@ -150,6 +155,8 @@ func detectUtf16(br *bufio.Reader, start, end string) (bool, string, string) {
 	}
 }
 
+// Verify a PowerShell script. The signature "style" must already have been
+// determined by calling GetSigStyle
 func VerifyPowershell(r io.ReadSeeker, style PsSigStyle, skipDigests bool) (*pkcs9.TimestampedSignature, error) {
 	si, ok := psStyles[style]
 	if !ok {
@@ -196,11 +203,9 @@ func VerifyPowershell(r io.ReadSeeker, style PsSigStyle, skipDigests bool) (*pkc
 			textSize += int64(len(line))
 		}
 	}
-	var psd pkcs7.ContentInfoSignedData
-	if rest, err := asn1.Unmarshal(pkcsb.Bytes(), &psd); err != nil {
+	psd, err := pkcs7.Unmarshal(pkcsb.Bytes())
+	if err != nil {
 		return nil, err
-	} else if len(bytes.TrimRight(rest, "\x00")) != 0 {
-		return nil, errors.New("trailing garbage after signature")
 	}
 	if !psd.Content.ContentInfo.ContentType.Equal(OidSpcIndirectDataContent) {
 		return nil, errors.New("not an authenticode signature")
@@ -236,6 +241,7 @@ func VerifyPowershell(r io.ReadSeeker, style PsSigStyle, skipDigests bool) (*pkc
 	return &ts, nil
 }
 
+// Sign a previously digested PowerShell script and return the Authenticode structure
 func (pd *PsDigest) Sign(privKey crypto.Signer, certs []*x509.Certificate) (*pkcs7.ContentInfoSignedData, error) {
 	alg, ok := x509tools.PkixDigestAlgorithm(pd.HashFunc)
 	if !ok {
@@ -298,6 +304,7 @@ func readLine(br *bufio.Reader, isUtf16 bool) (string, error) {
 	return line, err
 }
 
+// Convert UTF8 to UTF-16-LE
 func toUtf16(x string) string {
 	runes := utf16.Encode([]rune(x))
 	buf := bytes.NewBuffer(make([]byte, 0, 2*len(runes)))
@@ -305,6 +312,7 @@ func toUtf16(x string) string {
 	return buf.String()
 }
 
+// Convert UTF8 to UTF-16-LE and write it to "d"
 func writeUtf16(d io.Writer, x string, isUtf16 bool) error {
 	if isUtf16 {
 		_, err := d.Write([]byte(x))
@@ -315,6 +323,7 @@ func writeUtf16(d io.Writer, x string, isUtf16 bool) error {
 	}
 }
 
+// Convert UTF-16-LE to UTF8
 func fromUtf16(x string) string {
 	runes := make([]uint16, len(x)/2)
 	binary.Read(bytes.NewReader([]byte(x)), binary.LittleEndian, runes)

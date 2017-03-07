@@ -38,7 +38,9 @@ type PEDigest struct {
 	markers    *peHeaderValues
 }
 
-// Calculate a digest (message imprint) over a PE image
+// Calculate a digest (message imprint) over a PE image. Returns a structure
+// that can be used to sign the imprint and produce a binary patch to apply the
+// signature.
 func DigestPE(r io.Reader, hash crypto.Hash, doPageHash bool) (*PEDigest, error) {
 	// Read and buffer all the headers
 	buf := bytes.NewBuffer(make([]byte, 0, 4096))

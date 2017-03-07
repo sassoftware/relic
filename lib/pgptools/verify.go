@@ -36,6 +36,9 @@ type PgpSignature struct {
 	Hash         crypto.Hash
 }
 
+// Verify a detached PGP signature in "signature" over the document in
+// "signed", using keys from "keyring". Returns a value of ErrNoKey if the key
+// cannot be found.
 func VerifyDetached(signature, signed io.Reader, keyring openpgp.EntityList) (*PgpSignature, error) {
 	packetReader := packet.NewReader(signature)
 	genpkt, err := packetReader.Next()
@@ -86,6 +89,8 @@ func VerifyDetached(signature, signed io.Reader, keyring openpgp.EntityList) (*P
 	return &PgpSignature{&keys[0], creationTime, hash}, err
 }
 
+// Verify a cleartext PGP signature in "f" using keys from "keyring". Returns a
+// value of ErrNoKey in the key cannot be found.
 func VerifyClearSign(f io.Reader, keyring openpgp.EntityList) (*PgpSignature, []byte, error) {
 	blob, err := ioutil.ReadAll(f)
 	if err != nil {
@@ -101,6 +106,8 @@ func VerifyClearSign(f io.Reader, keyring openpgp.EntityList) (*PgpSignature, []
 	return sig, csblock.Bytes, err
 }
 
+// Verify an inline PGP signature in "signature" using keys from "keyring".
+// Returns a value of ErrNoKey if the key cannot be found.
 func VerifyInline(signature io.Reader, keyring openpgp.EntityList) (*PgpSignature, []byte, error) {
 	md, err := openpgp.ReadMessage(signature, keyring, nil, nil)
 	if err == io.EOF {
@@ -126,12 +133,15 @@ func VerifyInline(signature io.Reader, keyring openpgp.EntityList) (*PgpSignatur
 	return sig, body, md.SignatureError
 }
 
+// Returned by Verify* functions when the key used for signing is not in the
+// keyring. The value is the KeyId of the missing key.
 type ErrNoKey uint64
 
 func (e ErrNoKey) Error() string {
 	return fmt.Sprintf("keyId %x not found", uint64(e))
 }
 
+// Returned by VerifyInline if the signature is actually a detached signature
 type ErrNoContent struct{}
 
 func (ErrNoContent) Error() string {

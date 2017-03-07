@@ -16,8 +16,9 @@
 
 package cat
 
+// Sign Microsoft security catalog files
+
 import (
-	"encoding/asn1"
 	"errors"
 	"io"
 	"io/ioutil"
@@ -47,8 +48,8 @@ func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]b
 	if err != nil {
 		return nil, err
 	}
-	var oldpsd pkcs7.ContentInfoSignedData
-	if _, err := asn1.Unmarshal(blob, &oldpsd); err != nil {
+	oldpsd, err := pkcs7.Unmarshal(blob)
+	if err != nil {
 		return nil, err
 	}
 	if !oldpsd.Content.ContentInfo.ContentType.Equal(authenticode.OidCertTrustList) {

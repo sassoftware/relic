@@ -55,6 +55,8 @@ func contains(br *bufio.Reader, blob []byte, n int) bool {
 	return bytes.Contains(d, blob)
 }
 
+// Detect a handful of package and signature file types based on the first few
+// bytes of the file contents.
 func Detect(r io.Reader) FileType {
 	br := bufio.NewReader(r)
 	switch {

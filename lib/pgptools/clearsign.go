@@ -33,7 +33,7 @@ import (
 var sigHeader = []byte("-----BEGIN PGP SIGNATURE-----")
 var crlf = []byte("\r\n")
 
-// Do a cleartext signature
+// Do a cleartext signature, signing the document in "message" and writing the result to "w"
 func ClearSign(w io.Writer, signer *openpgp.Entity, message io.Reader, config *packet.Config) error {
 	e, err := clearsign.Encode(w, signer.PrivateKey, config)
 	if err != nil {
@@ -50,7 +50,7 @@ func ClearSign(w io.Writer, signer *openpgp.Entity, message io.Reader, config *p
 }
 
 // Do a cleartext signature but skip writing the embedded original document and
-// write just the signature block
+// write just the signature block to "w"
 func DetachClearSign(w io.Writer, signer *openpgp.Entity, message io.Reader, config *packet.Config) error {
 	readPipe, writePipe := io.Pipe()
 	done := make(chan error)
@@ -82,8 +82,8 @@ func tailClearSign(r io.Reader) ([]byte, error) {
 	return out.Bytes(), s.Err()
 }
 
-// Create a cleartext signature by merging an original document stream with a
-// detached signature produced by DetachClearSign()
+// Create a cleartext signature by merging an original document stream in
+// "message" with a detached signature in "sig" produced by DetachClearSign()
 func MergeClearSign(w io.Writer, sig []byte, message io.Reader) error {
 	config, err := configFromSig(sig)
 	if err != nil {
@@ -137,6 +137,8 @@ func headClearSign(r io.Reader, w io.Writer) error {
 	}
 }
 
+// Set up a pgp signature config based on the hash algorithm in an existing
+// signature
 func configFromSig(sigarmor []byte) (*packet.Config, error) {
 	block, err := armor.Decode(bytes.NewReader(sigarmor))
 	if err != nil {

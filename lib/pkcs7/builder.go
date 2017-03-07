@@ -38,6 +38,8 @@ type SignatureBuilder struct {
 	authAttrs   AttributeList
 }
 
+// Build a PKCS#7 signature procedurally. Returns a structure that can have
+// content and attributes attached to it.
 func NewBuilder(privKey crypto.Signer, certs []*x509.Certificate, opts crypto.SignerOpts) *SignatureBuilder {
 	return &SignatureBuilder{
 		privateKey: privKey,
@@ -46,6 +48,7 @@ func NewBuilder(privKey crypto.Signer, certs []*x509.Certificate, opts crypto.Si
 	}
 }
 
+// Embed bytes or a structure into the PKCS#7 content
 func (sb *SignatureBuilder) SetContent(ctype asn1.ObjectIdentifier, data interface{}) error {
 	cinfo, err := NewContentInfo(ctype, data)
 	if err != nil {
@@ -54,6 +57,12 @@ func (sb *SignatureBuilder) SetContent(ctype asn1.ObjectIdentifier, data interfa
 	return sb.SetContentInfo(cinfo)
 }
 
+// Set content to a generic "data" blob
+func (sb *SignatureBuilder) SetContentData(data []byte) error {
+	return sb.SetContent(OidData, data)
+}
+
+// Set a ContentInfo structure as the PKCS#7 content
 func (sb *SignatureBuilder) SetContentInfo(cinfo ContentInfo) error {
 	blob, err := cinfo.Bytes()
 	if err != nil {
@@ -66,6 +75,7 @@ func (sb *SignatureBuilder) SetContentInfo(cinfo ContentInfo) error {
 	return nil
 }
 
+// Set a "detached" content type, with digest
 func (sb *SignatureBuilder) SetDetachedContent(ctype asn1.ObjectIdentifier, digest []byte) error {
 	if len(digest) != sb.signerOpts.HashFunc().Size() {
 		return errors.New("digest size mismatch")
@@ -76,10 +86,12 @@ func (sb *SignatureBuilder) SetDetachedContent(ctype asn1.ObjectIdentifier, dige
 	return nil
 }
 
+// Add an authenticated attribute to SignerInfo
 func (sb *SignatureBuilder) AddAuthenticatedAttribute(oid asn1.ObjectIdentifier, data interface{}) error {
 	return sb.authAttrs.Add(oid, data)
 }
 
+// Complete the signature and return the full PKCS#7 structure
 func (sb *SignatureBuilder) Sign() (*ContentInfoSignedData, error) {
 	if sb.digest == nil {
 		return nil, errors.New("SetContent was not called")
@@ -128,7 +140,7 @@ func (sb *SignatureBuilder) Sign() (*ContentInfoSignedData, error) {
 			Version:                    1,
 			DigestAlgorithmIdentifiers: []pkix.AlgorithmIdentifier{digestAlg},
 			ContentInfo:                sb.contentInfo,
-			Certificates:               MarshalCertificates(sb.certs),
+			Certificates:               marshalCertificates(sb.certs),
 			CRLs:                       nil,
 			SignerInfos: []SignerInfo{SignerInfo{
 				Version: 1,

@@ -16,8 +16,10 @@
 
 package pkcs
 
+// Verify PKCS#7 SignedData structures. Also includes shared code for
+// serializing other signature types that use PKCS#7.
+
 import (
-	"encoding/asn1"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -88,7 +90,7 @@ func Timestamp(psd *pkcs7.ContentInfoSignedData, cert *certloader.Certificate, o
 	}
 	opts.Audit.SetCounterSignature(ts.CounterSignature)
 	opts.Audit.SetMimeType(pkcs7.MimeType)
-	return asn1.Marshal(*psd)
+	return psd.Marshal()
 }
 
 func Verify(f *os.File, opts signers.VerifyOpts) ([]*signers.Signature, error) {
@@ -96,18 +98,18 @@ func Verify(f *os.File, opts signers.VerifyOpts) ([]*signers.Signature, error) {
 	if err != nil {
 		return nil, err
 	}
-	var psd pkcs7.ContentInfoSignedData
-	if _, err := asn1.Unmarshal(blob, &psd); err != nil {
+	psd, err := pkcs7.Unmarshal(blob)
+	if err != nil {
 		return nil, err
 	}
 	var cblob []byte
-	if opts.Content != "" {
+	if !opts.NoDigests && opts.Content != "" {
 		cblob, err = ioutil.ReadFile(opts.Content)
 		if err != nil {
 			return nil, err
 		}
 	}
-	sig, err := psd.Content.Verify(cblob, false)
+	sig, err := psd.Content.Verify(cblob, opts.NoDigests)
 	if err != nil {
 		return nil, err
 	}

@@ -16,6 +16,8 @@
 
 package deb
 
+// Sign Debian packages
+
 import (
 	"errors"
 	"fmt"

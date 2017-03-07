@@ -26,6 +26,7 @@ import (
 	"github.com/miekg/pkcs11"
 )
 
+// Convert token ECDSA public key to *ecdsa.PublicKey
 func (key *Key) toEcdsaKey() (crypto.PublicKey, error) {
 	ecparams := key.token.getAttribute(key.pub, pkcs11.CKA_EC_PARAMS)
 	ecpoint := key.token.getAttribute(key.pub, pkcs11.CKA_EC_POINT)
@@ -44,6 +45,7 @@ func (key *Key) toEcdsaKey() (crypto.PublicKey, error) {
 	return eckey, nil
 }
 
+// Sign a digest using token ECDSA private key
 func (key *Key) signECDSA(digest []byte) (der []byte, err error) {
 	mech := pkcs11.NewMechanism(pkcs11.CKM_ECDSA, nil)
 	err = key.token.ctx.SignInit(key.token.sh, []*pkcs11.Mechanism{mech}, key.priv)
@@ -60,6 +62,7 @@ func (key *Key) signECDSA(digest []byte) (der []byte, err error) {
 	return asn1.Marshal(x509tools.EcdsaSignature{r, s})
 }
 
+// Generate ECDSA-specific public and private key attributes from a PrivateKey
 func ecdsaImportAttrs(priv *ecdsa.PrivateKey) (pub_attrs, priv_attrs []*pkcs11.Attribute, err error) {
 	curve, err := x509tools.CurveByCurve(priv.Curve)
 	if err != nil {
@@ -76,6 +79,7 @@ func ecdsaImportAttrs(priv *ecdsa.PrivateKey) (pub_attrs, priv_attrs []*pkcs11.A
 	return
 }
 
+// Generate ECDSA-specific public attributes to generate an ECSDA key in the token
 func ecdsaGenerateAttrs(bits uint) ([]*pkcs11.Attribute, *pkcs11.Mechanism, error) {
 	curve, err := x509tools.CurveByBits(bits)
 	if err != nil {

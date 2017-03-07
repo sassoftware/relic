@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+// Implements a useful subset of the xmldsig specification for creating
+// signatures over XML documents.
 package xmldsig
 
 import (
@@ -41,8 +43,10 @@ const (
 )
 
 type XmlSignOptions struct {
+	// Use non-standard namespace for SHA-256 found in Microsoft ClickOnce manifests
 	MsCompatHashNames bool
-	IncludeX509       bool
+	// Add the X509 certificate chain to the KeyInfo
+	IncludeX509 bool
 }
 
 var hashNames = map[crypto.Hash]string{
@@ -53,6 +57,8 @@ var hashNames = map[crypto.Hash]string{
 	crypto.SHA512: "sha512",
 }
 
+// Create an enveloped signature from the document rooted at "doc", replacing
+// any existing signature and adding it as a last child of "parent".
 func Sign(doc *etree.Document, parent *etree.Element, hash crypto.Hash, privKey crypto.Signer, certs []*x509.Certificate, opts XmlSignOptions) error {
 	pubKey := privKey.Public()
 	if len(certs) < 1 || !x509tools.SameKey(pubKey, certs[0].PublicKey) {
@@ -108,6 +114,7 @@ func hashCanon(root *etree.Element, hash crypto.Hash) ([]byte, error) {
 	return d.Sum(nil), nil
 }
 
+// Remove all child elements with this tag from the element
 func RemoveElements(root *etree.Element, tag string) {
 	for i := 0; i < len(root.Child); {
 		token := root.Child[i]
@@ -119,6 +126,7 @@ func RemoveElements(root *etree.Element, tag string) {
 	}
 }
 
+// Determine algorithm URIs for hashing and signing
 func hashAlgs(hash crypto.Hash, pubKey crypto.PublicKey, opts XmlSignOptions) (string, string, error) {
 	hashName := hashNames[hash]
 	if hashName == "" {
@@ -147,6 +155,7 @@ func hashAlgs(hash crypto.Hash, pubKey crypto.PublicKey, opts XmlSignOptions) (s
 	return hashAlg, sigAlg, nil
 }
 
+// Add public key and optional X509 certificate chain to KeyInfo
 func addKeyInfo(keyinfo *etree.Element, pubKey crypto.PublicKey, certs []*x509.Certificate) error {
 	keyvalue := keyinfo.CreateElement("KeyValue")
 	switch k := pubKey.(type) {

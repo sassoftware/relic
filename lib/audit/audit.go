@@ -19,7 +19,6 @@ package audit
 import (
 	"crypto"
 	"crypto/x509"
-	"encoding/asn1"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -44,6 +43,8 @@ type sealedDoc struct {
 	Seal       []byte `json:"seal"`
 }
 
+// Create a new audit record, starting with the given key name, signature type,
+// and digest
 func New(keyName, sigType string, hash crypto.Hash) *AuditInfo {
 	a := make(map[string]interface{})
 	a["sig.type"] = sigType
@@ -68,11 +69,13 @@ func New(keyName, sigType string, hash crypto.Hash) *AuditInfo {
 	return &AuditInfo{a, nil, nil}
 }
 
+// Set a PGP certificate for this audit record
 func (info *AuditInfo) SetPgpCert(entity *openpgp.Entity) {
 	info.Attributes["sig.pgp.fingerprint"] = fmt.Sprintf("%x", entity.PrimaryKey.Fingerprint[:])
 	info.Attributes["sig.pgp.entity"] = pgptools.EntityName(entity)
 }
 
+// Set a X509 certificate for this audit record
 func (info *AuditInfo) SetX509Cert(cert *x509.Certificate) {
 	info.Attributes["sig.x509.subject"] = x509tools.FormatSubject(cert)
 	info.Attributes["sig.x509.issuer"] = x509tools.FormatIssuer(cert)
@@ -81,10 +84,12 @@ func (info *AuditInfo) SetX509Cert(cert *x509.Certificate) {
 	info.Attributes["sig.x509.fingerprint"] = fmt.Sprintf("%x", d.Sum(nil))
 }
 
+// Override the default timestamp for this audit record
 func (info *AuditInfo) SetTimestamp(t time.Time) {
 	info.Attributes["sig.timestamp"] = t.UTC()
 }
 
+// Add a PKCS#9 timestamp (counter-signature) to this audit record
 func (info *AuditInfo) SetCounterSignature(cs *pkcs9.CounterSignature) {
 	if cs == nil {
 		return
@@ -94,10 +99,14 @@ func (info *AuditInfo) SetCounterSignature(cs *pkcs9.CounterSignature) {
 	info.Attributes["sig.ts.hash"] = x509tools.HashNames[cs.Hash]
 }
 
+// Set the MIME type (Content-Type) that the server will use when returning a
+// result to the client. This is not the MIME type of the package being signed.
 func (info *AuditInfo) SetMimeType(mimeType string) {
 	info.Attributes["content-type"] = mimeType
 }
 
+// Get the MIME type that the server will use when returning a result to the
+// client. This is not the MIME type of the package being signed.
 func (info *AuditInfo) GetMimeType() string {
 	v := info.Attributes["content-type"]
 	if v != nil {
@@ -107,6 +116,7 @@ func (info *AuditInfo) GetMimeType() string {
 	}
 }
 
+// Seal the audit record by signing it with a key
 func (info *AuditInfo) Seal(key crypto.Signer, certs []*x509.Certificate, hash crypto.Hash) error {
 	blob, err := json.Marshal(info.Attributes)
 	if err != nil {
@@ -125,7 +135,7 @@ func (info *AuditInfo) Seal(key crypto.Signer, certs []*x509.Certificate, hash c
 	if err != nil {
 		return err
 	}
-	sealblob, err := asn1.Marshal(*psd)
+	sealblob, err := psd.Marshal()
 	if err != nil {
 		return err
 	}
@@ -133,6 +143,7 @@ func (info *AuditInfo) Seal(key crypto.Signer, certs []*x509.Certificate, hash c
 	return err
 }
 
+// Marshal the possibly-sealed audit record to JSON
 func (info *AuditInfo) Marshal() ([]byte, error) {
 	if info.sealed != nil {
 		return info.sealed, nil
@@ -144,10 +155,12 @@ func (info *AuditInfo) Marshal() ([]byte, error) {
 	return json.Marshal(sealedDoc{blob, nil})
 }
 
+// Get previously parsed, marshalled JSON data
 func (info *AuditInfo) GetSealed() ([]byte, []byte) {
 	return info.sealed, info.seal
 }
 
+// Parse audit data from a JSON blob
 func Parse(blob []byte) (*AuditInfo, error) {
 	var doc sealedDoc
 	if err := json.Unmarshal(blob, &doc); err != nil {

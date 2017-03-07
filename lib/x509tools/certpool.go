@@ -23,6 +23,10 @@ import (
 	"io/ioutil"
 )
 
+// Load a certificate pool from a file and set it as the root CA for a TLS
+// config. If path is empty then the system pool will be used. If the filename
+// starts with + then both the system pool and the contents of the file will be
+// used.
 func LoadCertPool(path string, tconf *tls.Config) error {
 	if path == "" {
 		return nil

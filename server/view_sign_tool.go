@@ -98,6 +98,7 @@ func (s *Server) signWithTool(keyConf *config.KeyConfig, request *http.Request, 
 	return nil, sendFile(writer, scratchPath)
 }
 
+// copy incoming request body to disk
 func spoolFile(request *http.Request, path string) (int64, error) {
 	file, err := os.Create(path)
 	if err != nil {
@@ -107,6 +108,7 @@ func spoolFile(request *http.Request, path string) (int64, error) {
 	return io.Copy(file, request.Body)
 }
 
+// serve response body from file
 func sendFile(writer http.ResponseWriter, path string) error {
 	f, err := os.Open(path)
 	if err != nil {
@@ -124,6 +126,7 @@ func sendFile(writer http.ResponseWriter, path string) error {
 	return nil
 }
 
+// write an audit entry for tool-based signatures
 func (s *Server) auditTool(keyConf *config.KeyConfig, request *http.Request, filename string) error {
 	info := audit.New(keyConf.Name(), "tool:"+keyConf.Tool, 0)
 	info.Attributes["client.filename"] = filename

@@ -36,7 +36,7 @@ func (s *Server) serveSign(request *http.Request, writer http.ResponseWriter) (r
 	}
 	filename := query.Get("filename")
 	if filename == "" {
-		return StringResponse(http.StatusBadRequest, "'filename' query parameter is required and must have a known extension"), nil
+		return StringResponse(http.StatusBadRequest, "'filename' query parameter is required"), nil
 	}
 	sigType := query.Get("sigtype")
 	keyConf := s.CheckKeyAccess(request, keyName)
@@ -58,18 +58,17 @@ func (s *Server) serveSign(request *http.Request, writer http.ResponseWriter) (r
 		os.Args[0],
 		"sign",
 		"--config", s.Config.Path(),
+		"--server",
 		"--key", keyConf.Name(),
 		"--sig-type", mod.Name,
 		"--file", "-",
 		"--output", "-",
-		"--server",
 	}
 	if digest := request.URL.Query().Get("digest"); digest != "" {
 		cmdline = append(cmdline, "--digest", digest)
 	}
 	flags := mod.QueryToCmdline(request.URL.Query())
 	cmdline = append(cmdline, flags...)
-	fmt.Printf("%#v\n", cmdline)
 	stdout, attrs, response, err := s.invokeCommand(request, request.Body, "", false, keyConf.GetTimeout(), cmdline)
 	if response != nil || err != nil {
 		return response, err

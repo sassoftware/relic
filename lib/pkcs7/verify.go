@@ -34,6 +34,13 @@ type Signature struct {
 	Intermediates []*x509.Certificate
 }
 
+// Verify the content in a SignedData structure. External content may be
+// provided if it is a detached signature. Information about the signature is
+// returned, however X509 chains are not validated. Call VerifyChain() to
+// complete the verification process.
+//
+// If skipDigests is true, then the main content section is not checked, but
+// the SignerInfos are still checked for a valid signature.
 func (sd *SignedData) Verify(externalContent []byte, skipDigests bool) (Signature, error) {
 	var content []byte
 	if !skipDigests {
@@ -70,6 +77,7 @@ func (sd *SignedData) Verify(externalContent []byte, skipDigests bool) (Signatur
 	return sig, nil
 }
 
+// Find the certificate that signed this SignerInfo from the bucket of certs
 func (si *SignerInfo) FindCertificate(certs []*x509.Certificate) (*x509.Certificate, error) {
 	is := si.IssuerAndSerialNumber
 	for _, cert := range certs {
@@ -80,6 +88,8 @@ func (si *SignerInfo) FindCertificate(certs []*x509.Certificate) (*x509.Certific
 	return nil, errors.New("pkcs7: certificate missing from signedData")
 }
 
+// Verify the signature contained in this SignerInfo and return the leaf
+// certificate. X509 chains are not validated.
 func (si *SignerInfo) Verify(content []byte, skipDigests bool, certs []*x509.Certificate) (*x509.Certificate, error) {
 	hash, ok := x509tools.PkixDigestToHash(si.DigestAlgorithm)
 	if !ok || !hash.Available() {
@@ -128,6 +138,11 @@ func (si *SignerInfo) Verify(content []byte, skipDigests bool, certs []*x509.Cer
 	return cert, err
 }
 
+// Verify the X509 chain from a signature against the given roots. extraCerts
+// will be added to the intermediates if provided. usage gives the certificate
+// usage required for the leaf certificate, or ExtKeyUsageAny otherwise. If a
+// PKCS#9 trusted timestamp was found, pass that timestamp in currentTime to
+// validate the chain as of the time of the signature.
 func (info Signature) VerifyChain(roots *x509.CertPool, extraCerts []*x509.Certificate, usage x509.ExtKeyUsage, currentTime time.Time) error {
 	pool := x509.NewCertPool()
 	for _, cert := range extraCerts {

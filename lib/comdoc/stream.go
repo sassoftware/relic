@@ -105,7 +105,8 @@ func (sr *streamReader) Read(d []byte) (copied int, err error) {
 	return copied, nil
 }
 
-// Store a blob as a chain of sectors and return the first sector ID
+// Store a blob as a chain of sectors, updating the sector table (or
+// short-sector table if "short" is set)  and return the first sector ID
 func (r *ComDoc) addStream(contents []byte, short bool) (SecID, error) {
 	var sectorSize int
 	var sat, freeList []SecID

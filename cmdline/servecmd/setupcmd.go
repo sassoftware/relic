@@ -58,7 +58,7 @@ func readKey(path string) (crypto.PrivateKey, error) {
 	if pemData, err := ioutil.ReadFile(path); err != nil {
 		return nil, err
 	} else {
-		return certloader.ParsePrivateKey(pemData)
+		return certloader.ParseAnyPrivateKey(pemData, nil)
 	}
 }
 

@@ -14,6 +14,15 @@
  * limitations under the License.
  */
 
+// PKCS#9 is a specification for trusted timestamping. Timestamping services
+// create a timestamp token which includes a known-good timestamp with a
+// signature over it. The token can be attached to a document to prove that it
+// existed at the indicated time. When attached to a PKCS#7 signedData
+// structure, the timestamp proves that the primary signature was created
+// during the valid lifespan of the signing certificate, allowing it to be
+// validated after the certificates have expired.
+//
+// See RFC 3161
 package pkcs9
 
 import (
@@ -48,7 +57,7 @@ var (
 	OidAttributeTimeStampToken = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 9, 16, 2, 14}
 	OidAttributeCounterSign    = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 9, 6}
 
-	// undocumented(?) alternative to OidAttributeTimeStampToken found in a microsoft binary
+	// undocumented(?) alternative to OidAttributeTimeStampToken found in Authenticode signatures
 	OidSpcTimeStampToken = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 3, 3, 1}
 )
 

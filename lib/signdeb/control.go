@@ -35,6 +35,7 @@ type PackageInfo struct {
 	Package, Version, Arch string
 }
 
+// Parse basic package info from a control.tar.gz stream
 func parseControl(r io.Reader, ext string) (*PackageInfo, error) {
 	var err error
 	switch ext {

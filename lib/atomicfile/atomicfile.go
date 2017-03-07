@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+// Implement atomic write-rename file pattern. Instead of opening the named
+// file it creates a temporary file next to it, then on Commit() renames it. If
+// the file is Close()d  before Commit() then it is unlinked instead.
 package atomicfile
 
 import (
@@ -22,21 +25,26 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"runtime"
 )
 
-type Fileish interface {
+// File-like interface used by several functions in this package. Some of them
+// may open a file or stdio directly without atomic semantics, in which case
+// Commit() is an alias for Close()
+type AtomicFile interface {
 	io.Reader
 	io.ReaderAt
 	io.Writer
 	io.WriterAt
 	io.Seeker
-	io.Closer
 	Truncate(size int64) error
-}
 
-type AtomicFile interface {
-	Fileish
+	// Close and unlink the underlying file object, discarding the contents.
+	// No-op if Close() or Commit() was already called.
+	io.Closer
+	// Get the underlying *File object
 	GetFile() *os.File
+	// Complete the write-rename pattern and close the file
 	Commit() error
 }
 
@@ -45,12 +53,16 @@ type atomicFile struct {
 	name string
 }
 
+// Open a temporary file for reading and writing which will ultimately be
+// renamed to the given name when Commit() is called.
 func New(name string) (AtomicFile, error) {
 	tempfile, err := ioutil.TempFile(path.Dir(name), path.Base(name)+".tmp")
 	if err != nil {
 		return nil, err
 	}
-	return &atomicFile{tempfile, name}, nil
+	f := &atomicFile{tempfile, name}
+	runtime.SetFinalizer(f, (*atomicFile).Close)
+	return f, nil
 }
 
 func (f *atomicFile) GetFile() *os.File {
@@ -64,6 +76,7 @@ func (f *atomicFile) Close() error {
 	f.File.Close()
 	os.Remove(f.File.Name())
 	f.File = nil
+	runtime.SetFinalizer(f, nil)
 	return nil
 }
 
@@ -81,5 +94,6 @@ func (f *atomicFile) Commit() error {
 		return err
 	}
 	f.File = nil
+	runtime.SetFinalizer(f, nil)
 	return nil
 }

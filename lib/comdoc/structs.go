@@ -44,6 +44,7 @@ const (
 
 var fileMagic = []byte{0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1}
 
+// Raw CDF file header
 type Header struct {
 	Magic            [8]byte
 	Uid              [16]byte
@@ -64,6 +65,7 @@ type Header struct {
 	MSAT             [msatInHeader]SecID
 }
 
+// Raw CDF directory entry
 type RawDirEnt struct {
 	NameRunes   [32]uint16
 	NameLength  uint16
@@ -81,6 +83,7 @@ type RawDirEnt struct {
 	_           uint32
 }
 
+// Return the UTF8 name of this entry
 func (e RawDirEnt) Name() string {
 	used := e.NameLength/2 - 1
 	if e.Type == DirEmpty || used > 32 {
@@ -89,12 +92,15 @@ func (e RawDirEnt) Name() string {
 	return string(utf16.Decode(e.NameRunes[:used]))
 }
 
+// Parsed CDF directory entry
 type DirEnt struct {
 	RawDirEnt
+	// Index into the directory stream holding this entry
 	Index int
 	name  string
 }
 
+// Return the UTF8 name of this entry
 func (e DirEnt) Name() string {
 	return e.name
 }

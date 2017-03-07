@@ -25,6 +25,8 @@ type contentInfo2 struct {
 	Value       asn1.RawValue
 }
 
+// Create a ContentInfo structure for the given bytes or structure. data can be
+// nil for detached signatures.
 func NewContentInfo(contentType asn1.ObjectIdentifier, data interface{}) (ci ContentInfo, err error) {
 	if data == nil {
 		return ContentInfo{ContentType: contentType}, nil

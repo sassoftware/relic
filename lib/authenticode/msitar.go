@@ -83,6 +83,7 @@ func DigestMsiTar(r io.Reader, hash crypto.Hash, extended bool) ([]byte, error) 
 	return d.Sum(nil), nil
 }
 
+// Add a file with contents blob to an open tar.Writer
 func tarAddFile(tw *tar.Writer, name string, contents []byte) error {
 	hdr := &tar.Header{Name: name, Mode: 0644, Size: int64(len(contents))}
 	if err := tw.WriteHeader(hdr); err != nil {
@@ -92,6 +93,7 @@ func tarAddFile(tw *tar.Writer, name string, contents []byte) error {
 	return err
 }
 
+// Recursively copy streams from a MSI directory (storage) to a tar.Writer
 func msiToTarDir(cdf *comdoc.ComDoc, tw *tar.Writer, parent *comdoc.DirEnt, path string) error {
 	files, err := cdf.ListDir(parent)
 	if err != nil {

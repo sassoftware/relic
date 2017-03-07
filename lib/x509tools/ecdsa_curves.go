@@ -26,6 +26,7 @@ import (
 	"strings"
 )
 
+// Predefined named ECDSA curve
 type CurveDefinition struct {
 	Bits  uint
 	Curve elliptic.Curve
@@ -38,6 +39,7 @@ var DefinedCurves []CurveDefinition = []CurveDefinition{
 	{521, elliptic.P521(), asn1.ObjectIdentifier{1, 3, 132, 0, 35}},
 }
 
+// Return the DER encoding of the ASN.1 OID of this named curve
 func (def *CurveDefinition) ToDer() []byte {
 	der, err := asn1.Marshal(def.Oid)
 	if err != nil {
@@ -46,6 +48,7 @@ func (def *CurveDefinition) ToDer() []byte {
 	return der
 }
 
+// Return the names of all supported ECDSA curves
 func SupportedCurves() string {
 	curves := make([]string, len(DefinedCurves))
 	for i, def := range DefinedCurves {
@@ -54,6 +57,7 @@ func SupportedCurves() string {
 	return strings.Join(curves, ", ")
 }
 
+// Get a curve by its ASN.1 object identifier
 func CurveByOid(oid asn1.ObjectIdentifier) (*CurveDefinition, error) {
 	for _, def := range DefinedCurves {
 		if oid.Equal(def.Oid) {
@@ -63,6 +67,7 @@ func CurveByOid(oid asn1.ObjectIdentifier) (*CurveDefinition, error) {
 	return nil, fmt.Errorf("Unsupported ECDSA curve with OID: %s\nSupported curves: %s", oid, SupportedCurves())
 }
 
+// Get a curve by the DER encoding of its OID
 func CurveByDer(der []byte) (*CurveDefinition, error) {
 	var oid asn1.ObjectIdentifier
 	_, err := asn1.Unmarshal(der, &oid)
@@ -72,6 +77,7 @@ func CurveByDer(der []byte) (*CurveDefinition, error) {
 	return CurveByOid(oid)
 }
 
+// Get a curve by an elliptic.Curve value
 func CurveByCurve(curve elliptic.Curve) (*CurveDefinition, error) {
 	for _, def := range DefinedCurves {
 		if curve == def.Curve {
@@ -81,6 +87,7 @@ func CurveByCurve(curve elliptic.Curve) (*CurveDefinition, error) {
 	return nil, fmt.Errorf("Unsupported ECDSA curve: %v\nSupported curves: %s", curve, SupportedCurves())
 }
 
+// Get a curve by a number of bits
 func CurveByBits(bits uint) (*CurveDefinition, error) {
 	for _, def := range DefinedCurves {
 		if bits == def.Bits {
@@ -90,6 +97,8 @@ func CurveByBits(bits uint) (*CurveDefinition, error) {
 	return nil, fmt.Errorf("Unsupported ECDSA curve: %v\nSupported curves: %s", bits, SupportedCurves())
 }
 
+// Decode an ECDSA public key from its DER encoding. Both octet and bitstring
+// encodings are supported.
 func DerToPoint(curve elliptic.Curve, der []byte) (*big.Int, *big.Int) {
 	var blob []byte
 	switch der[0] {

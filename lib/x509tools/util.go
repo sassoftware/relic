@@ -72,7 +72,7 @@ func SubjectKeyId(pub crypto.PublicKey) ([]byte, error) {
 	return digest[:], nil
 }
 
-// Test whether two public or private keys are equal
+// Test whether two public or private keys have the same public key
 func SameKey(pub1, pub2 interface{}) bool {
 	if privkey, ok := pub1.(crypto.Signer); ok {
 		pub1 = privkey.Public()
@@ -92,10 +92,12 @@ func SameKey(pub1, pub2 interface{}) bool {
 	}
 }
 
+// ASN.1 structure used to encode an ECDSA signature
 type EcdsaSignature struct {
 	R, S *big.Int
 }
 
+// Verify an RSA or ECDSA signature
 func Verify(pub interface{}, hash crypto.Hash, hashed []byte, sig []byte) error {
 	switch pubk := pub.(type) {
 	case *rsa.PublicKey:

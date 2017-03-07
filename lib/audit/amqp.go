@@ -27,6 +27,7 @@ import (
 	"github.com/streadway/amqp"
 )
 
+// Publish audit record to a AMQP exchange
 func (info *AuditInfo) Publish(aconf *config.AmqpConfig) error {
 	blob, err := info.Marshal()
 	if err != nil {
@@ -63,6 +64,7 @@ func (info *AuditInfo) Publish(aconf *config.AmqpConfig) error {
 	return nil
 }
 
+// Connect to the configured AMQP broker
 func Connect(aconf *config.AmqpConfig) (*amqp.Connection, error) {
 	uri, err := amqp.ParseURI(aconf.Url)
 	if err != nil {

@@ -46,6 +46,7 @@ func (r *ComDoc) readShortSAT() error {
 	return nil
 }
 
+// Free the old short-sector allocation table and write a new one
 func (r *ComDoc) writeShortSAT() error {
 	freeSectors(r.SAT, r.Header.SSATNextSector)
 	perSector := r.SectorSize / 4
@@ -95,6 +96,8 @@ func (r *ComDoc) readShortSector(shortSector SecID, buf []byte) error {
 	return err
 }
 
+// Write a short sector at the given position. This will allocate new space in
+// the short-sector stream if needed.
 func (r *ComDoc) writeShortSector(shortSector SecID, content []byte) error {
 	if len(content) > r.ShortSectorSize {
 		panic("excessive write")

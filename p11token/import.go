@@ -28,6 +28,7 @@ import (
 	"github.com/miekg/pkcs11"
 )
 
+// Common attributes for new public keys
 var newPublicKeyAttrs = []*pkcs11.Attribute{
 	pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PUBLIC_KEY),
 	pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),
@@ -35,6 +36,7 @@ var newPublicKeyAttrs = []*pkcs11.Attribute{
 	pkcs11.NewAttribute(pkcs11.CKA_VERIFY, true),
 }
 
+// Common attributes for new private keys
 var newPrivateKeyAttrs = []*pkcs11.Attribute{
 	pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PRIVATE_KEY),
 	pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),
@@ -78,6 +80,7 @@ func (token *Token) importPkcs8(pk8 []byte, attrs []*pkcs11.Attribute) error {
 	return nil
 }
 
+// Import an RSA or ECDSA private key into the token
 func (token *Token) Import(keyName string, privKey crypto.PrivateKey) (*Key, error) {
 	keyConf, err := token.config.GetKey(keyName)
 	if err != nil {
@@ -136,6 +139,7 @@ func (token *Token) Import(keyName string, privKey crypto.PrivateKey) (*Key, err
 	return token.getKey(keyConf, keyName)
 }
 
+// Generate an RSA or ECDSA key in the token
 func (token *Token) Generate(keyName string, keyType uint, bits uint) (*Key, error) {
 	token.mutex.Lock()
 	defer token.mutex.Unlock()

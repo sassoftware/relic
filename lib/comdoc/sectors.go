@@ -143,6 +143,7 @@ func (r *ComDoc) readSAT() error {
 	return nil
 }
 
+// Write the new sector allocation table to the listed sector IDs
 func (r *ComDoc) writeSAT(freeList []SecID) error {
 	satPerSector := r.SectorSize / 4
 	buf := bytes.NewBuffer(r.sectorBuf)

@@ -23,6 +23,7 @@ import (
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
 )
 
+// Verify that the digest (imprint) in a timestamp token matches the given data
 func (i MessageImprint) Verify(data []byte) error {
 	hash, ok := x509tools.PkixDigestToHash(i.HashAlgorithm)
 	if !ok || !hash.Available() {

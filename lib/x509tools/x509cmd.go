@@ -43,6 +43,7 @@ var (
 	ArgCertAuthority      bool
 )
 
+// Add flags associated with X509 requests to the given command
 func AddRequestFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&ArgCountry, "countryName", "", "Subject name")
 	cmd.Flags().StringVar(&ArgProvince, "stateOrProvinceName", "", "Subject name")
@@ -54,6 +55,7 @@ func AddRequestFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&ArgEmailNames, "alternate-email", "", "Email subject alternate name (comma or space separated)")
 }
 
+// Add flags associated with X509 certificate creation to the given command
 func AddCertFlags(cmd *cobra.Command) {
 	AddRequestFlags(cmd)
 	cmd.Flags().BoolVar(&ArgCertAuthority, "cert-authority", false, "If this certificate is an authority")
@@ -61,6 +63,7 @@ func AddCertFlags(cmd *cobra.Command) {
 	cmd.Flags().UintVarP(&ArgExpireDays, "expire-days", "e", 36525, "Number of days before certificate expires")
 }
 
+// Split a space- and/or comma-seperated string
 func splitAndTrim(s string) []string {
 	if s == "" {
 		return nil
@@ -77,6 +80,7 @@ func splitAndTrim(s string) []string {
 	return ret
 }
 
+// Build a subject name from command-line arguments
 func subjName() (name pkix.Name) {
 	if ArgCountry != "" {
 		name.Country = []string{ArgCountry}
@@ -97,6 +101,7 @@ func subjName() (name pkix.Name) {
 	return
 }
 
+// Set both basic and extended key usage
 func setUsage(template *x509.Certificate) error {
 	usage := x509.KeyUsageDigitalSignature
 	var extended x509.ExtKeyUsage
@@ -122,6 +127,8 @@ func setUsage(template *x509.Certificate) error {
 	return nil
 }
 
+// Make a X509 certificate request using command-line arguments and return the
+// PEM string
 func MakeRequest(rand io.Reader, key crypto.Signer) (string, error) {
 	var template x509.CertificateRequest
 	template.Subject = subjName()
@@ -136,6 +143,8 @@ func MakeRequest(rand io.Reader, key crypto.Signer) (string, error) {
 	return string(pem.EncodeToMemory(block)), nil
 }
 
+// Make a self-signed X509 certificate using command-line arguments and return
+// the PEM string
 func MakeCertificate(rand io.Reader, key crypto.Signer) (string, error) {
 	var template x509.Certificate
 	template.SerialNumber = MakeSerial()

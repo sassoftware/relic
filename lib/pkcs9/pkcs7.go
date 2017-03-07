@@ -44,7 +44,7 @@ type CounterSignature struct {
 	SigningTime time.Time
 }
 
-// Validated signature containing a valid timestamp token
+// Validated signature containing a optional timestamp token
 type TimestampedSignature struct {
 	pkcs7.Signature
 	CounterSignature *CounterSignature
@@ -159,6 +159,10 @@ func (cs CounterSignature) VerifyChain(roots *x509.CertPool, extraCerts []*x509.
 	return err
 }
 
+// Verify the certificate chain of a PKCS#7 signature. If the signature has a
+// valid timestamp token attached, then the timestamp is used for validating
+// the primary signature's chain, making the signature valid after the
+// certificates have expired.
 func (sig TimestampedSignature) VerifyChain(roots *x509.CertPool, extraCerts []*x509.Certificate, usage x509.ExtKeyUsage) error {
 	var signingTime time.Time
 	if sig.CounterSignature != nil {

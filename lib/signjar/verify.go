@@ -20,7 +20,6 @@ import (
 	"archive/zip"
 	"bytes"
 	"crypto"
-	"encoding/asn1"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -79,8 +78,8 @@ func Verify(inz *zip.Reader, skipDigests bool) ([]*pkcs9.TimestampedSignature, e
 		if pkcs == nil {
 			return nil, fmt.Errorf("JAR contains sigfile META-INF/%s.SF with no matching signature", base)
 		}
-		var psd pkcs7.ContentInfoSignedData
-		if _, err := asn1.Unmarshal(pkcs, &psd); err != nil {
+		psd, err := pkcs7.Unmarshal(pkcs)
+		if err != nil {
 			return nil, err
 		}
 		sig, err := psd.Content.Verify(sigfile, false)

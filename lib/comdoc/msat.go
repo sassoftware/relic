@@ -81,6 +81,8 @@ func (r *ComDoc) allocSectorTables() (satList, msatList []SecID) {
 	return satList, msatList
 }
 
+// Write an updated MSAT out to the header and msatSectors, with satSectors
+// being the contents of the MSAT
 func (r *ComDoc) writeMSAT(satSectors, msatSectors []SecID) error {
 	satPerSector := r.SectorSize / 4
 	msatPerSector := satPerSector - 1

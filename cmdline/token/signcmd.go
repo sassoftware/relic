@@ -39,7 +39,11 @@ var SignCmd = &cobra.Command{
 	RunE:  signCmd,
 }
 
-var argSigType string
+var (
+	argSigType string
+	argOutput  string
+	argServer  bool
+)
 
 func init() {
 	shared.RootCmd.AddCommand(SignCmd)
@@ -178,4 +182,12 @@ func setTimestamper(opts *signers.SignOpts) error {
 	}
 	opts.Audit.SetTimestamp(opts.Time)
 	return nil
+}
+
+func openForPatching() (*os.File, error) {
+	if argFile == "-" && argServer {
+		return os.Stdin, nil
+	} else {
+		return os.OpenFile(argFile, os.O_RDWR, 0)
+	}
 }

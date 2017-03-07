@@ -23,21 +23,25 @@ import (
 	"strings"
 )
 
+// Set the logger where the server will write its messages
 func (s *Server) SetLogger(logger *log.Logger) {
 	s.ErrorLog = logger
 	s.DiskMgr.SetLogger(logger)
 }
 
+// Log a general message
 func (s *Server) Logf(format string, args ...interface{}) {
 	s.ErrorLog.Output(2, fmt.Sprintf(format, args...))
 }
 
+// Log a message associated with an ongoing request
 func (s *Server) Logr(request *http.Request, format string, args ...interface{}) {
 	msg := fmt.Sprintf(format, args...)
 	msg2 := fmt.Sprintf("[%s \"%s\"] %s", GetClientIP(request), GetClientName(request), msg)
 	s.ErrorLog.Output(2, msg2)
 }
 
+// Log an unhandled error with optional traceback
 func (s *Server) LogError(request *http.Request, err interface{}, traceback []byte) Response {
 	msg := ""
 	if len(traceback) != 0 {
@@ -47,6 +51,7 @@ func (s *Server) LogError(request *http.Request, err interface{}, traceback []by
 	return ErrorResponse(http.StatusInternalServerError)
 }
 
+// Wraps a http.ResponseWriter and writes an access log entry on completion
 type loggingWriter struct {
 	http.ResponseWriter
 	s     *Server
@@ -65,6 +70,7 @@ func (lw *loggingWriter) WriteHeader(status int) {
 		ua = "-"
 	}
 	path := lw.r.URL.Path
+	// don't log health check spam
 	if path != "/health" {
 		lw.s.Logr(lw.r, "%s \"%s\" %d %s %s", lw.r.Method, lw.r.URL, status, cl, ua)
 	}

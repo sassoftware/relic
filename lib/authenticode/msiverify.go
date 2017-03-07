@@ -20,7 +20,6 @@ import (
 	"bytes"
 	"crypto"
 	"crypto/hmac"
-	"encoding/asn1"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -40,6 +39,7 @@ type MSISignature struct {
 	HashFunc crypto.Hash
 }
 
+// Extract and verify the signature of a MSI file. Does not check X509 chains.
 func VerifyMSI(f io.ReaderAt, skipDigests bool) (*MSISignature, error) {
 	cdf, err := comdoc.ReadFile(f)
 	if err != nil {
@@ -73,11 +73,9 @@ func VerifyMSI(f io.ReaderAt, skipDigests bool) (*MSISignature, error) {
 	if len(sig) == 0 {
 		return nil, errors.New("MSI is not signed")
 	}
-	var psd pkcs7.ContentInfoSignedData
-	if rest, err := asn1.Unmarshal(sig, &psd); err != nil {
+	psd, err := pkcs7.Unmarshal(sig)
+	if err != nil {
 		return nil, err
-	} else if len(bytes.TrimRight(rest, "\x00")) != 0 {
-		return nil, errors.New("trailing garbage after signature")
 	}
 	if !psd.Content.ContentInfo.ContentType.Equal(OidSpcIndirectDataContent) {
 		return nil, errors.New("not an authenticode signature")
@@ -118,6 +116,8 @@ func VerifyMSI(f io.ReaderAt, skipDigests bool) (*MSISignature, error) {
 	return msisig, nil
 }
 
+// Calculate the digest (imprint) of a MSI file. If extended is true then the
+// MsiDigitalSignatureEx value is also hashed and returned.
 func DigestMSI(cdf *comdoc.ComDoc, hash crypto.Hash, extended bool) (imprint, prehash []byte, err error) {
 	d := hash.New()
 	if extended {
@@ -134,6 +134,7 @@ func DigestMSI(cdf *comdoc.ComDoc, hash crypto.Hash, extended bool) (imprint, pr
 	return
 }
 
+// Calculates the MsiDigitalSignatureEx blob for a MSI file
 func PrehashMSI(cdf *comdoc.ComDoc, hash crypto.Hash) ([]byte, error) {
 	d2 := hash.New()
 	if err := prehashMsiDir(cdf, cdf.RootStorage(), d2); err != nil {
@@ -142,6 +143,7 @@ func PrehashMSI(cdf *comdoc.ComDoc, hash crypto.Hash) ([]byte, error) {
 	return d2.Sum(nil), nil
 }
 
+// Recursively hash a MSI directory (storage)
 func hashMsiDir(cdf *comdoc.ComDoc, parent *comdoc.DirEnt, d io.Writer) error {
 	files, err := cdf.ListDir(parent)
 	if err != nil {
@@ -172,6 +174,7 @@ func hashMsiDir(cdf *comdoc.ComDoc, parent *comdoc.DirEnt, d io.Writer) error {
 	return nil
 }
 
+// Recursively hash a MSI directory's extended metadata
 func prehashMsiDir(cdf *comdoc.ComDoc, parent *comdoc.DirEnt, d io.Writer) error {
 	files, err := cdf.ListDir(parent)
 	if err != nil {
@@ -196,6 +199,7 @@ func prehashMsiDir(cdf *comdoc.ComDoc, parent *comdoc.DirEnt, d io.Writer) error
 	return nil
 }
 
+// Hash a MSI stream's extended metadata
 func prehashMsiDirent(item *comdoc.DirEnt, d io.Writer) {
 	buf := bytes.NewBuffer(make([]byte, 0, 128))
 	binary.Write(buf, binary.LittleEndian, item.RawDirEnt)
@@ -220,6 +224,7 @@ func prehashMsiDirent(item *comdoc.DirEnt, d io.Writer) {
 	}
 }
 
+// Sort a list of MSI streams in the order needed for hashing
 func sortMsiFiles(files []*comdoc.DirEnt) {
 	sort.Slice(files, func(i, j int) bool {
 		a, b := files[i], files[j]

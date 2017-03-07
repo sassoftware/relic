@@ -31,6 +31,9 @@ import (
 	"golang.org/x/crypto/openpgp"
 )
 
+// Extract and verify signatures from a Debian package. A keyring of known PGP
+// certificates must be provided to validate the signatures; if the needed key
+// is missing then an ErrNoKey value is returned.
 func Verify(r io.Reader, keyring openpgp.EntityList, skipDigest bool) (map[string]*pgptools.PgpSignature, error) {
 	reader := ar.NewReader(r)
 	digests := make(map[string]string)

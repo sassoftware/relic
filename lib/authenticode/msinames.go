@@ -16,6 +16,9 @@
 
 package authenticode
 
+// MSI table names are packed in pairs into a Chinese codepoint which then
+// becomes 2 bytes of UTF-16. This seems to be an attempt to support longer
+// table names than CDF would otherwise allow but it's incredibly silly.
 func msiDecodeName(msiName string) string {
 	out := ""
 	for _, x := range msiName {

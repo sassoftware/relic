@@ -16,6 +16,8 @@
 
 package rpm
 
+// Sign RedHat packages
+
 import (
 	"encoding/hex"
 	"errors"
@@ -78,6 +80,7 @@ func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]b
 }
 
 func verify(f *os.File, opts signers.VerifyOpts) ([]*signers.Signature, error) {
+	// TODO: add a flag to skip payload digest to rpmutils.Verify
 	header, sigs, err := rpmutils.Verify(f, opts.TrustedPgp)
 	if err != nil {
 		return nil, err

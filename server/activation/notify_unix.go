@@ -26,9 +26,8 @@ import (
 	"syscall"
 )
 
+// Signal to a parent init system or daemon manager that the daemon is finished starting up
 func DaemonReady() error {
-	// Signal to a parent init system or daemon manager that the daemon is
-	// finished starting up
 	if name := os.Getenv("NOTIFY_SOCKET"); name != "" {
 		// systemd
 		return writePath(name, "unixgram", "READY=1")

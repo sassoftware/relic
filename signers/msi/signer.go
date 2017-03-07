@@ -16,6 +16,8 @@
 
 package msi
 
+// Sign Microsoft Installer files
+
 import (
 	"io"
 	"io/ioutil"

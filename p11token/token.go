@@ -54,6 +54,7 @@ type Token struct {
 	mutex  sync.Mutex
 }
 
+// Load a PKCS#11 provider, open a session, and login
 func Open(config *config.Config, tokenName string, pinProvider passprompt.PasswordGetter) (*Token, error) {
 	tokenConf, err := config.GetToken(tokenName)
 	if err != nil {
@@ -111,6 +112,7 @@ func openLib(tokenConf *config.TokenConfig, write bool) (*pkcs11.Ctx, error) {
 	return ctx, nil
 }
 
+// Close the token session
 func (token *Token) Close() {
 	token.mutex.Lock()
 	defer token.mutex.Unlock()
@@ -151,6 +153,7 @@ func (token *Token) findSlot(tokenConf *config.TokenConfig) (uint, error) {
 	}
 }
 
+// Test that the token is responding and the user is (still) logged in
 func (token *Token) IsLoggedIn() (bool, error) {
 	token.mutex.Lock()
 	defer token.mutex.Unlock()
@@ -161,7 +164,7 @@ func (token *Token) IsLoggedIn() (bool, error) {
 	return (info.State == CKS_RO_USER_FUNCTIONS || info.State == CKS_RW_USER_FUNCTIONS || info.State == CKS_RW_SO_FUNCTIONS), nil
 }
 
-func (token *Token) Login(user uint, pin string) error {
+func (token *Token) login(user uint, pin string) error {
 	token.mutex.Lock()
 	defer token.mutex.Unlock()
 	err := token.ctx.Login(token.sh, user, pin)
@@ -186,7 +189,7 @@ func (token *Token) autoLogIn(tokenConf *config.TokenConfig, pinProvider passpro
 		user = *tokenConf.User
 	}
 	if tokenConf.Pin != nil {
-		err = token.Login(user, *tokenConf.Pin)
+		err = token.login(user, *tokenConf.Pin)
 		if err != nil {
 			return err
 		}
@@ -200,7 +203,7 @@ func (token *Token) autoLogIn(tokenConf *config.TokenConfig, pinProvider passpro
 			} else if pin == "" {
 				return errors.New("Aborted")
 			}
-			err = token.Login(user, pin)
+			err = token.login(user, pin)
 			if _, ok := err.(sigerrors.PinIncorrectError); ok {
 				prompt = "Incorrect PIN\r\n" + initialPrompt
 				continue

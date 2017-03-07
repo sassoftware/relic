@@ -16,10 +16,13 @@
 
 package ps
 
+// Sign Microsoft PowerShell scripts, modules, and other bits that can be signed
+
 import (
 	"errors"
 	"io"
 	"os"
+	"path"
 	"strings"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/authenticode"
@@ -33,6 +36,7 @@ var PsSigner = &signers.Signer{
 	Name:      "ps",
 	CertTypes: signers.CertTypeX509,
 	TestPath:  testPath,
+	Transform: transform,
 	Sign:      sign,
 	Verify:    verify,
 }
@@ -45,6 +49,16 @@ func init() {
 func testPath(filepath string) bool {
 	_, ok := authenticode.GetSigStyle(filepath)
 	return ok
+}
+
+func transform(f *os.File, opts signers.SignOpts) (signers.Transformer, error) {
+	// detect signature style and explicitly set it for the request
+	argStyle, _ := opts.Flags.GetString("ps-style")
+	if argStyle == "" {
+		argStyle = path.Ext(opts.Path)
+	}
+	opts.FlagOverride["ps-style"] = argStyle
+	return signers.DefaultTransform(f), nil
 }
 
 func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]byte, error) {

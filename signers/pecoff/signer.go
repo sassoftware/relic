@@ -16,6 +16,8 @@
 
 package pecoff
 
+// Sign Microsoft PE/COFF executables
+
 import (
 	"io"
 	"os"

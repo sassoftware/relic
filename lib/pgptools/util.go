@@ -18,6 +18,7 @@ package pgptools
 
 import "golang.org/x/crypto/openpgp"
 
+// Return the primary identity name of a PGP entity
 func EntityName(entity *openpgp.Entity) string {
 	if entity == nil {
 		return ""

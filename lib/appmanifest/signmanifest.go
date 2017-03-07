@@ -37,6 +37,7 @@ type ManifestSignature struct {
 	Signed []byte
 }
 
+// Sign an application manifest
 func Sign(manifest []byte, cert *certloader.Certificate, opts crypto.SignerOpts) (*ManifestSignature, error) {
 	doc := etree.NewDocument()
 	if err := doc.ReadFromString(string(manifest)); err != nil {
@@ -81,6 +82,9 @@ func Sign(manifest []byte, cert *certloader.Certificate, opts crypto.SignerOpts)
 	return &ManifestSignature{Signed: signed}, nil
 }
 
+// Update the assemblyIdentity element with the actual signer public key. Only
+// the top-level one is updated, not the ones underneath individual manifest
+// entries.
 func setAssemblyIdentity(root *etree.Element, cert *certloader.Certificate) (*etree.Element, error) {
 	token, err := PublicKeyToken(cert.Leaf.PublicKey)
 	if err != nil {
@@ -100,6 +104,7 @@ func setAssemblyIdentity(root *etree.Element, cert *certloader.Certificate) (*et
 	return asi, nil
 }
 
+// Add/replace the publisherIdentity element
 func setPublisherIdentity(root *etree.Element, cert *certloader.Certificate) (string, error) {
 	// add or replace publisherIdentity
 	subjectName, issuerKeyHash, err := PublisherIdentity(cert)
@@ -113,6 +118,7 @@ func setPublisherIdentity(root *etree.Element, cert *certloader.Certificate) (st
 	return subjectName, nil
 }
 
+// Create the "license" block that goes inside the inner signature
 func makeLicense(asi *etree.Element, subjectName, manifestHash string) (*etree.Document, *etree.Element) {
 	license := etree.NewElement("r:license")
 	license.CreateAttr("xmlns:r", NsMpeg21)
@@ -135,10 +141,11 @@ func makeLicense(asi *etree.Element, subjectName, manifestHash string) (*etree.D
 	return licensedoc, issuer
 }
 
+// ManifestInformation contains a hash value which is, for some inane reason,
+// the same hash that the outer signature references but in reverse byte order.
 func makeManifestHash(sig *etree.Element) string {
 	dv := sig.FindElement("//DigestValue")
 	blob, _ := base64.StdEncoding.DecodeString(dv.Text())
-	// little-endian is so great, why not apply it to SHA hashes?
 	for i := 0; i < len(blob)/2; i++ {
 		j := len(blob) - i - 1
 		blob[i], blob[j] = blob[j], blob[i]
@@ -146,6 +153,7 @@ func makeManifestHash(sig *etree.Element) string {
 	return hex.EncodeToString(blob)
 }
 
+// Set Id attributes on signature elements
 func setSigIds(root *etree.Element, sigName, keyinfoName string) (sig, keyinfo *etree.Element) {
 	sig = root.SelectElement("Signature")
 	if sigName != "" {

@@ -27,7 +27,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"strings"
 
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/packet"
@@ -39,6 +38,7 @@ import (
 const asn1Magic = 0x30 // weak but good enough?
 var pkcs7SignedData = []byte{0x06, 0x09, 0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x01, 0x07, 0x02}
 
+// A bundle of X509 certificate chain and/or PGP certificate, with optional private key
 type Certificate struct {
 	Leaf         *x509.Certificate
 	Certificates []*x509.Certificate
@@ -47,6 +47,7 @@ type Certificate struct {
 	KeyName      string
 }
 
+// Return the X509 certificates in the chain up to, but not including, the root CA certificate
 func (s *Certificate) Chain() []*x509.Certificate {
 	var chain []*x509.Certificate
 	for i, cert := range s.Certificates {
@@ -59,6 +60,7 @@ func (s *Certificate) Chain() []*x509.Certificate {
 	return chain
 }
 
+// Return the certificate that issued the leaf certificate
 func (s *Certificate) Issuer() *x509.Certificate {
 	for _, cert := range s.Certificates {
 		if bytes.Equal(cert.RawSubject, s.Leaf.RawIssuer) {
@@ -68,33 +70,22 @@ func (s *Certificate) Issuer() *x509.Certificate {
 	return nil
 }
 
+// Return the private key in the form of a crypto.Signer
 func (s *Certificate) Signer() crypto.Signer {
+	if s.PrivateKey == nil {
+		return nil
+	}
 	return s.PrivateKey.(crypto.Signer)
 }
 
+// Return a tls.Certificate structure containing the X509 certificate chain and
+// private key
 func (s *Certificate) TLS() tls.Certificate {
 	var raw [][]byte
 	for _, cert := range s.Certificates {
 		raw = append(raw, cert.Raw)
 	}
 	return tls.Certificate{Leaf: s.Leaf, Certificate: raw, PrivateKey: s.PrivateKey}
-}
-
-// Parse a private key from a blob of PEM or DER data
-func ParsePrivateKey(pemData []byte) (crypto.PrivateKey, error) {
-	if len(pemData) >= 1 && pemData[0] == asn1Magic {
-		// already DER form
-		return parsePrivateKey(pemData)
-	}
-	for {
-		var keyBlock *pem.Block
-		keyBlock, pemData = pem.Decode(pemData)
-		if keyBlock == nil {
-			return nil, errors.New("failed to find any private keys in PEM data")
-		} else if keyBlock.Type == "PRIVATE KEY" || strings.HasSuffix(keyBlock.Type, " PRIVATE KEY") {
-			return parsePrivateKey(keyBlock.Bytes)
-		}
-	}
 }
 
 // Parse a private key from a DER block
@@ -119,10 +110,10 @@ func parsePrivateKey(der []byte) (crypto.PrivateKey, error) {
 }
 
 // Parse a list of certificates, PEM or DER, X509 or PKCS#7
-func ParseCertificates(pemData []byte) (*Certificate, error) {
+func parseCertificates(pemData []byte) (*Certificate, error) {
 	if len(pemData) >= 1 && pemData[0] == asn1Magic {
 		// already in DER form
-		return parseCertificates(pemData)
+		return parseCertificatesDer(pemData)
 	}
 	var certs []*x509.Certificate
 	for {
@@ -131,7 +122,7 @@ func ParseCertificates(pemData []byte) (*Certificate, error) {
 		if block == nil {
 			break
 		} else if block.Type == "CERTIFICATE" || block.Type == "PKCS7" {
-			newcerts, err := parseCertificates(block.Bytes)
+			newcerts, err := parseCertificatesDer(block.Bytes)
 			if err != nil {
 				return nil, err
 			}
@@ -145,11 +136,15 @@ func ParseCertificates(pemData []byte) (*Certificate, error) {
 }
 
 // Parse certificates from DER
-func parseCertificates(der []byte) (*Certificate, error) {
+func parseCertificatesDer(der []byte) (*Certificate, error) {
 	var certs []*x509.Certificate
 	var err error
 	if bytes.Contains(der[:32], pkcs7SignedData) {
-		certs, err = pkcs7.ParseCertificates(der)
+		psd, err := pkcs7.Unmarshal(der)
+		if err != nil {
+			return nil, err
+		}
+		certs, err = psd.Content.Certificates.Parse()
 	} else {
 		certs, err = x509.ParseCertificates(der)
 	}
@@ -162,7 +157,7 @@ func parseCertificates(der []byte) (*Certificate, error) {
 	}
 }
 
-// Extends the tls version of this function by parsing p7b files
+// Load a X509 private key and certificate
 func LoadX509KeyPair(certFile, keyFile string) (*Certificate, error) {
 	keyblob, err := ioutil.ReadFile(keyFile)
 	if err != nil {
@@ -172,11 +167,11 @@ func LoadX509KeyPair(certFile, keyFile string) (*Certificate, error) {
 	if err != nil {
 		return nil, err
 	}
-	key, err := ParsePrivateKey(keyblob)
+	key, err := ParseAnyPrivateKey(keyblob, nil)
 	if err != nil {
 		return nil, err
 	}
-	cert, err := ParseCertificates(certblob)
+	cert, err := parseCertificates(certblob)
 	if err != nil {
 		return nil, err
 	}
@@ -187,6 +182,8 @@ func LoadX509KeyPair(certFile, keyFile string) (*Certificate, error) {
 	return cert, nil
 }
 
+// Load X509 and/or PGP certificates from named paths and return a Certificate
+// structure together with the given private key
 func LoadTokenCertificates(key crypto.PrivateKey, x509cert, pgpcert string) (*Certificate, error) {
 	var cert *Certificate
 	if x509cert != "" {
@@ -194,7 +191,7 @@ func LoadTokenCertificates(key crypto.PrivateKey, x509cert, pgpcert string) (*Ce
 		if err != nil {
 			return nil, err
 		}
-		cert, err = ParseCertificates(blob)
+		cert, err = parseCertificates(blob)
 		if err != nil {
 			return nil, err
 		}
@@ -210,7 +207,7 @@ func LoadTokenCertificates(key crypto.PrivateKey, x509cert, pgpcert string) (*Ce
 		if err != nil {
 			return nil, err
 		}
-		keyring, err := ParsePGP(blob)
+		keyring, err := parsePGP(blob)
 		if err != nil {
 			return nil, err
 		}

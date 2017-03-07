@@ -16,6 +16,11 @@
 
 package pgp
 
+// Implementation for the "relic sign-pgp" and "relic remote sign-pgp"
+// commands, that sort of looks like gpg arguments so it can be used where gpg
+// is. This just transforms the "compatible" arguments into an ordinary sign
+// command and calls it.
+
 import (
 	"errors"
 	"strings"

@@ -30,6 +30,7 @@ import (
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
 )
 
+// Sign the digest and return an Authenticode structure
 func (pd *PEDigest) Sign(privKey crypto.Signer, certs []*x509.Certificate) (*pkcs7.ContentInfoSignedData, error) {
 	alg, ok := x509tools.PkixDigestAlgorithm(pd.Hash)
 	if !ok {

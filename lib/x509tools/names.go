@@ -89,8 +89,11 @@ var nameStyleMsOsco = []attrName{
 	attrName{asn1.ObjectIdentifier{2, 5, 4, 20}, "Phone"},
 }
 
+// returned by the Format* functions in case there's something cripplingly
+// wrong with it
 const InvalidName = "<invalid>"
 
+// Format the name (RDN sequence) from its raw DER to a readable style.
 func FormatPkixName(der []byte, style NameStyle) string {
 	var seq asn1.RawValue
 	if _, err := asn1.Unmarshal(der, &seq); err != nil {
@@ -193,10 +196,12 @@ func attValue(raw asn1.RawValue, style NameStyle) string {
 	return value
 }
 
+// Format the certificate subject name in LDAP style
 func FormatSubject(cert *x509.Certificate) string {
 	return FormatPkixName(cert.RawSubject, NameStyleLdap)
 }
 
+// Format the certificate issuer name in LDAP style
 func FormatIssuer(cert *x509.Certificate) string {
 	return FormatPkixName(cert.RawIssuer, NameStyleLdap)
 }

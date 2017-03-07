@@ -51,7 +51,7 @@ type Signer struct {
 	// Format audit attributes for logfile
 	FormatLog func(*audit.AuditInfo) string
 	// Verify a file, returning the set of signatures found. Performs integrity
-	// checks but does not build chains.
+	// checks but does not build X509 chains.
 	Verify func(*os.File, VerifyOpts) ([]*Signature, error)
 	// Transform a file into a stream to upload
 	Transform func(*os.File, SignOpts) (Transformer, error)
@@ -75,6 +75,7 @@ type SignOpts struct {
 	Hash            crypto.Hash
 	Time            time.Time
 	Flags           *pflag.FlagSet
+	FlagOverride    map[string]string
 	Audit           *audit.AuditInfo
 	TimestampConfig *config.TimestampConfig
 }
@@ -124,6 +125,7 @@ func Register(s *Signer) {
 	registered = append(registered, s)
 }
 
+// Return the signer module with the given name or alias
 func ByName(name string) *Signer {
 	for _, s := range registered {
 		if s.Name == name {
@@ -138,6 +140,7 @@ func ByName(name string) *Signer {
 	return nil
 }
 
+// Return the signer module responsible for the given file magic
 func ByMagic(m magic.FileType) *Signer {
 	if m == magic.FileTypeUnknown {
 		return nil
@@ -150,6 +153,7 @@ func ByMagic(m magic.FileType) *Signer {
 	return nil
 }
 
+// Return the signer associated with the given filename extension
 func ByFileName(filepath string) *Signer {
 	for _, s := range registered {
 		if s.TestPath != nil && s.TestPath(filepath) {
@@ -159,6 +163,8 @@ func ByFileName(filepath string) *Signer {
 	return nil
 }
 
+// Return the named signer module if given, otherwise identify the file at the
+// given path by contents or extension
 func ByFile(filepath, sigtype string) (*Signer, error) {
 	if sigtype != "" {
 		mod := ByName(sigtype)
@@ -184,6 +190,9 @@ func ByFile(filepath, sigtype string) (*Signer, error) {
 	return nil, errors.New("unknown filetype")
 }
 
+// Create a FlagSet for flags associated with this module. These will be added
+// to "sign" and "remote sign", and transferred to a remote server via the URL
+// query parameters.
 func (s *Signer) Flags() *pflag.FlagSet {
 	if s.flags == nil {
 		s.flags = pflag.NewFlagSet(s.Name, pflag.ExitOnError)
@@ -191,6 +200,7 @@ func (s *Signer) Flags() *pflag.FlagSet {
 	return s.flags
 }
 
+// Add this module's flags to a command FlagSet
 func MergeFlags(fs *pflag.FlagSet) {
 	if flagMap == nil {
 		flagMap = make(map[string][]string)
@@ -208,7 +218,7 @@ func MergeFlags(fs *pflag.FlagSet) {
 
 type FlagValues map[string]pflag.Value
 
-// Copy values back from the command to the module's own flagset
+// Copy values back from the command to the module's own FlagSet
 func (s *Signer) GetFlags(fs *pflag.FlagSet) (*pflag.FlagSet, error) {
 	for flag, users := range flagMap {
 		if !fs.Changed(flag) {
@@ -237,7 +247,7 @@ func (s *Signer) GetFlags(fs *pflag.FlagSet) (*pflag.FlagSet, error) {
 }
 
 // Copy module values to URL query parameters
-func (s *Signer) FlagsToQuery(fs *pflag.FlagSet, q url.Values) error {
+func (s *Signer) FlagsToQuery(fs *pflag.FlagSet, override map[string]string, q url.Values) error {
 	if s.flags == nil {
 		return nil
 	}
@@ -246,14 +256,17 @@ func (s *Signer) FlagsToQuery(fs *pflag.FlagSet, q url.Values) error {
 		return err
 	}
 	s.flags.VisitAll(func(flag *pflag.Flag) {
-		if fs.Changed(flag.Name) {
+		if value, ok := override[flag.Name]; ok {
+			q.Set(flag.Name, value)
+		} else if fs.Changed(flag.Name) {
 			q.Set(flag.Name, fs.Lookup(flag.Name).Value.String())
 		}
 	})
 	return nil
 }
 
-// Copy URL query parameters to a set of command-line arguments
+// Copy URL query parameters to a set of command-line arguments to pass to an
+// invocation of a child process
 func (s *Signer) QueryToCmdline(q url.Values) []string {
 	if s.flags == nil {
 		return nil

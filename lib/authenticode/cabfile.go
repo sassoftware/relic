@@ -17,11 +17,9 @@
 package authenticode
 
 import (
-	"bytes"
 	"crypto"
 	"crypto/hmac"
 	"crypto/x509"
-	"encoding/asn1"
 	"errors"
 	"fmt"
 	"io"
@@ -40,6 +38,7 @@ type CabSignature struct {
 	PatchSet *binpatch.PatchSet
 }
 
+// Extract and verify the signature of a CAB file. Does not check X509 chains.
 func VerifyCab(f io.ReaderAt, skipDigests bool) (*CabSignature, error) {
 	cab, err := cabfile.Parse(io.NewSectionReader(f, 0, 1<<63-1))
 	if err != nil {
@@ -48,11 +47,9 @@ func VerifyCab(f io.ReaderAt, skipDigests bool) (*CabSignature, error) {
 	if len(cab.Signature) == 0 {
 		return nil, errors.New("cab is not signed")
 	}
-	var psd pkcs7.ContentInfoSignedData
-	if rest, err := asn1.Unmarshal(cab.Signature, &psd); err != nil {
+	psd, err := pkcs7.Unmarshal(cab.Signature)
+	if err != nil {
 		return nil, err
-	} else if len(bytes.TrimRight(rest, "\x00")) != 0 {
-		return nil, errors.New("trailing garbage after signature")
 	}
 	if !psd.Content.ContentInfo.ContentType.Equal(OidSpcIndirectDataContent) {
 		return nil, errors.New("not an authenticode signature")
@@ -93,6 +90,7 @@ func VerifyCab(f io.ReaderAt, skipDigests bool) (*CabSignature, error) {
 	return cabsig, nil
 }
 
+// Create the Authenticode structure for a CAB file signature using a previously-calculated digest (imprint).
 func SignCabImprint(imprint []byte, hash crypto.Hash, privKey crypto.Signer, certs []*x509.Certificate) (*pkcs7.ContentInfoSignedData, error) {
 	alg, ok := x509tools.PkixDigestAlgorithm(hash)
 	if !ok {

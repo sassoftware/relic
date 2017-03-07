@@ -53,6 +53,8 @@ type peChecksum struct {
 	sum, size uint32
 }
 
+// Hasher that calculates the undocumented, non-CRC checksum used in PE images.
+// peStart is the offset found at 0x3c in the DOS header.
 func NewPEChecksum(peStart int) hash.Hash {
 	var cksumPos int
 	if peStart <= 0 {

@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+// A means of conveying a series of edits to binary files. Each item in a
+// patchset consists of an offset into the old file, the number of bytes to
+// remove, and the octet string to replace it with.
 package binpatch
 
 import (
@@ -43,15 +46,19 @@ type PatchHeader struct {
 	OldSize, NewSize uint32
 }
 
+// Create a new, empty PatchSet
 func New() *PatchSet {
 	return new(PatchSet)
 }
 
+// Add a new patch region to a PatchSet. The bytes beginning at "offset" and
+// running for "oldSize" are removed and replaced with "blob". oldSize may be 0.
 func (p *PatchSet) Add(offset int64, oldSize uint32, blob []byte) {
 	p.Patches = append(p.Patches, PatchHeader{offset, oldSize, uint32(len(blob))})
 	p.Blobs = append(p.Blobs, blob)
 }
 
+// Unmarshal a PatchSet from bytes
 func Load(blob []byte) (*PatchSet, error) {
 	r := bytes.NewReader(blob)
 	var h PatchSetHeader
@@ -77,6 +84,7 @@ func Load(blob []byte) (*PatchSet, error) {
 	return p, nil
 }
 
+// Marshal a PatchSet to bytes
 func (p *PatchSet) Dump() []byte {
 	header := PatchSetHeader{1, uint32(len(p.Patches))}
 	size := 8 + 16*len(p.Patches)
@@ -92,6 +100,12 @@ func (p *PatchSet) Dump() []byte {
 	return buf.Bytes()
 }
 
+// Apply a PatchSet by taking the input file, transforming it, and writing the
+// result to outpath. If outpath is the same name as infile then the file will
+// be updated in-place if a direct overwrite is possible. If they are not the
+// same file, or the patch requires moving parts of the old file, then the
+// output will be written to a temporary file then renamed over the destination
+// path.
 func (p *PatchSet) Apply(infile *os.File, outpath string) error {
 	ininfo, err := infile.Stat()
 	if err != nil {

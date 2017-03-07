@@ -22,6 +22,9 @@ import (
 	"os"
 )
 
+// If the SSLKEYLOGFILE environment variable is set, then open it for appending
+// and write TLS master secrets there in the "NSS Key Log Format". Use this for
+// debugging TLS and HTTP problems with Wireshark.
 func SetKeyLogFile(tconf *tls.Config) {
 	if klf := os.Getenv("SSLKEYLOGFILE"); klf != "" {
 		fmt.Fprintln(os.Stderr, "WARNING: SSLKEYLOGFILE is set! TLS master secrets will be logged.")

@@ -69,6 +69,7 @@ func PkixDigestAlgorithm(hash crypto.Hash) (alg pkix.AlgorithmIdentifier, ok boo
 	return
 }
 
+// Convert a X.509 AlgorithmIdentifier to a crypto.Hash
 func PkixDigestToHash(alg pkix.AlgorithmIdentifier) (hash crypto.Hash, ok bool) {
 	for hash, oid := range HashOids {
 		if alg.Algorithm.Equal(oid) {

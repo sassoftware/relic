@@ -28,6 +28,7 @@ import (
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/binpatch"
 )
 
+// Calculate the digest (imprint) of a CAB file for signing purposes
 func Digest(r io.Reader, hashFunc crypto.Hash) (*CabinetDigest, error) {
 	var d hash.Hash
 	var dw io.Writer
@@ -136,6 +137,7 @@ func Digest(r io.Reader, hashFunc crypto.Hash) (*CabinetDigest, error) {
 	return &CabinetDigest{cab, imprint, hashFunc, patched.Bytes()}, nil
 }
 
+// Parse the cabinet file header and return it
 func Parse(r io.Reader) (*Cabinet, error) {
 	digest, err := Digest(r, 0)
 	if err != nil {
@@ -144,6 +146,8 @@ func Parse(r io.Reader) (*Cabinet, error) {
 	return digest.Cabinet, nil
 }
 
+// Create a patchset that will apply the given signature blob to a previously
+// digested cabinet file, replacing any existing signature
 func (d *CabinetDigest) MakePatch(pkcs []byte) *binpatch.PatchSet {
 	// pad signature to 8 byte boundary
 	padded := make([]byte, (len(pkcs)+7)/8*8)

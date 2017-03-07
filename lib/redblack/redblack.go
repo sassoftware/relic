@@ -14,10 +14,9 @@
  * limitations under the License.
  */
 
-package redblack
-
 // Simple, incomplete red-black tree implementation meant only to rebuild the
 // directory tree of a CDF file.
+package redblack
 
 func New(less LessFunc) *Tree {
 	return &Tree{Less: less}

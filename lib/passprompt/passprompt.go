@@ -23,10 +23,14 @@ import (
 	"github.com/howeyc/gopass"
 )
 
+// Interface for some means of getting a password from the user (or another source)
 type PasswordGetter interface {
+	// Print the given prompt and retrieve a password. May return io.EOF if the
+	// user cancels the prompt.
 	GetPasswd(prompt string) (string, error)
 }
 
+// A default password getter using stdin/stderr
 type PasswordPrompt struct{}
 
 func (PasswordPrompt) GetPasswd(prompt string) (string, error) {

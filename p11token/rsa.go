@@ -26,6 +26,7 @@ import (
 	"github.com/miekg/pkcs11"
 )
 
+// Convert token RSA public key to *rsa.PublicKey
 func (key *Key) toRsaKey() (crypto.PublicKey, error) {
 	modulus := key.token.getAttribute(key.pub, pkcs11.CKA_MODULUS)
 	exponent := key.token.getAttribute(key.pub, pkcs11.CKA_PUBLIC_EXPONENT)
@@ -37,6 +38,7 @@ func (key *Key) toRsaKey() (crypto.PublicKey, error) {
 	return &rsa.PublicKey{N: n, E: e}, nil
 }
 
+// Sign a digest using token RSA private key
 func (key *Key) signRSA(digest []byte, opts crypto.SignerOpts) ([]byte, error) {
 	var mech *pkcs11.Mechanism
 	if opts == nil || opts.HashFunc() == 0 {
@@ -58,6 +60,7 @@ func (key *Key) signRSA(digest []byte, opts crypto.SignerOpts) ([]byte, error) {
 	return key.token.ctx.Sign(key.token.sh, digest)
 }
 
+// Generate RSA-specific public and private key attributes from a PrivateKey
 func rsaImportAttrs(priv *rsa.PrivateKey) (pub_attrs, priv_attrs []*pkcs11.Attribute, err error) {
 	if len(priv.Primes) != 2 || priv.Precomputed.Dp == nil || priv.Precomputed.Dq == nil || priv.Precomputed.Qinv == nil {
 		// multi-prime keys and keys without the precomputed values are rare
@@ -81,6 +84,7 @@ func rsaImportAttrs(priv *rsa.PrivateKey) (pub_attrs, priv_attrs []*pkcs11.Attri
 	return
 }
 
+// Generate RSA-specific public attributes to generate an RSA key in the token
 func rsaGenerateAttrs(bits uint) ([]*pkcs11.Attribute, *pkcs11.Mechanism, error) {
 	if bits < 1024 || bits > 4096 {
 		return nil, nil, errors.New("unsupported number of bits")

@@ -16,16 +16,19 @@
 
 package xmldsig
 
-// Implement a useful and sane subset of XML canonicalization required to
-// create XML digital signatures. This is not meant to be an exhaustive,
-// standards-conforming implementation. Use at your own peril.
-
 import (
 	"sort"
 
 	"github.com/beevik/etree"
 )
 
+// Canonicalize a document starting from the given element and return the
+// serialized bytes. Implements something vaguely like xml-exc-c14n. Namespaces
+// declared in parent nodes are pulled in, and namespaces not used in the
+// element where they are declared are pushed further down to the elements that
+// use them.
+//
+// This is not a standards-conforming implementation. Use at your own peril.
 func SerializeCanonical(oldroot *etree.Element) ([]byte, error) {
 	// make a deep copy before mangling things
 	root := oldroot.Copy()

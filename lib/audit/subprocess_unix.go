@@ -30,6 +30,9 @@ import (
 
 const EnvAuditFd = "RELIC_AUDIT_FD"
 
+// Write audit record to an inherited file descriptor. This is how the
+// subprocess that does the actual signing conveys audit data back to the
+// server for its own logs.
 func (info *AuditInfo) WriteFd() error {
 	fdstr := os.Getenv(EnvAuditFd)
 	if fdstr == "" {
@@ -53,6 +56,7 @@ func (info *AuditInfo) WriteFd() error {
 	return err
 }
 
+// A pipe used to receive audit data from a signing subprocess
 type PipeReader struct {
 	r, w   *os.File
 	errch  chan error

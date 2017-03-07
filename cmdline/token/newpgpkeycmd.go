@@ -45,8 +45,6 @@ var (
 	argUserName    string
 	argUserComment string
 	argUserEmail   string
-	argRsaBits     uint
-	argEcdsaBits   uint
 )
 
 func init() {

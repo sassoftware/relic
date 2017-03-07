@@ -32,20 +32,21 @@ type AnyCerts struct {
 	PGPCerts  openpgp.EntityList
 }
 
+// Load X509 and/or PGP certificates from the named file paths
 func LoadAnyCerts(paths []string) (any AnyCerts, err error) {
 	for _, path := range paths {
 		blob, err := ioutil.ReadFile(path)
 		if err != nil {
 			return any, err
 		}
-		x509certs, err := ParseCertificates(blob)
+		x509certs, err := parseCertificates(blob)
 		if err == nil {
 			any.X509Certs = append(any.X509Certs, x509certs.Certificates...)
 			continue
 		} else if err != ErrNoCerts {
 			return any, fmt.Errorf("%s: %s", path, err)
 		}
-		pgpcerts, err := ParsePGP(blob)
+		pgpcerts, err := parsePGP(blob)
 		if err == nil {
 			any.PGPCerts = append(any.PGPCerts, pgpcerts...)
 		} else {
@@ -55,7 +56,8 @@ func LoadAnyCerts(paths []string) (any AnyCerts, err error) {
 	return any, nil
 }
 
-func ParsePGP(blob []byte) (openpgp.EntityList, error) {
+// Parse one or more PGP certificates from the given possibly-armored blob
+func parsePGP(blob []byte) (openpgp.EntityList, error) {
 	reader := io.Reader(bytes.NewReader(blob))
 	if blob[0] == '-' {
 		block, err := armor.Decode(reader)

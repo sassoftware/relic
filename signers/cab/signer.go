@@ -16,6 +16,8 @@
 
 package cab
 
+// Sign Microsoft cabinet files
+
 import (
 	"io"
 	"os"

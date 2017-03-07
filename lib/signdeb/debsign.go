@@ -41,6 +41,9 @@ type DebSignature struct {
 	PatchSet     *binpatch.PatchSet
 }
 
+// Sign a .deb file with the given PGP key. A role name is needed for the
+// signature, e.g. "builder". Returns a structure holding a PatchSet that can
+// be applied to the original file to add or replace the signature.
 func Sign(r io.Reader, signer *openpgp.Entity, opts crypto.SignerOpts, role string) (*DebSignature, error) {
 	counter := &readCounter{r: r}
 	now := time.Now().UTC()

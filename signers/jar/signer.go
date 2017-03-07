@@ -16,6 +16,8 @@
 
 package jar
 
+// Sign Java archives
+
 import (
 	"archive/zip"
 	"bytes"
@@ -81,8 +83,12 @@ func (t *jarTransformer) Apply(dest, mimeType string, result io.Reader) error {
 	if err != nil {
 		return err
 	}
+	psd, err := pkcs7.Unmarshal(blob)
+	if err != nil {
+		return err
+	}
 	// need the public key to determine how to name the signature (.RSA or .EC)
-	certs, err := pkcs7.ParseCertificates(blob)
+	certs, err := psd.Content.Certificates.Parse()
 	if err != nil {
 		return err
 	} else if len(certs) == 0 {
@@ -90,12 +96,18 @@ func (t *jarTransformer) Apply(dest, mimeType string, result io.Reader) error {
 	}
 	pubkey := certs[0].PublicKey
 	// detach the .SF content from the signature unless --inline-signature is set
-	detached, sigfile, err := pkcs7.ExtractAndDetach(blob)
+	var sigfile []byte
+	if !t.inlineSignature {
+		sigfile, err = psd.Content.ContentInfo.Bytes()
+	} else {
+		sigfile, err = psd.Detach()
+		if err != nil {
+			return err
+		}
+		blob, err = psd.Marshal()
+	}
 	if err != nil {
 		return err
-	}
-	if !t.inlineSignature {
-		blob = detached
 	}
 	// write updated JAR
 	w, err := atomicfile.WriteAny(dest)
@@ -121,7 +133,11 @@ func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]b
 	if err != nil {
 		return nil, err
 	}
-	psd, err := pkcs7.SignData(sigfile, cert.Signer(), cert.Chain(), opts.Hash)
+	builder := pkcs7.NewBuilder(cert.Signer(), cert.Chain(), opts.Hash)
+	if err := builder.SetContentData(sigfile); err != nil {
+		return nil, err
+	}
+	psd, err := builder.Sign()
 	if err != nil {
 		return nil, err
 	}

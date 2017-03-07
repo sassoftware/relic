@@ -16,6 +16,10 @@
 
 package appmanifest
 
+// Sign Microsoft ClickOnce application manifests and deployment manifests.
+// These take the form of an XML file using XML DSIG signatures and, unlike all
+// other Microsoft signatures, does not use an Authenticode PKCS#7 structure.
+
 import (
 	"errors"
 	"io"

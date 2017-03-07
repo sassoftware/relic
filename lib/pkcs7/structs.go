@@ -14,6 +14,13 @@
  * limitations under the License.
  */
 
+// PKCS#7 is a specification for signing or encrypting data using ASN.1
+// structures. It is also known as CMS (cryptographic message syntax) and is
+// discussed in RFC 2315, RFC 3369, RFC 3852, and RFC 5652.
+//
+// This package implements signature operations needed for creating and
+// validating signature technologies based on PKCS#7 including Java and
+// Microsoft Authenticode
 package pkcs7
 
 import (

@@ -33,6 +33,10 @@ import (
 	"golang.org/x/crypto/openpgp/packet"
 )
 
+// Parse and decrypt a private key. It can be a RSA or ECDA key in PKCS#1 or
+// PKCS#8 format and DER or PEM encoding, or it can be a PGP private key. If
+// the private key is encrypted then the given prompter will be invoked to ask
+// for the passphrase, if provided.
 func ParseAnyPrivateKey(blob []byte, prompt passprompt.PasswordGetter) (crypto.PrivateKey, error) {
 	if bytes.HasPrefix(blob, []byte("-----BEGIN PGP")) {
 		return parsePgpPrivateKey(blob, prompt)

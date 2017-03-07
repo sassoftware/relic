@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
+// Microsoft Compound Document File
+// Reference: https://www.openoffice.org/sc/compdocfileformat.pdf
+// ERRATA: The above document says the 0th sector is always 512 bytes into the
+// file. This is not correct. If SectorSize > 512 bytes then the 0th sector is
+// SectorSize bytes into the file.
 package comdoc
 
 import (
@@ -24,12 +29,7 @@ import (
 	"os"
 )
 
-// Microsoft Compound Document File
-// Reference: https://www.openoffice.org/sc/compdocfileformat.pdf
-// ERRATA: The above document says the 0th sector is always 512 bytes into the
-// file. This is not correct. If SectorSize > 512 bytes then the 0th sector is
-// SectorSize bytes into the file.
-
+// CDF file open for reading or writing
 type ComDoc struct {
 	File            io.ReaderAt
 	Header          *Header
@@ -47,6 +47,7 @@ type ComDoc struct {
 	closer      io.Closer
 }
 
+// Open a CDF file for reading
 func ReadPath(path string) (*ComDoc, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -55,6 +56,7 @@ func ReadPath(path string) (*ComDoc, error) {
 	return openFile(f, nil, f)
 }
 
+// Open a CDF file for reading and writing
 func WritePath(path string) (*ComDoc, error) {
 	f, err := os.OpenFile(path, os.O_RDWR, 0)
 	if err != nil {
@@ -63,10 +65,12 @@ func WritePath(path string) (*ComDoc, error) {
 	return openFile(f, f, f)
 }
 
+// Parse an already-open CDF file for reading
 func ReadFile(reader io.ReaderAt) (*ComDoc, error) {
 	return openFile(reader, nil, nil)
 }
 
+// Parse an already-open CDF file for reading and writing
 func WriteFile(f *os.File) (*ComDoc, error) {
 	return openFile(f, f, nil)
 }

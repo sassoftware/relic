@@ -23,6 +23,8 @@ import (
 	"strings"
 )
 
+// Add or replace a named stream with the given contents. Only streams within
+// the root storage are currently supported.
 func (r *ComDoc) AddFile(name string, contents []byte) error {
 	if r.writer == nil {
 		return errors.New("file is not open for writing")
@@ -46,6 +48,7 @@ func (r *ComDoc) AddFile(name string, contents []byte) error {
 	return nil
 }
 
+// Delete a file from the root storage if it exists
 func (r *ComDoc) DeleteFile(name string) error {
 	keepFiles := make([]int, 0, len(r.rootFiles))
 	for _, index := range r.rootFiles {
@@ -71,6 +74,8 @@ func (r *ComDoc) DeleteFile(name string) error {
 	return nil
 }
 
+// Close the CDF and, if open for writing, commit the remainder of structures
+// to disk.
 func (r *ComDoc) Close() error {
 	if !r.changed {
 		if r.closer != nil {
