@@ -17,12 +17,14 @@
 package pkcs9
 
 import (
+	"crypto"
 	"crypto/x509"
 	"errors"
 	"fmt"
 	"time"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs7"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
 )
 
 // Attach a RFC 3161 timestamp to a PKCS#7 SignerInfo
@@ -38,6 +40,7 @@ func AddStampToSignedAuthenticode(signerInfo *pkcs7.SignerInfo, token pkcs7.Cont
 // Validated timestamp token
 type CounterSignature struct {
 	pkcs7.Signature
+	Hash        crypto.Hash
 	SigningTime time.Time
 }
 
@@ -60,6 +63,7 @@ func VerifyTimestamp(sig pkcs7.Signature) (*CounterSignature, error) {
 		err = sig.SignerInfo.UnauthenticatedAttributes.GetOne(OidSpcTimeStampToken, &tst)
 	}
 	var verifyBlob []byte
+	var imprintHash crypto.Hash
 	certs := sig.Intermediates
 	if err == nil {
 		// timestamptoken is a fully nested signedData containing a TSTInfo
@@ -80,6 +84,8 @@ func VerifyTimestamp(sig pkcs7.Signature) (*CounterSignature, error) {
 			return nil, err
 		} else if verr := tstinfo.MessageImprint.Verify(sig.SignerInfo.EncryptedDigest); verr != nil {
 			return nil, fmt.Errorf("failed to verify timestamp imprint: %s", verr)
+		} else {
+			imprintHash, _ = x509tools.PkixDigestToHash(tstinfo.MessageImprint.HashAlgorithm)
 		}
 		// now the signature is over the TSTInfo blob
 		verifyBlob, err = tst.Content.ContentInfo.Bytes()
@@ -94,6 +100,7 @@ func VerifyTimestamp(sig pkcs7.Signature) (*CounterSignature, error) {
 		// included in the parent structure, and the timestamp signs the
 		// signature blob from the parent signerinfo
 		verifyBlob = sig.SignerInfo.EncryptedDigest
+		imprintHash, _ = x509tools.PkixDigestToHash(sig.SignerInfo.DigestAlgorithm)
 	} else {
 		return nil, err
 	}
@@ -111,6 +118,7 @@ func VerifyTimestamp(sig pkcs7.Signature) (*CounterSignature, error) {
 			Certificate:   cert,
 			Intermediates: certs,
 		},
+		Hash:        imprintHash,
 		SigningTime: signingTime,
 	}, nil
 }

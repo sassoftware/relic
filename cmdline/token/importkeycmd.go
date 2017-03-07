@@ -25,7 +25,7 @@ import (
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/passprompt"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/p11token"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/signers/sigerrors"
 	"github.com/spf13/cobra"
 )
 
@@ -66,7 +66,7 @@ func importKeyCmd(cmd *cobra.Command, args []string) error {
 	_, err = token.GetKey(argKeyName)
 	if err == nil {
 		return errors.New("An object with that label already exists in the token")
-	} else if _, ok := err.(p11token.KeyNotFoundError); !ok {
+	} else if _, ok := err.(sigerrors.KeyNotFoundError); !ok {
 		return err
 	}
 	key, err := token.Import(argKeyName, privKey)

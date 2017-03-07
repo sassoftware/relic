@@ -17,9 +17,12 @@
 package server
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
-	"path"
+	"os"
+
+	"gerrit-pdt.unx.sas.com/tools/relic.git/signers"
 )
 
 func (s *Server) serveSign(request *http.Request, writer http.ResponseWriter) (res Response, err error) {
@@ -31,12 +34,11 @@ func (s *Server) serveSign(request *http.Request, writer http.ResponseWriter) (r
 	if keyName == "" {
 		return StringResponse(http.StatusBadRequest, "'key' query parameter is required"), nil
 	}
-	sigType := query.Get("sigtype")
 	filename := query.Get("filename")
-	exten := path.Ext(filename)
-	if sigType == "" && (filename == "" || exten == "") {
+	if filename == "" {
 		return StringResponse(http.StatusBadRequest, "'filename' query parameter is required and must have a known extension"), nil
 	}
+	sigType := query.Get("sigtype")
 	keyConf := s.CheckKeyAccess(request, keyName)
 	if keyConf == nil {
 		s.Logr(request, "access denied to key %s\n", keyName)
@@ -47,40 +49,41 @@ func (s *Server) serveSign(request *http.Request, writer http.ResponseWriter) (r
 	} else if keyConf.Token == "" {
 		return nil, fmt.Errorf("Key %s needs a tool or token setting", keyName)
 	}
-	switch sigType {
-	case "pgp":
-		return s.signPgp(keyConf, request)
-	case "rpm":
-		return s.signRpm(keyConf, request)
-	case "deb":
-		return s.signDeb(keyConf, request)
-	case "jar-manifest":
-		return s.signJar(keyConf, request)
-	case "pe-coff":
-		return s.signPeCoff(keyConf, request)
-	case "msi-tar":
-		return s.signMsi(keyConf, request)
-	case "cab":
-		return s.signCab(keyConf, request)
-	case "cat":
-		return s.signCat(keyConf, request)
-	case "ps":
-		return s.signPs(keyConf, request)
-	case "app-manifest":
-		return s.signAppManifest(keyConf, request)
-	case "":
-		// look at filename
-	default:
+	mod := signers.ByName(sigType)
+	if mod == nil {
 		s.Logr(request, "error: unknown sigtype: sigtype=%s key=%s", sigType, keyName)
 		return StringResponse(http.StatusBadRequest, "unknown sigtype"), nil
 	}
-	switch exten {
-	case ".rpm":
-		return s.signRpm(keyConf, request)
-	case ".deb":
-		return s.signDeb(keyConf, request)
-	default:
-		s.Logr(request, "error: unknown filetype: filename=%s key=%s", filename, keyName)
-		return StringResponse(http.StatusBadRequest, "unknown filetype for key"), nil
+	cmdline := []string{
+		os.Args[0],
+		"sign",
+		"--config", s.Config.Path(),
+		"--key", keyConf.Name(),
+		"--sig-type", mod.Name,
+		"--file", "-",
+		"--output", "-",
+		"--server",
 	}
+	if digest := request.URL.Query().Get("digest"); digest != "" {
+		cmdline = append(cmdline, "--digest", digest)
+	}
+	flags := mod.QueryToCmdline(request.URL.Query())
+	cmdline = append(cmdline, flags...)
+	fmt.Printf("%#v\n", cmdline)
+	stdout, attrs, response, err := s.invokeCommand(request, request.Body, "", false, keyConf.GetTimeout(), cmdline)
+	if response != nil || err != nil {
+		return response, err
+	}
+	if attrs == nil {
+		return nil, errors.New("missing audit info")
+	}
+	var extra string
+	if mod.FormatLog != nil {
+		extra = mod.FormatLog(attrs)
+	}
+	if extra != "" {
+		extra = " " + extra
+	}
+	s.Logr(request, "Signed package: filename=%s key=%s%s", filename, keyConf.Name(), extra)
+	return BytesResponse(stdout, attrs.GetMimeType()), nil
 }

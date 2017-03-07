@@ -23,6 +23,18 @@ import (
 	_ "gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/servecmd"
 	_ "gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/token"
 	_ "gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/verify"
+
+	_ "gerrit-pdt.unx.sas.com/tools/relic.git/signers/appmanifest"
+	_ "gerrit-pdt.unx.sas.com/tools/relic.git/signers/cab"
+	_ "gerrit-pdt.unx.sas.com/tools/relic.git/signers/cat"
+	_ "gerrit-pdt.unx.sas.com/tools/relic.git/signers/deb"
+	_ "gerrit-pdt.unx.sas.com/tools/relic.git/signers/jar"
+	_ "gerrit-pdt.unx.sas.com/tools/relic.git/signers/msi"
+	_ "gerrit-pdt.unx.sas.com/tools/relic.git/signers/pecoff"
+	_ "gerrit-pdt.unx.sas.com/tools/relic.git/signers/pgp"
+	_ "gerrit-pdt.unx.sas.com/tools/relic.git/signers/pkcs"
+	_ "gerrit-pdt.unx.sas.com/tools/relic.git/signers/ps"
+	_ "gerrit-pdt.unx.sas.com/tools/relic.git/signers/rpm"
 )
 
 func main() {

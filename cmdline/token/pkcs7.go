@@ -32,11 +32,12 @@ import (
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs7"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs9"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/p11token"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/signers/sigerrors"
 )
 
 func readCert(key *p11token.Key) (*certloader.Certificate, error) {
 	if key.X509Certificate == "" {
-		return nil, p11token.ErrNoCertificate{"X509"}
+		return nil, sigerrors.ErrNoCertificate{"X509"}
 	}
 	certblob, err := ioutil.ReadFile(key.X509Certificate)
 	if err != nil {

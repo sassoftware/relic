@@ -25,8 +25,12 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"strings"
+
+	"golang.org/x/crypto/openpgp"
+	"golang.org/x/crypto/openpgp/packet"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs7"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
@@ -38,7 +42,9 @@ var pkcs7SignedData = []byte{0x06, 0x09, 0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x0
 type Certificate struct {
 	Leaf         *x509.Certificate
 	Certificates []*x509.Certificate
+	PgpKey       *openpgp.Entity
 	PrivateKey   crypto.PrivateKey
+	KeyName      string
 }
 
 func (s *Certificate) Chain() []*x509.Certificate {
@@ -178,6 +184,51 @@ func LoadX509KeyPair(certFile, keyFile string) (*Certificate, error) {
 		return nil, errors.New("Private key does not match certificate")
 	}
 	cert.PrivateKey = key
+	return cert, nil
+}
+
+func LoadTokenCertificates(key crypto.PrivateKey, x509cert, pgpcert string) (*Certificate, error) {
+	var cert *Certificate
+	if x509cert != "" {
+		blob, err := ioutil.ReadFile(x509cert)
+		if err != nil {
+			return nil, err
+		}
+		cert, err = ParseCertificates(blob)
+		if err != nil {
+			return nil, err
+		}
+		if !x509tools.SameKey(key, cert.Leaf.PublicKey) {
+			return nil, errors.New("certificate does not match key in token")
+		}
+		cert.PrivateKey = key
+	} else {
+		cert = &Certificate{PrivateKey: key}
+	}
+	if pgpcert != "" {
+		blob, err := ioutil.ReadFile(pgpcert)
+		if err != nil {
+			return nil, err
+		}
+		keyring, err := ParsePGP(blob)
+		if err != nil {
+			return nil, err
+		}
+		if len(keyring) != 1 {
+			return nil, fmt.Errorf("expected exactly 1 entity in pgp certificate %s", pgpcert)
+		}
+		entity := keyring[0]
+		priv := &packet.PrivateKey{
+			PublicKey:  *entity.PrimaryKey,
+			Encrypted:  false,
+			PrivateKey: key,
+		}
+		if !x509tools.SameKey(key, priv.PublicKey.PublicKey) {
+			return nil, errors.New("certificate does not match key in token")
+		}
+		entity.PrivateKey = priv
+		cert.PgpKey = entity
+	}
 	return cert, nil
 }
 

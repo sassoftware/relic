@@ -42,16 +42,7 @@ type ReaderGetter interface {
 }
 
 // Make a single API request to a named endpoint, handling directory lookup and failover automatically.
-func CallRemote(endpoint, method string, query *url.Values, body io.ReadSeeker) (*http.Response, error) {
-	var getter ReaderGetter
-	if body != nil {
-		getter = fileProducer{body}
-	}
-	return CallRemoteWithGetter(endpoint, method, query, getter)
-}
-
-// Make a single API request to a named endpoint, handling directory lookup and failover automatically.
-func CallRemoteWithGetter(endpoint, method string, query *url.Values, body ReaderGetter) (*http.Response, error) {
+func CallRemote(endpoint, method string, query *url.Values, body ReaderGetter) (*http.Response, error) {
 	if err := shared.InitConfig(); err != nil {
 		return nil, err
 	}
@@ -194,19 +185,6 @@ func setDigestQueryParam(query url.Values) error {
 	}
 	query.Add("digest", shared.ArgDigest)
 	return nil
-}
-
-type fileProducer struct {
-	f io.ReadSeeker
-}
-
-func (p fileProducer) GetReader() (io.Reader, int64, error) {
-	size, err := p.f.Seek(0, io.SeekEnd)
-	if err != nil {
-		return nil, -1, fmt.Errorf("failed to seek input file: %s", err)
-	}
-	p.f.Seek(0, io.SeekStart)
-	return p.f, size, nil
 }
 
 // Check if an error is something recoverable, i.e. if we should continue to

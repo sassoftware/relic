@@ -14,19 +14,24 @@
  * limitations under the License.
  */
 
-package verify
+package sigerrors
 
-import (
-	"crypto/x509"
-	"os"
+type KeyNotFoundError struct{}
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/authenticode"
-)
+func (KeyNotFoundError) Error() string {
+	return "No object found in token with the specified label"
+}
 
-func verifyMsi(f *os.File) error {
-	sig, err := authenticode.VerifyMSI(f, argNoIntegrityCheck)
-	if err != nil {
-		return err
-	}
-	return doPkcs(f.Name(), sig.TimestampedSignature, x509.ExtKeyUsageCodeSigning)
+type PinIncorrectError struct{}
+
+func (PinIncorrectError) Error() string {
+	return "The entered PIN was incorrect"
+}
+
+type ErrNoCertificate struct {
+	Type string
+}
+
+func (e ErrNoCertificate) Error() string {
+	return "no certificate of type \"" + e.Type + "\" defined for this key"
 }

@@ -17,12 +17,17 @@
 package atomicfile
 
 import (
+	"io"
 	"os"
 )
 
 type nopAtomic struct {
 	*os.File
 	doClose bool
+}
+
+func (a nopAtomic) GetFile() *os.File {
+	return a.File
 }
 
 func (a nopAtomic) Commit() error {
@@ -52,6 +57,27 @@ func WriteAny(path string) (AtomicFile, error) {
 		return nopAtomic{f, true}, err
 	}
 	return New(path)
+}
+
+// If src and dest are the same, use src for reading and writing. If they are
+// different, make a copy and open the destination as an atomicfile, after
+// which src will be closed.
+func WriteInPlace(src *os.File, dest string) (AtomicFile, error) {
+	if src.Name() == dest {
+		return nopAtomic{src, false}, nil
+	} else {
+		outfile, err := New(dest)
+		if err != nil {
+			return nil, err
+		}
+		src.Seek(0, 0)
+		if _, err := io.Copy(outfile, src); err != nil {
+			return nil, err
+		}
+		outfile.Seek(0, 0)
+		src.Close()
+		return outfile, nil
+	}
 }
 
 // Write bytes to a file, using write-rename when appropriate

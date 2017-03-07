@@ -36,6 +36,7 @@ type Fileish interface {
 
 type AtomicFile interface {
 	Fileish
+	GetFile() *os.File
 	Commit() error
 }
 
@@ -50,6 +51,10 @@ func New(name string) (AtomicFile, error) {
 		return nil, err
 	}
 	return &atomicFile{tempfile, name}, nil
+}
+
+func (f *atomicFile) GetFile() *os.File {
+	return f.File
 }
 
 func (f *atomicFile) Close() error {

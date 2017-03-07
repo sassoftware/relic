@@ -24,6 +24,7 @@ import (
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/passprompt"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/signers/sigerrors"
 	"github.com/miekg/pkcs11"
 )
 
@@ -166,7 +167,7 @@ func (token *Token) Login(user uint, pin string) error {
 	err := token.ctx.Login(token.sh, user, pin)
 	if err != nil {
 		if rv, ok := err.(pkcs11.Error); ok && rv == pkcs11.CKR_PIN_INCORRECT {
-			return PinIncorrectError{}
+			return sigerrors.PinIncorrectError{}
 		}
 	}
 	return err
@@ -200,7 +201,7 @@ func (token *Token) autoLogIn(tokenConf *config.TokenConfig, pinProvider passpro
 				return errors.New("Aborted")
 			}
 			err = token.Login(user, pin)
-			if _, ok := err.(PinIncorrectError); ok {
+			if _, ok := err.(sigerrors.PinIncorrectError); ok {
 				prompt = "Incorrect PIN\r\n" + initialPrompt
 				continue
 			} else if err != nil {

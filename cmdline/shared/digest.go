@@ -26,11 +26,17 @@ import (
 
 var ArgDigest string
 
+const DefaultHash = "SHA-256"
+
 func AddDigestFlag(cmd *cobra.Command) {
-	cmd.Flags().StringVar(&ArgDigest, "digest", "SHA-256", "Specify a digest algorithm")
+	cmd.Flags().StringVar(&ArgDigest, "digest", DefaultHash, "Specify a digest algorithm")
 }
 
 func GetDigest() (hash crypto.Hash, err error) {
+	if ArgDigest == "" {
+		// TODO: figure out why this randomly started coming back blank
+		ArgDigest = DefaultHash
+	}
 	name := strings.ToLower(ArgDigest)
 	name = strings.Replace(name, "-", "", -1)
 	switch name {

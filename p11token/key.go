@@ -22,6 +22,7 @@ import (
 	"io"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/signers/sigerrors"
 	"github.com/miekg/pkcs11"
 )
 
@@ -110,7 +111,7 @@ func (token *Token) findKey(keyConf *config.KeyConfig, class uint) (pkcs11.Objec
 	if len(objects) > 1 {
 		return 0, errors.New("Multiple token objects with the specified attributes")
 	} else if len(objects) == 0 {
-		return 0, KeyNotFoundError{}
+		return 0, sigerrors.KeyNotFoundError{}
 	}
 	return objects[0], nil
 }

@@ -29,6 +29,8 @@ var ArgConfig string
 var CurrentConfig *config.Config
 var argVersion bool
 
+var lateHooks []func()
+
 var RootCmd = &cobra.Command{
 	Use:              "relic",
 	PersistentPreRun: showVersion,
@@ -54,7 +56,14 @@ func bailUnlessVersion(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func AddLateHook(f func()) {
+	lateHooks = append(lateHooks, f)
+}
+
 func Main() {
+	for _, f := range lateHooks {
+		f()
+	}
 	if err := RootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

@@ -35,11 +35,7 @@ import (
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs9"
 )
 
-func Verify(r io.ReaderAt, size int64, skipDigests bool) ([]*pkcs9.TimestampedSignature, error) {
-	inz, err := zip.NewReader(r, size)
-	if err != nil {
-		return nil, err
-	}
+func Verify(inz *zip.Reader, skipDigests bool) ([]*pkcs9.TimestampedSignature, error) {
 	var manifest []byte
 	sigfiles := make(map[string][]byte)
 	sigblobs := make(map[string][]byte)

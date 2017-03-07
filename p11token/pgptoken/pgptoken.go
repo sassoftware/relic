@@ -24,6 +24,7 @@ import (
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/p11token"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/signers/sigerrors"
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/armor"
 	"golang.org/x/crypto/openpgp/packet"
@@ -47,7 +48,7 @@ func readEntity(path string) (*openpgp.Entity, error) {
 
 func KeyFromToken(key *p11token.Key) (*openpgp.Entity, error) {
 	if key.PgpCertificate == "" {
-		return nil, p11token.ErrNoCertificate{"PGP"}
+		return nil, sigerrors.ErrNoCertificate{"PGP"}
 	}
 	entity, err := readEntity(key.PgpCertificate)
 	if err != nil {

@@ -17,20 +17,16 @@
 package remotecmd
 
 import (
-	"crypto"
 	"errors"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"path"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/authenticode"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/binpatch"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/magic"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/signers"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 var SignCmd = &cobra.Command{
@@ -39,23 +35,18 @@ var SignCmd = &cobra.Command{
 	RunE:  signCmd,
 }
 
-var (
-	argKeyAlias      string
-	argRole          string
-	argPageHashes    bool
-	argNoMsiExtended bool
-)
+var argSigType string
 
 func init() {
 	RemoteCmd.AddCommand(SignCmd)
 	SignCmd.Flags().StringVarP(&argKeyName, "key", "k", "", "Name of key on remote server to use")
 	SignCmd.Flags().StringVarP(&argFile, "file", "f", "", "Input file to sign")
 	SignCmd.Flags().StringVarP(&argOutput, "output", "o", "", "Output file. Defaults to same as --file.")
-	SignCmd.Flags().StringVar(&argKeyAlias, "key-alias", "RELIC", "Alias to use for signed manifests (JAR only)")
-	SignCmd.Flags().StringVar(&argRole, "role", "", "Debian package signing role (DEB only)")
-	SignCmd.Flags().BoolVar(&argPageHashes, "page-hashes", false, "Add page hashes (PE only)")
-	SignCmd.Flags().BoolVar(&argNoMsiExtended, "no-extended-sig", false, "Don't emit a MsiDigitalSignatureEx digest (MSI only)")
+	SignCmd.Flags().StringVarP(&argSigType, "sig-type", "T", "", "Specify signature type (default: auto-detect)")
 	shared.AddDigestFlag(SignCmd)
+	shared.AddLateHook(func() {
+		signers.MergeFlags(SignCmd.Flags())
+	})
 }
 
 func signCmd(cmd *cobra.Command, args []string) (err error) {
@@ -71,126 +62,81 @@ func signCmd(cmd *cobra.Command, args []string) (err error) {
 	if err != nil {
 		return shared.Fail(fmt.Errorf("failed to get info about key %s: %s", argKeyName, err))
 	}
-	var sigType, sigStyle string
-	var fileType magic.FileType
+	// detect signature type when not using an external tool
+	var mod *signers.Signer
+	var flags *pflag.FlagSet
 	if !info.ExternalTool {
-		if f, err := os.Open(argFile); err != nil {
+		mod, err = signers.ByFile(argFile, argSigType)
+		if err != nil {
 			return shared.Fail(err)
-		} else {
-			fileType = magic.Detect(f)
-			f.Close()
 		}
-		switch fileType {
-		case magic.FileTypeJAR:
-			return signJar()
-		case magic.FileTypeMSI:
-			return signMsi()
-		case magic.FileTypeRPM:
-			sigType = "rpm"
-		case magic.FileTypeDEB:
-			sigType = "deb"
-		case magic.FileTypePECOFF:
-			sigType = "pe-coff"
-		case magic.FileTypeCAB:
-			sigType = "cab"
-		case magic.FileTypeAppManifest:
-			sigType = "app-manifest"
-		case magic.FileTypePKCS7:
-			if blob, err := ioutil.ReadFile(argFile); err != nil {
-				return shared.Fail(err)
-			} else if authenticode.IsSecurityCatalog(blob) {
-				sigType = "cat"
-			} else {
-				return errors.New("Don't know how to sign this type of file")
-			}
+		if mod.Sign == nil {
+			return shared.Fail(errors.New("can't sign this type of file"))
 		}
-		if sigType == "" {
-			if _, ok := authenticode.GetSigStyle(argFile); ok {
-				sigType = "ps"
-				sigStyle = path.Ext(argFile)
-			} else {
-				return errors.New("Don't know how to sign this type of file")
-			}
+		flags, err = mod.GetFlags(cmd.Flags())
+		if err != nil {
+			return shared.Fail(err)
 		}
 	}
-	// open for writing so in-place patch works
-	infile, err := os.OpenFile(argFile, os.O_RDWR, 0)
+	var infile *os.File
+	if argFile == "-" {
+		if mod != nil && !mod.AllowStdin {
+			return shared.Fail(errors.New("this signature type does not support reading from stdin"))
+		}
+		infile = os.Stdin
+	} else {
+		// open for writing so in-place patch works
+		infile, err = os.OpenFile(argFile, os.O_RDWR, 0)
+		if err != nil {
+			return shared.Fail(err)
+		}
+		defer infile.Close()
+	}
+	// transform input if needed
+	hash, err := shared.GetDigest()
+	if err != nil {
+		return err
+	}
+	opts := signers.SignOpts{Flags: flags, Hash: hash}
+	transform, err := mod.GetTransform(infile, opts)
 	if err != nil {
 		return shared.Fail(err)
 	}
-
+	// build request
 	values := url.Values{}
 	values.Add("key", argKeyName)
 	values.Add("filename", path.Base(argFile))
-	if sigType != "" {
-		values.Add("sigtype", sigType)
-	}
-	if sigStyle != "" {
-		values.Add("ps-style", sigStyle)
-	}
-	if fileType == magic.FileTypeDEB && argRole != "" {
-		values.Add("deb-role", argRole)
-	}
-	if err := setDigestQueryParam(values); err != nil {
-		return err
-	}
-	if fileType == magic.FileTypePECOFF && argPageHashes {
-		digest, _ := shared.GetDigest()
-		if digest != crypto.SHA256 && digest != crypto.SHA1 {
-			return errors.New("When --page-hashes is set, SHA1 or SHA256 must be used")
+	if mod != nil {
+		values.Add("sigtype", mod.Name)
+		if err := mod.FlagsToQuery(cmd.Flags(), values); err != nil {
+			return shared.Fail(err)
 		}
-		values.Add("page-hashes", "1")
+		if err := setDigestQueryParam(values); err != nil {
+			return err
+		}
 	}
-
-	response, err := CallRemote("sign", "POST", &values, infile)
+	// do request
+	response, err := CallRemote("sign", "POST", &values, transform)
 	if err != nil {
 		return shared.Fail(err)
 	}
 	defer response.Body.Close()
-	if response.Header.Get("Content-Type") == binpatch.MimeType {
-		blob, err := ioutil.ReadAll(response.Body)
-		if err != nil {
-			return shared.Fail(err)
-		}
-		patch, err := binpatch.Load(blob)
-		if err != nil {
-			return shared.Fail(err)
-		}
-		err = patch.Apply(infile, argOutput)
-	} else {
-		infile.Close()
-		err = writeOutput(argOutput, response.Body)
-	}
-	if err != nil {
+	// apply the result
+	if err := transform.Apply(argOutput, response.Header.Get("Content-Type"), response.Body); err != nil {
 		return shared.Fail(err)
 	}
-
-	if fileType == magic.FileTypePECOFF {
+	// if needed, do a final fixup step
+	if mod != nil && mod.Fixup != nil {
 		f, err := os.OpenFile(argOutput, os.O_RDWR, 0)
 		if err != nil {
 			return shared.Fail(err)
 		}
 		defer f.Close()
-		if err := authenticode.FixPEChecksum(f); err != nil {
+		if err := mod.Fixup(f); err != nil {
 			return shared.Fail(err)
 		}
 	}
 
 	fmt.Fprintf(os.Stderr, "Signed %s\n", argFile)
 	return nil
-}
-
-func writeOutput(path string, src io.Reader) error {
-	if argOutput == "-" {
-		_, err := io.Copy(os.Stdout, src)
-		return err
-	} else {
-		outfile, err := os.Create(path)
-		if err != nil {
-			return err
-		}
-		_, err = io.Copy(outfile, src)
-		outfile.Close()
-		return err
-	}
 }

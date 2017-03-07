@@ -29,12 +29,14 @@ import (
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/binpatch"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/passprompt"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/p11token"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/signers/sigerrors"
 	"github.com/spf13/cobra"
 )
 
 var (
 	argFile      string
 	argPatch     bool
+	argServer    bool
 	argKeyName   string
 	argToken     string
 	argLabel     string
@@ -98,7 +100,7 @@ func selectOrGenerate() (key *p11token.Key, err error) {
 	if err == nil {
 		fmt.Fprintln(os.Stderr, "Using existing key in token")
 		return key, nil
-	} else if _, ok := err.(p11token.KeyNotFoundError); !ok {
+	} else if _, ok := err.(sigerrors.KeyNotFoundError); !ok {
 		return nil, err
 	}
 	fmt.Fprintln(os.Stderr, "Generating a new key in token")
@@ -172,7 +174,7 @@ func formatKeyId(key_id []byte) string {
 }
 
 func openForPatching() (*os.File, error) {
-	if argFile == "-" && argPatch {
+	if argFile == "-" && (argPatch || argServer) {
 		return os.Stdin, nil
 	} else {
 		return os.OpenFile(argFile, os.O_RDWR, 0)
@@ -180,7 +182,7 @@ func openForPatching() (*os.File, error) {
 }
 
 func applyPatch(infile *os.File, patch *binpatch.PatchSet) error {
-	if argPatch {
+	if argPatch || argServer {
 		if argOutput == "" {
 			argOutput = "-"
 		}

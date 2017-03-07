@@ -37,7 +37,7 @@ type ManifestSignature struct {
 	Signed []byte
 }
 
-func Sign(manifest []byte, privateKey crypto.Signer, cert *certloader.Certificate, opts crypto.SignerOpts) (*ManifestSignature, error) {
+func Sign(manifest []byte, cert *certloader.Certificate, opts crypto.SignerOpts) (*ManifestSignature, error) {
 	doc := etree.NewDocument()
 	if err := doc.ReadFromString(string(manifest)); err != nil {
 		return nil, err
@@ -54,7 +54,7 @@ func Sign(manifest []byte, privateKey crypto.Signer, cert *certloader.Certificat
 	}
 	// Primary signature
 	sigopts := xmldsig.XmlSignOptions{MsCompatHashNames: true}
-	if err := xmldsig.Sign(doc, root, opts.HashFunc(), privateKey, cert.Chain(), sigopts); err != nil {
+	if err := xmldsig.Sign(doc, root, opts.HashFunc(), cert.Signer(), cert.Chain(), sigopts); err != nil {
 		return nil, err
 	}
 	sig, keyinfo := setSigIds(root, "StrongNameSignature", "StrongNameKeyInfo")
@@ -63,7 +63,7 @@ func Sign(manifest []byte, privateKey crypto.Signer, cert *certloader.Certificat
 	authDoc, sigDestNode := makeLicense(asi, subjectName, manifestHash)
 	// Sign authenticode structure
 	sigopts.IncludeX509 = true
-	if err := xmldsig.Sign(authDoc, sigDestNode, opts.HashFunc(), privateKey, cert.Chain(), sigopts); err != nil {
+	if err := xmldsig.Sign(authDoc, sigDestNode, opts.HashFunc(), cert.Signer(), cert.Chain(), sigopts); err != nil {
 		return nil, err
 	}
 	setSigIds(sigDestNode, "AuthenticodeSignature", "")
