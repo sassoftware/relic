@@ -8,7 +8,7 @@ rm -rf $WORKDIR/build
 
 [ -x $GOPATH/bin/glide ] || go get -v github.com/Masterminds/glide
 
-module=$(cd checkout && glide name 2>/dev/null)
+module=$(grep ^package: checkout/glide.yaml |cut -d' ' -f2)
 version=$(cd checkout && git describe --tags |sed -e 's/-\([0-9]*\).*/.\1/')
 [ -n "$version" ] || { echo Unable to determine version; exit 1; }
 ldflags="-X ${module}/config.Version=$version"
@@ -25,7 +25,7 @@ export GIT_ALLOW_PROTOCOL=none
 touch $GOPATH/src/$module/config/config.go
 GOOS=linux go build -v -ldflags "$ldflags" -o $WORKDIR/build/relic $module/relic
 GOOS=linux go build -v -ldflags "$ldflags" -o $WORKDIR/build/relic-audit $module/relic/relic-audit
-GOOS=windows go build -v -ldflags "$ldflags" -o $WORKDIR/build/relic.exe $module/relic/relic_notoken
+GOOS=windows go build -v -ldflags "$ldflags" -tags pure -o $WORKDIR/build/relic.exe $module/relic
 
 cd $WORKDIR/build
 rhname=relic-redhat-$version

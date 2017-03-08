@@ -1,3 +1,5 @@
+// +build !pure
+
 /*
  * Copyright (c) SAS Institute Inc.
  *
@@ -17,5 +19,5 @@
 package main
 
 import (
-	_ "gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/winservice"
+	_ "gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/token"
 )
