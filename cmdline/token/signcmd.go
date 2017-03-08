@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path"
 	"time"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
@@ -84,6 +85,9 @@ func signCmd(cmd *cobra.Command, args []string) error {
 	cert, ai, err := openCert(mod, hash)
 	if err != nil {
 		return shared.Fail(err)
+	}
+	if ai.Attributes["client.filename"] == nil {
+		ai.Attributes["client.filename"] = path.Base(argFile)
 	}
 	opts := signers.SignOpts{
 		Path:  argFile,

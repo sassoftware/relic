@@ -1,5 +1,5 @@
 hash: a17515b127b68fe2f01d00f410f6af430c111bc2a490aaf4f3d88089de2caf48
-updated: 2017-03-05T03:36:51.589356304Z
+updated: 2017-03-08T15:48:10.135491647Z
 imports:
 - name: github.com/beevik/etree
   version: 1095c300fba68cb7f7895c0f96b2d34927f8115b
@@ -10,7 +10,7 @@ imports:
 - name: github.com/inconshreveable/mousetrap
   version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
 - name: github.com/lib/pq
-  version: ba5d4f7a35561e22fbdf7a39aa0070f4d460cfc0
+  version: ca5bc43047f2138703da0f3d3ca89a59f3d597f1
   subpackages:
   - oid
 - name: github.com/mattn/go-shellwords
@@ -22,7 +22,7 @@ imports:
 - name: github.com/qur/ar
   version: 282534b917707a0e6639276266fa6421c634af2d
 - name: github.com/sassoftware/go-rpmutils
-  version: 95f7d12b6fa9b166d98f9b926101d1e2d1e4353d
+  version: 9655c9336de71373d6dd35fa35b597927da4255b
   subpackages:
   - cpio
   - fileutil
@@ -33,7 +33,7 @@ imports:
 - name: github.com/streadway/amqp
   version: ce1c69d94c3efdb1f287015f851b17db8fa205b1
 - name: golang.org/x/crypto
-  version: 40541ccb1c6e64c947ed6f606b8a6cb4b67d7436
+  version: 728b753d0135da6801d45a38e6f43ff55779c5c2
   subpackages:
   - openpgp
   - openpgp/armor
@@ -52,7 +52,7 @@ imports:
   - idna
   - lex/httplex
 - name: golang.org/x/sys
-  version: e48874b42435b4347fc52bdee0424a52abc974d7
+  version: 99f16d856c9836c42d24e7ab64ea72916925fa97
   subpackages:
   - windows
   - windows/svc

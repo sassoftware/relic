@@ -33,12 +33,13 @@ const (
 	NsAuthenticode = "http://schemas.microsoft.com/windows/pki/2005/Authenticode"
 )
 
-type ManifestSignature struct {
+type SignedManifest struct {
+	ManifestSignature
 	Signed []byte
 }
 
 // Sign an application manifest
-func Sign(manifest []byte, cert *certloader.Certificate, opts crypto.SignerOpts) (*ManifestSignature, error) {
+func Sign(manifest []byte, cert *certloader.Certificate, opts crypto.SignerOpts) (*SignedManifest, error) {
 	doc := etree.NewDocument()
 	if err := doc.ReadFromString(string(manifest)); err != nil {
 		return nil, err
@@ -55,21 +56,20 @@ func Sign(manifest []byte, cert *certloader.Certificate, opts crypto.SignerOpts)
 	}
 	// Primary signature
 	sigopts := xmldsig.XmlSignOptions{MsCompatHashNames: true}
-	if err := xmldsig.Sign(doc, root, opts.HashFunc(), cert.Signer(), cert.Chain(), sigopts); err != nil {
+	if err := xmldsig.Sign(root, root, opts.HashFunc(), cert.Signer(), cert.Chain(), sigopts); err != nil {
 		return nil, err
 	}
 	sig, keyinfo := setSigIds(root, "StrongNameSignature", "StrongNameKeyInfo")
 	// Create authenticode structure
 	manifestHash := makeManifestHash(sig)
-	authDoc, sigDestNode := makeLicense(asi, subjectName, manifestHash)
+	license, sigDestNode := makeLicense(asi, subjectName, manifestHash)
 	// Sign authenticode structure
 	sigopts.IncludeX509 = true
-	if err := xmldsig.Sign(authDoc, sigDestNode, opts.HashFunc(), cert.Signer(), cert.Chain(), sigopts); err != nil {
+	if err := xmldsig.Sign(license, sigDestNode, opts.HashFunc(), cert.Signer(), cert.Chain(), sigopts); err != nil {
 		return nil, err
 	}
 	setSigIds(sigDestNode, "AuthenticodeSignature", "")
 	// Attach authenticode to the primary document
-	license := authDoc.Root()
 	license.AddChild(sigDestNode)
 	reldata := keyinfo.CreateElement("msrel:RelData")
 	reldata.CreateAttr("xmlns:msrel", NsMsRel)
@@ -79,7 +79,16 @@ func Sign(manifest []byte, cert *certloader.Certificate, opts crypto.SignerOpts)
 	if err != nil {
 		return nil, err
 	}
-	return &ManifestSignature{Signed: signed}, nil
+	return &SignedManifest{
+		Signed: signed,
+		ManifestSignature: ManifestSignature{
+			AssemblyName:    asi.SelectAttrValue("name", ""),
+			AssemblyVersion: asi.SelectAttrValue("version", ""),
+			Leaf:            cert.Leaf,
+			Certificates:    cert.Chain(),
+			Hash:            opts.HashFunc(),
+			PublicKeyToken:  asi.SelectAttrValue("publicKeyToken", ""),
+		}}, nil
 }
 
 // Update the assemblyIdentity element with the actual signer public key. Only
@@ -90,13 +99,7 @@ func setAssemblyIdentity(root *etree.Element, cert *certloader.Certificate) (*et
 	if err != nil {
 		return nil, err
 	}
-	var asi *etree.Element
-	for _, elem := range root.ChildElements() {
-		if elem.Tag == "assemblyIdentity" {
-			asi = elem
-			break
-		}
-	}
+	asi := root.SelectElement("assemblyIdentity")
 	if asi == nil {
 		return nil, errors.New("manifest has no top-level assemblyIdentity element")
 	}
@@ -119,7 +122,7 @@ func setPublisherIdentity(root *etree.Element, cert *certloader.Certificate) (st
 }
 
 // Create the "license" block that goes inside the inner signature
-func makeLicense(asi *etree.Element, subjectName, manifestHash string) (*etree.Document, *etree.Element) {
+func makeLicense(asi *etree.Element, subjectName, manifestHash string) (*etree.Element, *etree.Element) {
 	license := etree.NewElement("r:license")
 	license.CreateAttr("xmlns:r", NsMpeg21)
 	license.CreateAttr("xmlns:as", NsAuthenticode)
@@ -136,9 +139,7 @@ func makeLicense(asi *etree.Element, subjectName, manifestHash string) (*etree.D
 	grant.CreateElement("as:AuthenticodePublisher").CreateElement("as:X509SubjectName").SetText(subjectName) // TODO check this
 
 	issuer := license.CreateElement("r:issuer")
-	licensedoc := etree.NewDocument()
-	licensedoc.SetRoot(license)
-	return licensedoc, issuer
+	return license, issuer
 }
 
 // ManifestInformation contains a hash value which is, for some inane reason,

@@ -34,14 +34,6 @@ import (
 	"github.com/beevik/etree"
 )
 
-const (
-	NsXmlDsig     = "http://www.w3.org/2000/09/xmldsig#"
-	NsXmlDsigMore = "http://www.w3.org/2001/04/xmldsig-more#"
-	AlgXmlExcC14n = "http://www.w3.org/2001/10/xml-exc-c14n#"
-
-	AlgDsigEnvelopedSignature = "http://www.w3.org/2000/09/xmldsig#enveloped-signature"
-)
-
 type XmlSignOptions struct {
 	// Use non-standard namespace for SHA-256 found in Microsoft ClickOnce manifests
 	MsCompatHashNames bool
@@ -49,22 +41,13 @@ type XmlSignOptions struct {
 	IncludeX509 bool
 }
 
-var hashNames = map[crypto.Hash]string{
-	crypto.SHA1:   "sha1",
-	crypto.SHA224: "sha224",
-	crypto.SHA256: "sha256",
-	crypto.SHA384: "sha384",
-	crypto.SHA512: "sha512",
-}
-
-// Create an enveloped signature from the document rooted at "doc", replacing
+// Create an enveloped signature from the document rooted at "root", replacing
 // any existing signature and adding it as a last child of "parent".
-func Sign(doc *etree.Document, parent *etree.Element, hash crypto.Hash, privKey crypto.Signer, certs []*x509.Certificate, opts XmlSignOptions) error {
+func Sign(root *etree.Element, parent *etree.Element, hash crypto.Hash, privKey crypto.Signer, certs []*x509.Certificate, opts XmlSignOptions) error {
 	pubKey := privKey.Public()
 	if len(certs) < 1 || !x509tools.SameKey(pubKey, certs[0].PublicKey) {
 		return errors.New("xmldsig: first certificate must match private key")
 	}
-	root := doc.Root()
 	RemoveElements(parent, "Signature")
 	// canonicalize the enveloping document and digest it
 	refDigest, err := hashCanon(root, hash)
@@ -107,7 +90,7 @@ func Sign(doc *etree.Document, parent *etree.Element, hash crypto.Hash, privKey 
 func hashCanon(root *etree.Element, hash crypto.Hash) ([]byte, error) {
 	canon, err := SerializeCanonical(root)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("xmldsig: %s", err)
 	}
 	d := hash.New()
 	d.Write(canon)
@@ -173,8 +156,14 @@ func addKeyInfo(keyinfo *etree.Element, pubKey crypto.PublicKey, certs []*x509.C
 		ekv := keyvalue.CreateElement("ECDSAKeyValue")
 		ekv.CreateElement("DomainParameters").CreateElement("NamedCurve").CreateAttr("URN", curveUrn)
 		pk := ekv.CreateElement("PublicKey")
-		pk.CreateElement("X").CreateAttr("Value", k.X.String())
-		pk.CreateElement("Y").CreateAttr("Value", k.Y.String())
+		x := pk.CreateElement("X")
+		x.CreateAttr("Value", k.X.String())
+		x.CreateAttr("xmlns:xsi", NsXsi)
+		x.CreateAttr("xsi:type", "PrimeFieldElemType")
+		y := pk.CreateElement("Y")
+		y.CreateAttr("Value", k.Y.String())
+		y.CreateAttr("xmlns:xsi", NsXsi)
+		y.CreateAttr("xsi:type", "PrimeFieldElemType")
 	default:
 		return errors.New("unsupported key type")
 	}

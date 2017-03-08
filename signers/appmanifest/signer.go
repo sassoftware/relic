@@ -21,14 +21,17 @@ package appmanifest
 // other Microsoft signatures, does not use an Authenticode PKCS#7 structure.
 
 import (
-	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/appmanifest"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/audit"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/magic"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs7"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs9"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/signers"
 )
 
@@ -36,12 +39,21 @@ var AppSigner = &signers.Signer{
 	Name:      "appmanifest",
 	Magic:     magic.FileTypeAppManifest,
 	CertTypes: signers.CertTypeX509,
+	FormatLog: formatLog,
 	Sign:      sign,
 	Verify:    verify,
 }
 
 func init() {
 	signers.Register(AppSigner)
+}
+
+func formatLog(info *audit.AuditInfo) string {
+	return fmt.Sprintf("assembly=%s version=%s publicKeyToken=%s",
+		info.Attributes["assembly.name"],
+		info.Attributes["assembly.version"],
+		info.Attributes["assembly.publicKeyToken"],
+	)
 }
 
 func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]byte, error) {
@@ -54,9 +66,29 @@ func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]b
 		return nil, err
 	}
 	opts.Audit.SetMimeType("application/xml")
+	opts.Audit.Attributes["assembly.name"] = signed.AssemblyName
+	opts.Audit.Attributes["assembly.version"] = signed.AssemblyVersion
+	opts.Audit.Attributes["assembly.publicKeyToken"] = signed.PublicKeyToken
 	return signed.Signed, nil
 }
 
 func verify(f *os.File, opts signers.VerifyOpts) ([]*signers.Signature, error) {
-	return nil, errors.New("verifying app manifests is not implemented yet")
+	blob, err := ioutil.ReadAll(f)
+	if err != nil {
+		return nil, err
+	}
+	sig, err := appmanifest.Verify(blob)
+	if err != nil {
+		return nil, err
+	}
+	return []*signers.Signature{&signers.Signature{
+		Package: fmt.Sprintf("%s %s", sig.AssemblyName, sig.AssemblyVersion),
+		Hash:    sig.Hash,
+		X509Signature: &pkcs9.TimestampedSignature{
+			Signature: pkcs7.Signature{
+				Certificate:   sig.Leaf,
+				Intermediates: sig.Certificates,
+			},
+		},
+	}}, nil
 }

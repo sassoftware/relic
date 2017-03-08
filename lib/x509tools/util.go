@@ -110,6 +110,7 @@ func Verify(pub interface{}, hash crypto.Hash, hashed []byte, sig []byte) error 
 		if !ecdsa.Verify(pubk, hashed, esig.R, esig.S) {
 			return errors.New("ECDSA verification failed")
 		}
+		return nil
 	}
 	return errors.New("unsupported public key algorithm")
 }

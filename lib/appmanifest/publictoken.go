@@ -19,10 +19,13 @@ package appmanifest
 import (
 	"bytes"
 	"crypto"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rsa"
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
+	"math/big"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
@@ -42,31 +45,44 @@ func PublisherIdentity(cert *certloader.Certificate) (string, string, error) {
 }
 
 const (
-	SnkAlgRsa       = 0x2400
-	SnkAlgSha1      = 0x8004
-	SnkRsaPub       = 0x06
-	SnkRsaPriv      = 0x07
-	SnkRsaVersion   = 0x02
-	SnkRsaPubMagic  = 0x31415352
-	SnkRsaPrivMagic = 0x32415352
+	snkRsaPub     = 0x06
+	snkRsaPriv    = 0x07
+	snkRsaVersion = 0x02
+	// https://msdn.microsoft.com/en-us/library/windows/desktop/aa375549(v=vs.85).aspx
+	calgRsaSign = 0x2400 // CALG_RSA_SIGN
+	calgSha1    = 0x8004 // CALG_SHA1
+	calgEcdsa   = 0x2203 // CALG_ECDSA
+	// bcrypt.h
+	bcryptRsaPubMagic  = 0x31415352 // BCRYPT_RSAPUBLIC_MAGIC
+	bcryptEcdsaPubP256 = 0x31534345 // BCRYPT_ECDSA_PUBLIC_P256_MAGIC
+	bcryptEcdsaPubP384 = 0x33534345 // BCRYPT_ECDSA_PUBLIC_P384_MAGIC
+	bcryptEcdsaPubP521 = 0x35534345 // BCRYPT_ECDSA_PUBLIC_P521_MAGIC
 )
 
-type SnkHeader struct {
+type snkHeader struct {
 	PubAlgorithm  uint32
 	HashAlgorithm uint32
 	BlobSize      uint32
+	KeyType       uint8
+	Version       uint8
+	Reserved      uint16
+	PubAlgorithm2 uint32
 }
 
-type SnkRsaPubKey struct {
-	SnkHeader
-	KeyType      uint8
-	Version      uint8
-	Reserved     uint16
-	PubAlgorithm uint32
-	KeyMagic     uint32
-	BitLength    uint32
-	PubExponent  uint32
-}
+type blobRsaPub struct {
+	snkHeader
+	// BCRYPT_RSAKEY_BLOB
+	KeyMagic    uint32
+	BitLength   uint32
+	PubExponent uint32
+} // N [BitLength/8]byte
+
+type blobEcdsaPub struct {
+	snkHeader
+	// BCRYPT_ECCKEY_BLOB
+	KeyMagic   uint32
+	ByteLength uint32
+} // X, Y [ByteLength]byte
 
 // Calculate the publicKeyToken from a public key. This involves mangling it
 // into a .snk file format, then hashing it.
@@ -94,30 +110,72 @@ func PublicKeyToSnk(pubKey crypto.PublicKey) ([]byte, error) {
 	var buf bytes.Buffer
 	switch k := pubKey.(type) {
 	case *rsa.PublicKey:
-		// convert modulus to little-endian
-		modulus := k.N.Bytes()
-		for i := 0; i < len(modulus)/2; i++ {
-			j := len(modulus) - i - 1
-			modulus[i], modulus[j] = modulus[j], modulus[i]
-		}
-		if err := binary.Write(&buf, binary.LittleEndian, SnkRsaPubKey{
-			SnkHeader: SnkHeader{
-				PubAlgorithm:  SnkAlgRsa,
-				HashAlgorithm: SnkAlgSha1,
+		modulus := bigIntToLE(k.N)
+		if err := binary.Write(&buf, binary.LittleEndian, blobRsaPub{
+			snkHeader: snkHeader{
+				PubAlgorithm:  calgRsaSign,
+				HashAlgorithm: calgSha1,
 				BlobSize:      uint32(20 + len(modulus)),
+				KeyType:       snkRsaPub,
+				Version:       snkRsaVersion,
+				PubAlgorithm2: calgRsaSign,
 			},
-			KeyType:      SnkRsaPub,
-			Version:      SnkRsaVersion,
-			PubAlgorithm: SnkAlgRsa,
-			KeyMagic:     SnkRsaPubMagic,
-			BitLength:    uint32(k.N.BitLen()),
-			PubExponent:  uint32(k.E),
+			KeyMagic:    bcryptRsaPubMagic,
+			BitLength:   uint32(8 * len(modulus)),
+			PubExponent: uint32(k.E),
 		}); err != nil {
 			return nil, nil
 		}
 		buf.Write(modulus)
+	case *ecdsa.PublicKey:
+		// TODO: This is a best guess based on piecing together various
+		// Microsoft documentation and header values, but some pieces are still
+		// missing. ECDSA isn't supported for strong name signing, and
+		// calcuating the publicKeyToken for SN is the only reason this
+		// function is even here.
+		var keyMagic uint32
+		switch k.Curve {
+		case elliptic.P256():
+			keyMagic = bcryptEcdsaPubP256
+		case elliptic.P384():
+			keyMagic = bcryptEcdsaPubP384
+		case elliptic.P521():
+			keyMagic = bcryptEcdsaPubP521
+		default:
+			return nil, errors.New("unsupported ECDSA curve")
+		}
+		// TODO: are these supposed to be big-endian? the documentation for
+		// BCRYPT_ECCKEY_BLOB says so, but it also said that about the RSA one
+		// and yet the SNK format actually uses little endian...
+		x := k.X.Bytes()
+		y := k.Y.Bytes()
+		if err := binary.Write(&buf, binary.LittleEndian, blobEcdsaPub{
+			snkHeader: snkHeader{
+				PubAlgorithm:  calgEcdsa,
+				HashAlgorithm: calgSha1,
+				BlobSize:      uint32(12 + 2*len(x)),
+				KeyType:       snkRsaPub,     // TODO
+				Version:       snkRsaVersion, // TODO
+				PubAlgorithm2: calgEcdsa,
+			},
+			KeyMagic:   keyMagic,
+			ByteLength: uint32(len(x)),
+		}); err != nil {
+			return nil, nil
+		}
+		buf.Write(x)
+		buf.Write(y)
 	default:
 		return nil, errors.New("unsupported key type for strong name signing")
 	}
 	return buf.Bytes(), nil
+}
+
+func bigIntToLE(x *big.Int) []byte {
+	b := x.Bytes()
+	for i := 0; i < len(b)/2; i++ {
+		j := len(b) - i - 1
+		b[i], b[j] = b[j], b[i]
+	}
+	return b
 }

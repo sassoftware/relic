@@ -20,6 +20,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"encoding/asn1"
+	"errors"
 	"fmt"
 	"math/big"
 	"strconv"
@@ -65,6 +66,20 @@ func CurveByOid(oid asn1.ObjectIdentifier) (*CurveDefinition, error) {
 		}
 	}
 	return nil, fmt.Errorf("Unsupported ECDSA curve with OID: %s\nSupported curves: %s", oid, SupportedCurves())
+}
+
+// Get a curve by a dotted decimal OID string
+func CurveByOidString(oidstr string) (*CurveDefinition, error) {
+	parts := strings.Split(oidstr, ".")
+	oid := make(asn1.ObjectIdentifier, 0, len(parts))
+	for _, n := range parts {
+		v, err := strconv.Atoi(n)
+		if err != nil {
+			return nil, errors.New("invalid OID")
+		}
+		oid = append(oid, v)
+	}
+	return CurveByOid(oid)
 }
 
 // Get a curve by the DER encoding of its OID
