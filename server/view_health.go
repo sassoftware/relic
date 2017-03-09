@@ -27,32 +27,30 @@ import (
 	"time"
 )
 
-const HealthCheckInterval = time.Second * 60
-const HealthCheckMaxFailures = 2
-const PingTimeout = time.Second * 15
-
 var (
-	healthStatus   int = HealthCheckMaxFailures
+	healthStatus   int = -1
 	healthLastPing time.Time
 	healthMu       sync.Mutex
 )
 
 func (s *Server) startHealthCheck(force bool) error {
-	if !s.healthCheck() && !force && !s.Config.Server.Disabled {
-		return errors.New("health check failed")
+	if s.Config.Server.TokenCheckInterval > 0 {
+		if !s.healthCheck() && !force {
+			return errors.New("health check failed")
+		}
+		go s.healthCheckLoop()
 	}
-	go s.healthCheckLoop()
 	return nil
 }
 
 func (s *Server) healthCheckLoop() {
-	t := time.NewTimer(HealthCheckInterval)
+	t := time.NewTimer(time.Second * time.Duration(s.Config.Server.TokenCheckInterval))
 	defer t.Stop()
 	for {
 		select {
 		case <-t.C:
 			s.healthCheck()
-			t.Reset(HealthCheckInterval)
+			t.Reset(time.Second * time.Duration(s.Config.Server.TokenCheckInterval))
 		case <-s.Closed:
 			break
 		}
@@ -77,18 +75,13 @@ func (s *Server) healthCheck() bool {
 		}
 	}
 	next := last
-	if s.Config.Server.Disabled {
-		if last != 0 {
-			s.Logf("server is disabled by configuration")
-		}
-		next = 0
-	} else if ok {
+	if ok {
 		if last == 0 {
 			s.Logf("recovered to normal state, status is now OK")
-		} else if last < HealthCheckMaxFailures {
+		} else if last < s.Config.Server.TokenCheckFailures {
 			s.Logf("recovered to normal state")
 		}
-		next = HealthCheckMaxFailures
+		next = s.Config.Server.TokenCheckFailures
 	} else if last > 0 {
 		next--
 		if next == 0 {
@@ -103,7 +96,7 @@ func (s *Server) healthCheck() bool {
 }
 
 func (s *Server) pingOne(tokenName string) bool {
-	ctx, cancel := context.WithTimeout(context.Background(), PingTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*time.Duration(s.Config.Server.TokenCheckTimeout))
 	defer cancel()
 	var output bytes.Buffer
 	proc := exec.CommandContext(ctx, os.Args[0], "ping", "--config", s.Config.Path(), "--token", tokenName)
@@ -123,9 +116,15 @@ func (s *Server) pingOne(tokenName string) bool {
 }
 
 func (s *Server) Healthy(request *http.Request) bool {
+	if s.Config.Server.Disabled {
+		return false
+	}
+	if s.Config.Server.TokenCheckInterval <= 0 {
+		return true
+	}
 	healthMu.Lock()
 	defer healthMu.Unlock()
-	if time.Since(healthLastPing) > 3*HealthCheckInterval {
+	if time.Since(healthLastPing) > 3*time.Second*time.Duration(s.Config.Server.TokenCheckInterval) {
 		if request != nil {
 			s.Logr(request, "error: health check AWOL for %d seconds", time.Since(healthLastPing)/time.Second)
 		}

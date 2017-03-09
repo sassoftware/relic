@@ -81,6 +81,10 @@ type ServerConfig struct {
 	DebugDiskUsage bool
 	Disabled       bool // Always return 503 Service Unavailable
 
+	TokenCheckInterval int
+	TokenCheckFailures int
+	TokenCheckTimeout  int
+
 	// URLs to all servers in the cluster. If a client uses DirectoryUrl to
 	// point to this server (or a load balancer), then we will give them these
 	// URLs as a means to distribute load without needing a middle-box.
