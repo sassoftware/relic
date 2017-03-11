@@ -80,6 +80,8 @@ func (t *msiTransformer) GetReader() (io.Reader, int64, error) {
 
 // apply a signed PKCS#7 blob to an already-open MSI document
 func (t *msiTransformer) Apply(dest, mimeType string, result io.Reader) error {
+	t.cdf.Close()
+	t.f.Close()
 	blob, err := ioutil.ReadAll(result)
 	if err != nil {
 		return err

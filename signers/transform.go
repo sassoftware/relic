@@ -94,6 +94,7 @@ func (p fileProducer) Apply(dest, mimetype string, result io.Reader) error {
 		if _, err := io.Copy(f, result); err != nil {
 			return err
 		}
+		p.f.Close()
 		return f.Commit()
 	}
 }

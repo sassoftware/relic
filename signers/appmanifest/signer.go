@@ -21,11 +21,14 @@ package appmanifest
 // other Microsoft signatures, does not use an Authenticode PKCS#7 structure.
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
+	"time"
 
+	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/appmanifest"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/audit"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
@@ -65,10 +68,39 @@ func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]b
 	if err != nil {
 		return nil, err
 	}
+	tconf := opts.TimestampConfig
+	if tconf != nil {
+		if len(tconf.MsUrls) == 0 {
+			return nil, errors.New("Need 1 or more MsUrls defined in Timestamp configuration in order to create old-style counter-signatures")
+		}
+		cl := pkcs9.TimestampClient{
+			UserAgent: config.UserAgent,
+			CaFile:    tconf.CaCert,
+			Timeout:   time.Second * time.Duration(tconf.Timeout),
+		}
+		var token *pkcs7.ContentInfoSignedData
+		for _, url := range tconf.MsUrls {
+			cl.Url = url
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Timestamping failed: %s\nTrying next server %s...\n", err, cl.Url)
+			}
+			token, err = cl.MicrosoftRequest(signed.EncryptedDigest)
+			if err == nil {
+				break
+			}
+		}
+		if err != nil {
+			return nil, fmt.Errorf("Timestamping failed: %s", err)
+		}
+		if err := signed.AddTimestamp(token); err != nil {
+			return nil, err
+		}
+	}
 	opts.Audit.SetMimeType("application/xml")
 	opts.Audit.Attributes["assembly.name"] = signed.AssemblyName
 	opts.Audit.Attributes["assembly.version"] = signed.AssemblyVersion
 	opts.Audit.Attributes["assembly.publicKeyToken"] = signed.PublicKeyToken
+	opts.Audit.SetCounterSignature(signed.Signature.CounterSignature)
 	return signed.Signed, nil
 }
 
@@ -82,13 +114,8 @@ func verify(f *os.File, opts signers.VerifyOpts) ([]*signers.Signature, error) {
 		return nil, err
 	}
 	return []*signers.Signature{&signers.Signature{
-		Package: fmt.Sprintf("%s %s", sig.AssemblyName, sig.AssemblyVersion),
-		Hash:    sig.Hash,
-		X509Signature: &pkcs9.TimestampedSignature{
-			Signature: pkcs7.Signature{
-				Certificate:   sig.Leaf,
-				Intermediates: sig.Certificates,
-			},
-		},
+		Package:       fmt.Sprintf("%s %s", sig.AssemblyName, sig.AssemblyVersion),
+		Hash:          sig.Hash,
+		X509Signature: sig.Signature,
 	}}, nil
 }

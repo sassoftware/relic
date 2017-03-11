@@ -17,6 +17,7 @@
 package pkcs9
 
 import (
+	"bytes"
 	"crypto"
 	"crypto/x509"
 	"errors"
@@ -172,4 +173,30 @@ func (sig TimestampedSignature) VerifyChain(roots *x509.CertPool, extraCerts []*
 		signingTime = sig.CounterSignature.SigningTime
 	}
 	return sig.Signature.VerifyChain(roots, extraCerts, usage, signingTime)
+}
+
+// Verify a non-RFC-3161 timestamp token against the given encrypted digest
+// from the primary signature.
+func VerifyMicrosoftToken(token *pkcs7.ContentInfoSignedData, encryptedDigest []byte) (*CounterSignature, error) {
+	sig, err := token.Content.Verify(nil, false)
+	if err != nil {
+		return nil, err
+	}
+	content, err := token.Content.ContentInfo.Bytes()
+	if err != nil {
+		return nil, err
+	}
+	if !bytes.Equal(content, encryptedDigest) {
+		return nil, errors.New("timestamp does not match the enclosing signature")
+	}
+	hash, _ := x509tools.PkixDigestToHash(sig.SignerInfo.DigestAlgorithm)
+	var signingTime time.Time
+	if err := sig.SignerInfo.AuthenticatedAttributes.GetOne(pkcs7.OidAttributeSigningTime, &signingTime); err != nil {
+		return nil, err
+	}
+	return &CounterSignature{
+		Signature:   sig,
+		Hash:        hash,
+		SigningTime: signingTime,
+	}, nil
 }

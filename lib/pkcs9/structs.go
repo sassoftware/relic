@@ -57,6 +57,7 @@ var (
 	OidAttributeTimeStampToken = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 9, 16, 2, 14}
 	OidAttributeCounterSign    = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 9, 6}
 
+	OidSpcTimeStampRequest = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 3, 2, 1}
 	// undocumented(?) alternative to OidAttributeTimeStampToken found in Authenticode signatures
 	OidSpcTimeStampToken = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 3, 3, 1}
 )

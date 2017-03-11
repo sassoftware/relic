@@ -17,12 +17,16 @@
 package appmanifest
 
 import (
+	"bytes"
 	"crypto"
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
+	"fmt"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs7"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs9"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/xmldsig"
 	"github.com/beevik/etree"
 )
@@ -35,7 +39,8 @@ const (
 
 type SignedManifest struct {
 	ManifestSignature
-	Signed []byte
+	Signed          []byte
+	EncryptedDigest []byte
 }
 
 // Sign an application manifest
@@ -68,7 +73,7 @@ func Sign(manifest []byte, cert *certloader.Certificate, opts crypto.SignerOpts)
 	if err := xmldsig.Sign(license, sigDestNode, opts.HashFunc(), cert.Signer(), cert.Chain(), sigopts); err != nil {
 		return nil, err
 	}
-	setSigIds(sigDestNode, "AuthenticodeSignature", "")
+	aSig, _ := setSigIds(sigDestNode, "AuthenticodeSignature", "")
 	// Attach authenticode to the primary document
 	license.AddChild(sigDestNode)
 	reldata := keyinfo.CreateElement("msrel:RelData")
@@ -79,13 +84,18 @@ func Sign(manifest []byte, cert *certloader.Certificate, opts crypto.SignerOpts)
 	if err != nil {
 		return nil, err
 	}
+	// Get authenticode signature value for timestamping
+	encryptedDigest, _ := base64.StdEncoding.DecodeString(aSig.SelectElement("SignatureValue").Text())
 	return &SignedManifest{
-		Signed: signed,
+		Signed:          signed,
+		EncryptedDigest: encryptedDigest,
 		ManifestSignature: ManifestSignature{
+			Signature: &pkcs9.TimestampedSignature{Signature: pkcs7.Signature{
+				Certificate:   cert.Leaf,
+				Intermediates: cert.Chain(),
+			}},
 			AssemblyName:    asi.SelectAttrValue("name", ""),
 			AssemblyVersion: asi.SelectAttrValue("version", ""),
-			Leaf:            cert.Leaf,
-			Certificates:    cert.Chain(),
 			Hash:            opts.HashFunc(),
 			PublicKeyToken:  asi.SelectAttrValue("publicKeyToken", ""),
 		}}, nil
@@ -165,4 +175,45 @@ func setSigIds(root *etree.Element, sigName, keyinfoName string) (sig, keyinfo *
 		keyinfo.CreateAttr("Id", keyinfoName)
 	}
 	return sig, keyinfo
+}
+
+// Attach a timestamp counter-signature
+func (m *SignedManifest) AddTimestamp(token *pkcs7.ContentInfoSignedData) error {
+	doc := etree.NewDocument()
+	if err := doc.ReadFromString(string(m.Signed)); err != nil {
+		return err
+	}
+	aSig := doc.Root().FindElement("Signature/KeyInfo/msrel:RelData/r:license/r:issuer/Signature")
+	if aSig == nil {
+		return errors.New("manifest has no authenticode signature")
+	}
+	siblob, err := token.Marshal()
+	if err != nil {
+		return err
+	}
+	lines := (47 + len(siblob)) / 48
+	buf := bytes.NewBuffer(make([]byte, 0, (64+2)*lines))
+	for len(siblob) > 0 {
+		n := len(siblob)
+		if n > 48 {
+			n = 48
+		}
+		chunk := siblob[:n]
+		siblob = siblob[n:]
+
+		buf.WriteString(base64.StdEncoding.EncodeToString(chunk))
+		buf.WriteString("\r\n")
+	}
+	aSig.CreateElement("Object").CreateElement("as:Timestamp").SetText(buf.String())
+	signed, err := doc.WriteToBytes()
+	if err != nil {
+		return err
+	}
+	cs, err := pkcs9.VerifyMicrosoftToken(token, m.EncryptedDigest)
+	if err != nil {
+		return fmt.Errorf("failed to validate timestamp: %s", err)
+	}
+	m.Signed = signed
+	m.Signature.CounterSignature = cs
+	return nil
 }

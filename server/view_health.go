@@ -28,13 +28,14 @@ import (
 )
 
 var (
-	healthStatus   int = -1
+	healthStatus   int
 	healthLastPing time.Time
 	healthMu       sync.Mutex
 )
 
 func (s *Server) startHealthCheck(force bool) error {
 	if s.Config.Server.TokenCheckInterval > 0 {
+		healthStatus = s.Config.Server.TokenCheckFailures
 		if !s.healthCheck() && !force {
 			return errors.New("health check failed")
 		}

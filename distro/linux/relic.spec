@@ -70,6 +70,10 @@ fi
 %postun
 if [ $1 -ge 1 ] ; then
         # upgrade, not removal
-        systemctl try-restart relic.service >/dev/null 2>&1 || :
-        systemctl try-restart relic-audit.service >/dev/null 2>&1 || :
+        if ! [ -f /etc/relic/relic.yml.rpmsave ]; then
+            systemctl try-restart relic.service >/dev/null 2>&1 || :
+        fi
+        if ! [ -f /etc/relic/audit.yml.rpmsave ]; then
+            systemctl try-restart relic-audit.service >/dev/null 2>&1 || :
+        fi
 fi

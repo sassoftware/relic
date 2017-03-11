@@ -18,22 +18,23 @@ package appmanifest
 
 import (
 	"crypto"
-	"crypto/x509"
+	"encoding/base64"
 	"errors"
 	"fmt"
 
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs7"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs9"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/xmldsig"
 	"github.com/beevik/etree"
 )
 
 type ManifestSignature struct {
+	Signature       *pkcs9.TimestampedSignature
+	Hash            crypto.Hash
 	AssemblyName    string
 	AssemblyVersion string
 	PublicKeyToken  string
-	Leaf            *x509.Certificate
-	Certificates    []*x509.Certificate
-	Hash            crypto.Hash
 }
 
 // Extract and verify signature on an application manifest. Does not verify X509 chains.
@@ -69,21 +70,36 @@ func Verify(manifest []byte) (*ManifestSignature, error) {
 	if token2 := asi.SelectAttrValue("publicKeyToken", ""); token2 != token {
 		return nil, fmt.Errorf("publicKeyToken mismatch: expected %s, got %s", token, token2)
 	}
-	var leaf *x509.Certificate
+	sig := pkcs7.Signature{Intermediates: secondary.Certificates}
 	for _, cert := range secondary.Certificates {
 		if x509tools.SameKey(cert.PublicKey, primary.PublicKey) {
-			leaf = cert
+			sig.Certificate = cert
 			break
 		}
 	}
-	if leaf == nil {
+	if sig.Certificate == nil {
 		return nil, errors.New("leaf x509 certificate not found")
 	}
+	ts := &pkcs9.TimestampedSignature{Signature: sig}
+	if tse := license.FindElement("r:issuer/Signature/Object/as:Timestamp"); tse != nil {
+		blob, err := base64.StdEncoding.DecodeString(tse.Text())
+		if err != nil {
+			return nil, fmt.Errorf("invalid timestamp: %s", err)
+		}
+		timestamp, err := pkcs7.Unmarshal(blob)
+		if err != nil {
+			return nil, fmt.Errorf("invalid timestamp: %s", err)
+		}
+		cs, err := pkcs9.VerifyMicrosoftToken(timestamp, secondary.EncryptedDigest)
+		if err != nil {
+			return nil, fmt.Errorf("invalid timestamp: %s", err)
+		}
+		ts.CounterSignature = cs
+	}
 	return &ManifestSignature{
+		Signature:       ts,
 		AssemblyName:    asi.SelectAttrValue("name", ""),
 		AssemblyVersion: asi.SelectAttrValue("version", ""),
-		Leaf:            leaf,
-		Certificates:    secondary.Certificates,
 		Hash:            primary.Hash,
 		PublicKeyToken:  token,
 	}, nil

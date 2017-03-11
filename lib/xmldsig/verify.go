@@ -35,9 +35,10 @@ import (
 )
 
 type XmlSignature struct {
-	PublicKey    crypto.PublicKey
-	Certificates []*x509.Certificate
-	Hash         crypto.Hash
+	PublicKey       crypto.PublicKey
+	Certificates    []*x509.Certificate
+	Hash            crypto.Hash
+	EncryptedDigest []byte
 }
 
 // Extract and verify an enveloped signature at the given root
@@ -118,7 +119,7 @@ func Verify(root *etree.Element, sigpath string) (*XmlSignature, error) {
 		}
 		certs = append(certs, cert)
 	}
-	return &XmlSignature{pubkey, certs, hash}, nil
+	return &XmlSignature{pubkey, certs, hash, sigv}, nil
 }
 
 func parseAlgs(hashAlg, sigAlg string) (crypto.Hash, string, error) {

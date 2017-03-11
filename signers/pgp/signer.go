@@ -64,6 +64,7 @@ type pgpTransformer struct {
 	clearsign bool
 	size      int64
 	stream    io.ReadSeeker
+	closer    io.Closer
 }
 
 func transform(f *os.File, opts signers.SignOpts) (signers.Transformer, error) {
@@ -81,7 +82,7 @@ func transform(f *os.File, opts signers.SignOpts) (signers.Transformer, error) {
 		stream = bytes.NewReader(contents)
 		size = int64(len(contents))
 	}
-	return &pgpTransformer{clearsign, size, stream}, nil
+	return &pgpTransformer{clearsign, size, stream, f}, nil
 }
 
 func (t *pgpTransformer) GetReader() (io.Reader, int64, error) {
@@ -150,6 +151,7 @@ func (t *pgpTransformer) Apply(dest, mimeType string, result io.Reader) error {
 			return err
 		}
 	}
+	t.closer.Close()
 	return outfile.Commit()
 }
 

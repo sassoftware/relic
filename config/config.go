@@ -106,6 +106,7 @@ type RemoteConfig struct {
 
 type TimestampConfig struct {
 	Urls    []string // List of timestamp server URLs
+	MsUrls  []string // List of microsoft-style URLs
 	Timeout int      // Connect timeout in seconds
 	CaCert  string   // Path to CA certificate
 }
