@@ -24,6 +24,7 @@ import (
 	_ "gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/verify"
 
 	_ "gerrit-pdt.unx.sas.com/tools/relic.git/signers/appmanifest"
+	_ "gerrit-pdt.unx.sas.com/tools/relic.git/signers/appx"
 	_ "gerrit-pdt.unx.sas.com/tools/relic.git/signers/cab"
 	_ "gerrit-pdt.unx.sas.com/tools/relic.git/signers/cat"
 	_ "gerrit-pdt.unx.sas.com/tools/relic.git/signers/deb"
