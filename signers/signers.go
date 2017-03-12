@@ -110,10 +110,10 @@ func (s *Signature) SignerName() string {
 		return s.Signer
 	}
 	if s.X509Signature != nil {
-		return x509tools.FormatSubject(s.X509Signature.Certificate)
+		return fmt.Sprintf("`%s`", x509tools.FormatSubject(s.X509Signature.Certificate))
 	}
 	if s.SignerPgp != nil {
-		return fmt.Sprintf("%s(%x)", pgptools.EntityName(s.SignerPgp), s.SignerPgp.PrimaryKey.KeyId)
+		return fmt.Sprintf("`%s`(%x)", pgptools.EntityName(s.SignerPgp), s.SignerPgp.PrimaryKey.KeyId)
 	}
 	return "UNKNOWN"
 }

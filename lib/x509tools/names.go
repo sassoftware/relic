@@ -36,7 +36,8 @@ type rdnNameSet []rdnAttr
 type NameStyle int
 
 const (
-	NameStyleLdap NameStyle = iota
+	NameStyleOpenSsl NameStyle = iota
+	NameStyleLdap
 	NameStyleMsOsco
 )
 
@@ -99,10 +100,6 @@ func FormatPkixName(der []byte, style NameStyle) string {
 	if _, err := asn1.Unmarshal(der, &seq); err != nil {
 		return InvalidName
 	}
-	multi := false
-	if style == NameStyleLdap {
-		multi = true
-	}
 	seqbytes := seq.Bytes
 	var formatted []string
 	for len(seqbytes) > 0 {
@@ -112,24 +109,22 @@ func FormatPkixName(der []byte, style NameStyle) string {
 		if err != nil {
 			return InvalidName
 		}
-		var elems []string
 		for _, attr := range rdnSet {
-			elems = append(elems, fmt.Sprintf("%s=%s", attName(attr.Type, style), attValue(attr.Value, style)))
-		}
-		if multi {
-			rdnf := strings.Join(elems, "+")
-			formatted = append(formatted, rdnf)
-		} else {
-			formatted = append(formatted, elems...)
+			formatted = append(formatted, fmt.Sprintf("%s=%s", attName(attr.Type, style), attValue(attr.Value, style)))
 		}
 	}
 	if len(formatted) == 0 {
 		return ""
 	}
 	switch style {
-	case NameStyleLdap:
+	case NameStyleOpenSsl:
 		return "/" + strings.Join(formatted, "/") + "/"
-	case NameStyleMsOsco:
+	case NameStyleLdap, NameStyleMsOsco:
+		// Per RFC 2253 2.1, reverse the order
+		for i := 0; i < len(formatted)/2; i++ {
+			j := len(formatted) - i - 1
+			formatted[i], formatted[j] = formatted[j], formatted[i]
+		}
 		return strings.Join(formatted, ", ")
 	default:
 		panic("invalid style argument")
@@ -140,7 +135,7 @@ func attName(t asn1.ObjectIdentifier, style NameStyle) string {
 	var names []attrName
 	var defaultPrefix string
 	switch style {
-	case NameStyleLdap:
+	case NameStyleLdap, NameStyleOpenSsl:
 		names = nameStyleLdap
 	case NameStyleMsOsco:
 		names = nameStyleMsOsco
@@ -175,9 +170,9 @@ func attValue(raw asn1.RawValue, style NameStyle) string {
 		return InvalidName
 	}
 	switch style {
-	case NameStyleLdap:
+	case NameStyleOpenSsl:
 		value = strings.Replace(value, "/", "\\/", -1)
-	case NameStyleMsOsco:
+	case NameStyleLdap, NameStyleMsOsco:
 		quote := false
 		if len(value) == 0 {
 			quote = true

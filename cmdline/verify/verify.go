@@ -111,7 +111,7 @@ func verifyOne(path string, opts signers.VerifyOpts) error {
 		}
 		if sig.X509Signature != nil && sig.X509Signature.CounterSignature != nil {
 			fmt.Printf("%s: OK -%s %s%s\n", path, si, pkg, sig.SignerName())
-			fmt.Printf("%s(timestamp): OK - %s [%s]\n", path, x509tools.FormatSubject(sig.X509Signature.CounterSignature.Certificate), sig.X509Signature.CounterSignature.SigningTime)
+			fmt.Printf("%s(timestamp): OK - `%s` [%s]\n", path, x509tools.FormatSubject(sig.X509Signature.CounterSignature.Certificate), sig.X509Signature.CounterSignature.SigningTime)
 		} else {
 			if !sig.CreationTime.IsZero() {
 				ts = fmt.Sprintf(" [%s]", sig.CreationTime)
