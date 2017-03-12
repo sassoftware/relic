@@ -38,6 +38,8 @@ type PEDigest struct {
 	markers    *peHeaderValues
 }
 
+const dosHeaderSize = 64
+
 // Calculate a digest (message imprint) over a PE image. Returns a structure
 // that can be used to sign the imprint and produce a binary patch to apply the
 // signature.
@@ -48,7 +50,7 @@ func DigestPE(r io.Reader, hash crypto.Hash, doPageHash bool) (*PEDigest, error)
 	if err != nil {
 		return nil, err
 	}
-	if _, err := io.CopyN(buf, r, peStart-96); err != nil {
+	if _, err := io.CopyN(buf, r, peStart-dosHeaderSize); err != nil {
 		return nil, err
 	}
 	fh, err := readCoffHeader(r, buf)
@@ -177,7 +179,7 @@ func (h *imageHasher) addPageHash(offset uint32, blob []byte, removed int) {
 }
 
 func readDosHeader(r io.Reader, d io.Writer) (int64, error) {
-	dosheader, err := readAndHash(r, d, 96)
+	dosheader, err := readAndHash(r, d, dosHeaderSize)
 	if err != nil {
 		return 0, err
 	} else if dosheader[0] != 'M' || dosheader[1] != 'Z' {
