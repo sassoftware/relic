@@ -29,7 +29,6 @@ import (
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/comdoc"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/magic"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/signers"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/signers/pkcs"
 )
 
 var MsiSigner = &signers.Signer{
@@ -111,11 +110,11 @@ func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]b
 	if err != nil {
 		return nil, err
 	}
-	psd, err := authenticode.SignMSIImprint(sum, opts.Hash, cert.Signer(), cert.Chain())
+	ts, err := authenticode.SignMSIImprint(sum, opts.Hash, cert)
 	if err != nil {
 		return nil, err
 	}
-	return pkcs.Timestamp(psd, cert, opts, true)
+	return opts.SetPkcs7(ts)
 }
 
 func verify(f *os.File, opts signers.VerifyOpts) ([]*signers.Signature, error) {

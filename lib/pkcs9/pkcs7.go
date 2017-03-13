@@ -28,6 +28,45 @@ import (
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
 )
 
+type Timestamper interface {
+	Timestamp(psd *pkcs7.ContentInfoSignedData) (token *pkcs7.ContentInfoSignedData, err error)
+}
+
+func TimestampAndMarshal(psd *pkcs7.ContentInfoSignedData, timestamper Timestamper, authenticode bool) (*TimestampedSignature, error) {
+	if timestamper != nil {
+		token, err := timestamper.Timestamp(psd)
+		if err != nil {
+			return nil, err
+		}
+		if token != nil {
+			signerInfo := &psd.Content.SignerInfos[0]
+			var err error
+			if authenticode {
+				err = AddStampToSignedAuthenticode(signerInfo, *token)
+			} else {
+				err = AddStampToSignedData(signerInfo, *token)
+			}
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	verified, err := psd.Content.Verify(nil, false)
+	if err != nil {
+		return nil, fmt.Errorf("pkcs7: failed signature self-check: %s", err)
+	}
+	ts, err := VerifyOptionalTimestamp(verified)
+	if err != nil {
+		return nil, fmt.Errorf("pkcs7: failed signature self-check: %s", err)
+	}
+	blob, err := psd.Marshal()
+	if err != nil {
+		return nil, err
+	}
+	ts.Raw = blob
+	return &ts, err
+}
+
 // Attach a RFC 3161 timestamp to a PKCS#7 SignerInfo
 func AddStampToSignedData(signerInfo *pkcs7.SignerInfo, token pkcs7.ContentInfoSignedData) error {
 	return signerInfo.UnauthenticatedAttributes.Add(OidAttributeTimeStampToken, token)
@@ -49,6 +88,7 @@ type CounterSignature struct {
 type TimestampedSignature struct {
 	pkcs7.Signature
 	CounterSignature *CounterSignature
+	Raw              []byte
 }
 
 // Look for a timestamp (counter-signature or timestamp token) in the

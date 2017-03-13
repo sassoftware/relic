@@ -18,15 +18,15 @@ package authenticode
 
 import (
 	"crypto"
-	"crypto/x509"
 
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/comdoc"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs7"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs9"
 )
 
 // Create the Authenticode structure for a MSI file signature using a previously-calculated digest (imprint).
-func SignMSIImprint(digest []byte, hash crypto.Hash, privKey crypto.Signer, certs []*x509.Certificate) (*pkcs7.ContentInfoSignedData, error) {
-	return SignSip(digest, hash, msiSipInfo, privKey, certs)
+func SignMSIImprint(digest []byte, hash crypto.Hash, cert *certloader.Certificate) (*pkcs9.TimestampedSignature, error) {
+	return SignSip(digest, hash, msiSipInfo, cert)
 }
 
 // Add a signature blob to an open MSI file. The extended signature blob is

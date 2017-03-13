@@ -30,10 +30,10 @@ import (
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/magic"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs7"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs9"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/signjar"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/signers"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/signers/pkcs"
 )
 
 var JarSigner = &signers.Signer{
@@ -141,7 +141,11 @@ func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]b
 	if err != nil {
 		return nil, err
 	}
-	return pkcs.Timestamp(psd, cert, opts, false)
+	ts, err := pkcs9.TimestampAndMarshal(psd, cert.Timestamper, false)
+	if err != nil {
+		return nil, err
+	}
+	return opts.SetPkcs7(ts)
 }
 
 func verify(f *os.File, opts signers.VerifyOpts) ([]*signers.Signature, error) {

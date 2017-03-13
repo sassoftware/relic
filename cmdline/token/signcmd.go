@@ -30,6 +30,7 @@ import (
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/audit"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/signers"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/signers/pkcs"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/signers/sigerrors"
 	"github.com/spf13/cobra"
 )
@@ -90,11 +91,12 @@ func signCmd(cmd *cobra.Command, args []string) error {
 		ai.Attributes["client.filename"] = path.Base(argFile)
 	}
 	opts := signers.SignOpts{
-		Path:  argFile,
-		Hash:  hash,
-		Time:  time.Now().UTC(),
-		Flags: flags,
-		Audit: ai,
+		Path:         argFile,
+		Hash:         hash,
+		Time:         time.Now().UTC(),
+		Flags:        flags,
+		FlagOverride: make(map[string]string),
+		Audit:        ai,
 	}
 	if err := setTimestamper(&opts); err != nil {
 		return shared.Fail(err)
@@ -168,6 +170,9 @@ func openCert(mod *signers.Signer, hash crypto.Hash) (*certloader.Certificate, *
 	}
 	if cert.PgpKey != nil {
 		ai.SetPgpCert(cert.PgpKey)
+	}
+	if keyConf, err := shared.CurrentConfig.GetKey(argKeyName); err == nil && keyConf.Timestamp {
+		cert.Timestamper = pkcs.Timestamper{Config: shared.CurrentConfig.Timestamp}
 	}
 	return cert, ai, nil
 }

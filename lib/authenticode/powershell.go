@@ -21,7 +21,6 @@ import (
 	"bytes"
 	"crypto"
 	"crypto/hmac"
-	"crypto/x509"
 	"encoding/base64"
 	"encoding/binary"
 	"errors"
@@ -33,6 +32,7 @@ import (
 	"unicode/utf16"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/binpatch"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs7"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs9"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
@@ -242,8 +242,16 @@ func VerifyPowershell(r io.ReadSeeker, style PsSigStyle, skipDigests bool) (*pkc
 }
 
 // Sign a previously digested PowerShell script and return the Authenticode structure
-func (pd *PsDigest) Sign(privKey crypto.Signer, certs []*x509.Certificate) (*pkcs7.ContentInfoSignedData, error) {
-	return SignSip(pd.Imprint, pd.HashFunc, psSipInfo, privKey, certs)
+func (pd *PsDigest) Sign(cert *certloader.Certificate) (*binpatch.PatchSet, *pkcs9.TimestampedSignature, error) {
+	ts, err := SignSip(pd.Imprint, pd.HashFunc, psSipInfo, cert)
+	if err != nil {
+		return nil, nil, err
+	}
+	patch, err := pd.MakePatch(ts.Raw)
+	if err != nil {
+		return nil, nil, err
+	}
+	return patch, ts, nil
 }
 
 // Create a patchset that will add or replace the signature on the digested script

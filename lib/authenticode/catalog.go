@@ -18,7 +18,6 @@ package authenticode
 
 import (
 	"crypto"
-	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
 	"encoding/binary"
@@ -27,7 +26,9 @@ import (
 	"time"
 	"unicode/utf16"
 
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs7"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs9"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
 	"github.com/satori/go.uuid"
 )
@@ -64,15 +65,19 @@ func (cat *Catalog) Marshal() ([]byte, error) {
 	return asn1.Marshal(cat.makeCatalog())
 }
 
-func (cat *Catalog) Sign(privKey crypto.Signer, certs []*x509.Certificate) (*pkcs7.ContentInfoSignedData, error) {
-	sig := pkcs7.NewBuilder(privKey, certs, cat.Hash)
+func (cat *Catalog) Sign(cert *certloader.Certificate) (*pkcs9.TimestampedSignature, error) {
+	sig := pkcs7.NewBuilder(cert.Signer(), cert.Chain(), cat.Hash)
 	if err := sig.SetContent(OidCertTrustList, cat.makeCatalog()); err != nil {
 		return nil, err
 	}
 	if err := addOpusAttrs(sig); err != nil {
 		return nil, err
 	}
-	return sig.Sign()
+	psd, err := sig.Sign()
+	if err != nil {
+		return nil, err
+	}
+	return pkcs9.TimestampAndMarshal(psd, cert.Timestamper, true)
 }
 
 func (cat *Catalog) Add(indirect SpcIndirectDataContentPe) error {

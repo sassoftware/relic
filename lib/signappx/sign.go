@@ -18,14 +18,14 @@ package signappx
 
 import (
 	"bytes"
-	"crypto"
 	"crypto/x509"
 	"errors"
 	"time"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/authenticode"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/binpatch"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs7"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs9"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/zipslicer"
 )
 
@@ -34,39 +34,31 @@ var (
 	appxSipInfo        = authenticode.SpcSipInfo{0x1010000, SpcUuidSipInfoAppx, 0, 0, 0, 0, 0}
 )
 
-func (i *AppxDigest) SignCatalog(privKey crypto.Signer, certs []*x509.Certificate) (*pkcs7.ContentInfoSignedData, error) {
-	if len(i.peDigests) == 0 {
-		return nil, nil
-	}
-	cat := authenticode.NewCatalog(i.Hash)
-	for _, d := range i.peDigests {
-		indirect, err := d.GetIndirect()
-		if err != nil {
-			return nil, err
-		}
-		if err := cat.Add(indirect); err != nil {
-			return nil, err
-		}
-	}
-	return cat.Sign(privKey, certs)
-}
-
-// Sign a previously consumed appx tar, producing a appx signature tar
-func (i *AppxDigest) Sign(catalog []byte, privKey crypto.Signer, certs []*x509.Certificate) (*pkcs7.ContentInfoSignedData, error) {
+func (i *AppxDigest) Sign(cert *certloader.Certificate) (patch *binpatch.PatchSet, priSig, catSig *pkcs9.TimestampedSignature, err error) {
 	i.now = time.Now().UTC()
-	if err := i.writeManifest(certs[0]); err != nil {
-		return nil, err
+	if err := i.writeManifest(cert.Leaf); err != nil {
+		return nil, nil, nil, err
 	}
 	if err := i.writeBlockMap(); err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
 	if err := i.writeContentTypes(); err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
-	if err := i.writeCodeIntegrity(catalog); err != nil {
-		return nil, err
+	catSig, err = i.writeCodeIntegrity(cert)
+	if err != nil {
+		return nil, nil, nil, err
 	}
-	return i.writeSignature(privKey, certs)
+	ts, err := i.writeSignature(cert)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	if err := i.outz.WriteDirectory(&i.patchBuf); err != nil {
+		return nil, nil, nil, err
+	}
+	patch = binpatch.New()
+	patch.Add(i.patchStart, uint32(i.patchLen), i.patchBuf.Bytes())
+	return patch, ts, catSig, nil
 }
 
 func (i *AppxDigest) addZipEntry(name string, contents []byte) error {
@@ -133,20 +125,35 @@ func (i *AppxDigest) writeContentTypes() error {
 	return nil
 }
 
-func (i *AppxDigest) writeCodeIntegrity(catalog []byte) error {
-	if len(catalog) == 0 {
-		return nil
+func (i *AppxDigest) writeCodeIntegrity(cert *certloader.Certificate) (*pkcs9.TimestampedSignature, error) {
+	if len(i.peDigests) == 0 {
+		return nil, nil
 	}
+	cat := authenticode.NewCatalog(i.Hash)
+	for _, d := range i.peDigests {
+		indirect, err := d.GetIndirect()
+		if err != nil {
+			return nil, err
+		}
+		if err := cat.Add(indirect); err != nil {
+			return nil, err
+		}
+	}
+	ts, err := cat.Sign(cert)
+	if err != nil {
+		return nil, err
+	}
+	catalog := ts.Raw
 	if err := i.addZipEntry(appxCodeIntegrity, catalog); err != nil {
-		return err
+		return nil, err
 	}
 	d := i.Hash.New()
 	d.Write(catalog)
 	i.axci = d.Sum(nil)
-	return nil
+	return ts, nil
 }
 
-func (i *AppxDigest) writeSignature(privKey crypto.Signer, certs []*x509.Certificate) (*pkcs7.ContentInfoSignedData, error) {
+func (i *AppxDigest) writeSignature(cert *certloader.Certificate) (*pkcs9.TimestampedSignature, error) {
 	axcd := i.Hash.New()
 	if err := i.outz.WriteDirectory(axcd); err != nil {
 		return nil, err
@@ -165,20 +172,15 @@ func (i *AppxDigest) writeSignature(privKey crypto.Signer, certs []*x509.Certifi
 		digest.WriteString("AXCI")
 		digest.Write(i.axci)
 	}
-	return authenticode.SignSip(digest.Bytes(), i.Hash, appxSipInfo, privKey, certs)
-}
-
-func (i *AppxDigest) MakePatch(pkcs []byte) (*binpatch.PatchSet, error) {
-	pkcx := make([]byte, 4, 4+len(pkcs))
+	ts, err := authenticode.SignSip(digest.Bytes(), i.Hash, appxSipInfo, cert)
+	if err != nil {
+		return nil, err
+	}
+	pkcx := make([]byte, 4, 4+len(ts.Raw))
 	copy(pkcx, "PKCX")
-	pkcx = append(pkcx, pkcs...)
+	pkcx = append(pkcx, ts.Raw...)
 	if err := i.addZipEntry(appxSignature, pkcx); err != nil {
 		return nil, err
 	}
-	if err := i.outz.WriteDirectory(&i.patchBuf); err != nil {
-		return nil, err
-	}
-	patch := binpatch.New()
-	patch.Add(i.patchStart, uint32(i.patchLen), i.patchBuf.Bytes())
-	return patch, nil
+	return ts, nil
 }

@@ -29,7 +29,6 @@ import (
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/signappx"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/signers"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/signers/pkcs"
 	//"gerrit-pdt.unx.sas.com/tools/relic.git/signers/pkcs"
 )
 
@@ -84,27 +83,11 @@ func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]b
 	if err != nil {
 		return nil, err
 	}
-	var catblob []byte
-	if catalog, err := digest.SignCatalog(cert.Signer(), cert.Chain()); err != nil {
-		return nil, err
-	} else if catalog != nil {
-		catblob, err = pkcs.Timestamp(catalog, cert, opts, true)
-		if err != nil {
-			return nil, err
-		}
-	}
-	psd, err := digest.Sign(catblob, cert.Signer(), cert.Chain())
+	patch, priSig, _, err := digest.Sign(cert)
 	if err != nil {
 		return nil, err
 	}
-	blob, err := pkcs.Timestamp(psd, cert, opts, true)
-	if err != nil {
-		return nil, err
-	}
-	patch, err := digest.MakePatch(blob)
-	if err != nil {
-		return nil, err
-	}
+	opts.Audit.SetCounterSignature(priSig.CounterSignature)
 	return opts.SetBinPatch(patch)
 }
 

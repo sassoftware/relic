@@ -29,7 +29,6 @@ import (
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/signers"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/signers/pkcs"
 )
 
 var PsSigner = &signers.Signer{
@@ -74,18 +73,11 @@ func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]b
 	if err != nil {
 		return nil, err
 	}
-	psd, err := digest.Sign(cert.Signer(), cert.Chain())
+	patch, ts, err := digest.Sign(cert)
 	if err != nil {
 		return nil, err
 	}
-	blob, err := pkcs.Timestamp(psd, cert, opts, true)
-	if err != nil {
-		return nil, err
-	}
-	patch, err := digest.MakePatch(blob)
-	if err != nil {
-		return nil, err
-	}
+	opts.Audit.SetCounterSignature(ts.CounterSignature)
 	return opts.SetBinPatch(patch)
 }
 

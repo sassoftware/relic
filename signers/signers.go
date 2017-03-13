@@ -35,6 +35,7 @@ import (
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/magic"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pgptools"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs7"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs9"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
 	"golang.org/x/crypto/openpgp"
@@ -84,6 +85,13 @@ type SignOpts struct {
 func (o SignOpts) SetBinPatch(p *binpatch.PatchSet) ([]byte, error) {
 	o.Audit.SetMimeType(binpatch.MimeType)
 	return p.Dump(), nil
+}
+
+// Convenience method to return a PKCS#7 blob
+func (o SignOpts) SetPkcs7(ts *pkcs9.TimestampedSignature) ([]byte, error) {
+	o.Audit.SetCounterSignature(ts.CounterSignature)
+	o.Audit.SetMimeType(pkcs7.MimeType)
+	return ts.Raw, nil
 }
 
 type VerifyOpts struct {

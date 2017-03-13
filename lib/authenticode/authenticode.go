@@ -18,11 +18,12 @@ package authenticode
 
 import (
 	"crypto"
-	"crypto/x509"
 	"encoding/asn1"
 	"errors"
 
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs7"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs9"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
 )
 
@@ -39,15 +40,19 @@ func makePeIndirect(imprint []byte, hash crypto.Hash, oid asn1.ObjectIdentifier)
 	return
 }
 
-func signIndirect(indirect interface{}, hash crypto.Hash, privKey crypto.Signer, certs []*x509.Certificate) (*pkcs7.ContentInfoSignedData, error) {
-	sig := pkcs7.NewBuilder(privKey, certs, hash)
+func signIndirect(indirect interface{}, hash crypto.Hash, cert *certloader.Certificate) (*pkcs9.TimestampedSignature, error) {
+	sig := pkcs7.NewBuilder(cert.Signer(), cert.Chain(), hash)
 	if err := sig.SetContent(OidSpcIndirectDataContent, indirect); err != nil {
 		return nil, err
 	}
 	if err := addOpusAttrs(sig); err != nil {
 		return nil, err
 	}
-	return sig.Sign()
+	psd, err := sig.Sign()
+	if err != nil {
+		return nil, err
+	}
+	return pkcs9.TimestampAndMarshal(psd, cert.Timestamper, true)
 }
 
 func addOpusAttrs(sig *pkcs7.SignatureBuilder) error {
@@ -60,7 +65,7 @@ func addOpusAttrs(sig *pkcs7.SignatureBuilder) error {
 	return nil
 }
 
-func SignSip(imprint []byte, hash crypto.Hash, sipInfo SpcSipInfo, privKey crypto.Signer, certs []*x509.Certificate) (*pkcs7.ContentInfoSignedData, error) {
+func SignSip(imprint []byte, hash crypto.Hash, sipInfo SpcSipInfo, cert *certloader.Certificate) (*pkcs9.TimestampedSignature, error) {
 	alg, ok := x509tools.PkixDigestAlgorithm(hash)
 	if !ok {
 		return nil, errors.New("unsupported digest algorithm")
@@ -70,5 +75,5 @@ func SignSip(imprint []byte, hash crypto.Hash, sipInfo SpcSipInfo, privKey crypt
 	indirect.Data.Value = sipInfo
 	indirect.MessageDigest.Digest = imprint
 	indirect.MessageDigest.DigestAlgorithm = alg
-	return signIndirect(indirect, hash, privKey, certs)
+	return signIndirect(indirect, hash, cert)
 }

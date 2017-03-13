@@ -1,15 +1,25 @@
 keys/
 *.yml
 
+*.application
+*.appx
+*.appxbundle
+*.asc
 *.cab
 *.cat
 *.deb
+*.dll
 *.EC
 *.jar
+*.manifest
 *.MF
+*.mof
 *.msi
 *.p7m
 *.p7s
+*.pgp
+*.ps1
+*.ps1xml
 *.rpm
 *.RSA
 *.SF

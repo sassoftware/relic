@@ -20,13 +20,13 @@ package pkcs
 // serializing other signature types that use PKCS#7.
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"time"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/magic"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs7"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs9"
@@ -47,50 +47,44 @@ func init() {
 	signers.Register(PkcsSigner)
 }
 
-func Timestamp(psd *pkcs7.ContentInfoSignedData, cert *certloader.Certificate, opts signers.SignOpts, authenticode bool) (sig []byte, err error) {
-	tconf := opts.TimestampConfig
-	if tconf != nil {
-		signerInfo := &psd.Content.SignerInfos[0]
-		d := opts.Hash.New()
-		d.Write(signerInfo.EncryptedDigest)
-		imprint := d.Sum(nil)
+type Timestamper struct {
+	Config *config.TimestampConfig
+}
 
-		cl := pkcs9.TimestampClient{
-			UserAgent: config.UserAgent,
-			CaFile:    tconf.CaCert,
-			Timeout:   time.Second * time.Duration(tconf.Timeout),
-		}
-		var token *pkcs7.ContentInfoSignedData
-		for _, url := range tconf.Urls {
-			cl.Url = url
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Timestamping failed: %s\nTrying next server %s...\n", err, cl.Url)
-			}
-			token, err = cl.Request(opts.Hash, imprint)
-			if err == nil {
-				break
-			}
-		}
+func (t Timestamper) Timestamp(psd *pkcs7.ContentInfoSignedData) (*pkcs7.ContentInfoSignedData, error) {
+	if t.Config == nil {
+		return nil, nil
+	}
+	signerInfo := &psd.Content.SignerInfos[0]
+	hash, ok := x509tools.PkixDigestToHash(signerInfo.DigestAlgorithm)
+	if !ok {
+		return nil, errors.New("unknown digest algorithm")
+	}
+	d := hash.New()
+	d.Write(signerInfo.EncryptedDigest)
+	imprint := d.Sum(nil)
+
+	cl := pkcs9.TimestampClient{
+		UserAgent: config.UserAgent,
+		CaFile:    t.Config.CaCert,
+		Timeout:   time.Second * time.Duration(t.Config.Timeout),
+	}
+	var token *pkcs7.ContentInfoSignedData
+	var err error
+	for _, url := range t.Config.Urls {
+		cl.Url = url
 		if err != nil {
-			return nil, fmt.Errorf("Timestamping failed: %s", err)
+			fmt.Fprintf(os.Stderr, "Timestamping failed: %s\nTrying next server %s...\n", err, cl.Url)
 		}
-		if authenticode {
-			err = pkcs9.AddStampToSignedAuthenticode(signerInfo, *token)
-		} else {
-			err = pkcs9.AddStampToSignedData(signerInfo, *token)
+		token, err = cl.Request(hash, imprint)
+		if err == nil {
+			break
 		}
 	}
-	verified, err := psd.Content.Verify(nil, false)
 	if err != nil {
-		return nil, fmt.Errorf("pkcs7: failed signature self-check: %s", err)
+		return nil, fmt.Errorf("Timestamping failed: %s", err)
 	}
-	ts, err := pkcs9.VerifyOptionalTimestamp(verified)
-	if err != nil {
-		return nil, fmt.Errorf("pkcs7: failed signature self-check: %s", err)
-	}
-	opts.Audit.SetCounterSignature(ts.CounterSignature)
-	opts.Audit.SetMimeType(pkcs7.MimeType)
-	return psd.Marshal()
+	return token, nil
 }
 
 func Verify(f *os.File, opts signers.VerifyOpts) ([]*signers.Signature, error) {

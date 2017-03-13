@@ -27,7 +27,6 @@ import (
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/magic"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/signers"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/signers/pkcs"
 )
 
 var CabSigner = &signers.Signer{
@@ -47,15 +46,11 @@ func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]b
 	if err != nil {
 		return nil, err
 	}
-	psd, err := authenticode.SignCabImprint(digest.Imprint, opts.Hash, cert.Signer(), cert.Chain())
+	patch, ts, err := authenticode.SignCabImprint(digest, cert)
 	if err != nil {
 		return nil, err
 	}
-	blob, err := pkcs.Timestamp(psd, cert, opts, true)
-	if err != nil {
-		return nil, err
-	}
-	patch := digest.MakePatch(blob)
+	opts.Audit.SetCounterSignature(ts.CounterSignature)
 	return opts.SetBinPatch(patch)
 }
 

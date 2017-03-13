@@ -19,13 +19,13 @@ package authenticode
 import (
 	"crypto"
 	"crypto/hmac"
-	"crypto/x509"
 	"errors"
 	"fmt"
 	"io"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/binpatch"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/cabfile"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs7"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs9"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
@@ -91,10 +91,15 @@ func VerifyCab(f io.ReaderAt, skipDigests bool) (*CabSignature, error) {
 }
 
 // Create the Authenticode structure for a CAB file signature using a previously-calculated digest (imprint).
-func SignCabImprint(imprint []byte, hash crypto.Hash, privKey crypto.Signer, certs []*x509.Certificate) (*pkcs7.ContentInfoSignedData, error) {
-	indirect, err := makePeIndirect(imprint, hash, OidSpcCabImageData)
+func SignCabImprint(digest *cabfile.CabinetDigest, cert *certloader.Certificate) (*binpatch.PatchSet, *pkcs9.TimestampedSignature, error) {
+	indirect, err := makePeIndirect(digest.Imprint, digest.HashFunc, OidSpcCabImageData)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return signIndirect(indirect, hash, privKey, certs)
+	ts, err := signIndirect(indirect, digest.HashFunc, cert)
+	if err != nil {
+		return nil, nil, err
+	}
+	patch := digest.MakePatch(ts.Raw)
+	return patch, ts, nil
 }

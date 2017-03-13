@@ -27,6 +27,7 @@ import (
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/magic"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs7"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs9"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/signers"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/signers/pkcs"
 )
@@ -63,10 +64,9 @@ func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]b
 	if err != nil {
 		return nil, err
 	}
-	blob, err = pkcs.Timestamp(newpsd, cert, opts, true)
+	ts, err := pkcs9.TimestampAndMarshal(newpsd, cert.Timestamper, true)
 	if err != nil {
 		return nil, err
 	}
-	opts.Audit.SetMimeType(pkcs7.MimeType)
-	return blob, nil
+	return opts.SetPkcs7(ts)
 }

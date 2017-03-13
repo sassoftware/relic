@@ -19,23 +19,31 @@ package authenticode
 import (
 	"bytes"
 	"crypto"
-	"crypto/x509"
 	"debug/pe"
 	"encoding/asn1"
 	"encoding/binary"
 	"errors"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/binpatch"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs7"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs9"
 )
 
 // Sign the digest and return an Authenticode structure
-func (pd *PEDigest) Sign(privKey crypto.Signer, certs []*x509.Certificate) (*pkcs7.ContentInfoSignedData, error) {
+func (pd *PEDigest) Sign(cert *certloader.Certificate) (*binpatch.PatchSet, *pkcs9.TimestampedSignature, error) {
 	indirect, err := pd.GetIndirect()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return signIndirect(indirect, pd.Hash, privKey, certs)
+	ts, err := signIndirect(indirect, pd.Hash, cert)
+	if err != nil {
+		return nil, nil, err
+	}
+	patch, err := pd.MakePatch(ts.Raw)
+	if err != nil {
+		return nil, nil, err
+	}
+	return patch, ts, nil
 }
 
 func (pd *PEDigest) GetIndirect() (indirect SpcIndirectDataContentPe, err error) {
