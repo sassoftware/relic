@@ -60,7 +60,7 @@ func Verify(r io.ReaderAt, size int64, skipDigests bool) (*AppxSignature, error)
 	if err := verifyCatalog(files[appxCodeIntegrity], sig); err != nil {
 		return nil, err
 	}
-	if err := verifyMeta(r, size, inz, sig, skipDigests); err != nil {
+	if err := verifyMeta(r, size, sig, skipDigests); err != nil {
 		return nil, err
 	}
 	if sig.IsBundle {
@@ -68,7 +68,7 @@ func Verify(r io.ReaderAt, size int64, skipDigests bool) (*AppxSignature, error)
 			return nil, err
 		}
 	} else {
-		if err := parseManifest(files, sig); err != nil {
+		if err := checkManifest(files, sig); err != nil {
 			return nil, err
 		}
 	}

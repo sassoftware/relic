@@ -32,21 +32,9 @@ import (
 
 // Sign the digest and return an Authenticode structure
 func (pd *PEDigest) Sign(privKey crypto.Signer, certs []*x509.Certificate) (*pkcs7.ContentInfoSignedData, error) {
-	alg, ok := x509tools.PkixDigestAlgorithm(pd.Hash)
-	if !ok {
-		return nil, errors.New("unsupported digest algorithm")
-	}
-	var indirect SpcIndirectDataContentPe
-	indirect.Data.Type = OidSpcPeImageData
-	//indirect.Data.Value.Flags = asn1.BitString{[]byte{0x80}, 1}
-	indirect.MessageDigest.Digest = pd.Imprint
-	indirect.MessageDigest.DigestAlgorithm = alg
-	if len(pd.PageHashes) > 0 {
-		if err := pd.imprintPageHashes(&indirect); err != nil {
-			return nil, err
-		}
-	} else {
-		indirect.Data.Value.File.File.Unicode = "<<<Obsolete>>>"
+	indirect, err := pd.GetIndirect()
+	if err != nil {
+		return nil, err
 	}
 	sig := pkcs7.NewBuilder(privKey, certs, pd.Hash)
 	if err := sig.SetContent(OidSpcIndirectDataContent, indirect); err != nil {
@@ -56,6 +44,26 @@ func (pd *PEDigest) Sign(privKey crypto.Signer, certs []*x509.Certificate) (*pkc
 		return nil, err
 	}
 	return sig.Sign()
+}
+
+func (pd *PEDigest) GetIndirect() (SpcIndirectDataContentPe, error) {
+	var indirect SpcIndirectDataContentPe
+	alg, ok := x509tools.PkixDigestAlgorithm(pd.Hash)
+	if !ok {
+		return indirect, errors.New("unsupported digest algorithm")
+	}
+	indirect.Data.Type = OidSpcPeImageData
+	//indirect.Data.Value.Flags = asn1.BitString{[]byte{0x80}, 1}
+	indirect.MessageDigest.Digest = pd.Imprint
+	indirect.MessageDigest.DigestAlgorithm = alg
+	if len(pd.PageHashes) > 0 {
+		if err := pd.imprintPageHashes(&indirect); err != nil {
+			return indirect, err
+		}
+	} else {
+		indirect.Data.Value.File.File.Unicode = "<<<Obsolete>>>"
+	}
+	return indirect, nil
 }
 
 func (pd *PEDigest) imprintPageHashes(indirect *SpcIndirectDataContentPe) error {

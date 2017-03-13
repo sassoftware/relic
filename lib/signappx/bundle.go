@@ -19,11 +19,14 @@ package signappx
 import (
 	"archive/zip"
 	"bytes"
+	"crypto/x509"
 	"encoding/xml"
 	"errors"
 	"fmt"
 	"io"
 	"strings"
+
+	"github.com/beevik/etree"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
 )
@@ -34,6 +37,8 @@ type bundleManifest struct {
 
 	Identity appxIdentity
 	Packages []bundlePackage `xml:"Packages>Package"`
+
+	Etree *etree.Document `xml:"-"`
 }
 
 type bundlePackage struct {
@@ -101,4 +106,29 @@ func verifyBundle(r io.ReaderAt, files zipFiles, sig *AppxSignature, skipDigests
 		}
 	}
 	return nil
+}
+
+func parseBundle(blob []byte) (*bundleManifest, error) {
+	manifest := new(bundleManifest)
+	if err := xml.Unmarshal(blob, manifest); err != nil {
+		return nil, err
+	}
+	manifest.Etree = etree.NewDocument()
+	if err := manifest.Etree.ReadFromBytes(blob); err != nil {
+		return nil, err
+	}
+	return manifest, nil
+}
+
+func (m *bundleManifest) SetPublisher(cert *x509.Certificate) {
+	subj := x509tools.FormatPkixName(cert.RawSubject, x509tools.NameStyleMsOsco)
+	m.Identity.Publisher = subj
+	el := m.Etree.FindElement("Bundle/Identity")
+	if el != nil {
+		el.CreateAttr("Publisher", subj)
+	}
+}
+
+func (m *bundleManifest) Marshal() ([]byte, error) {
+	return m.Etree.WriteToBytes()
 }

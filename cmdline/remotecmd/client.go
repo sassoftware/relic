@@ -46,6 +46,9 @@ func CallRemote(endpoint, method string, query *url.Values, body ReaderGetter) (
 	if err := shared.InitConfig(); err != nil {
 		return nil, err
 	}
+	if shared.CurrentConfig.Remote == nil {
+		return nil, errors.New("config file has no \"remote\" section")
+	}
 	bases := []string{shared.CurrentConfig.Remote.Url}
 	if dirurl := shared.CurrentConfig.Remote.DirectoryUrl; dirurl != "" {
 		newBases, err := getDirectory(dirurl)

@@ -26,7 +26,11 @@ import (
 	"fmt"
 	"io"
 	"strings"
+
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/zipslicer"
 )
+
+const blockMapSize = 64 * 1024
 
 var hashAlgs = map[crypto.Hash]string{
 	crypto.SHA256: "http://www.w3.org/2001/04/xmlenc#sha256",
@@ -42,9 +46,11 @@ var noHashFiles = map[string]bool{
 }
 
 type blockMap struct {
-	XmlName    xml.Name `xml:"http://schemas.microsoft.com/appx/2010/blockmap BlockMap"`
+	XMLName    xml.Name `xml:"http://schemas.microsoft.com/appx/2010/blockmap BlockMap"`
 	HashMethod string   `xml:",attr"`
 	File       []blockFile
+
+	Hash crypto.Hash `xml:"-"`
 }
 
 type blockFile struct {
@@ -56,7 +62,7 @@ type blockFile struct {
 
 type block struct {
 	Hash string `xml:",attr"`
-	Size uint64 `xml:",attr"`
+	Size uint64 `xml:",attr,omitempty"`
 }
 
 func verifyBlockMap(inz *zip.Reader, files zipFiles, skipDigests bool) error {
@@ -83,6 +89,7 @@ func verifyBlockMap(inz *zip.Reader, files zipFiles, skipDigests bool) error {
 	if hash == 0 {
 		return errors.New("unsupported hash in block map")
 	}
+	bm.Hash = hash
 	bmfiles := bm.File
 	for _, zf := range inz.File {
 		if noHashFiles[zf.Name] || (isBundle && strings.HasSuffix(zf.Name, ".appx")) {
@@ -94,11 +101,12 @@ func verifyBlockMap(inz *zip.Reader, files zipFiles, skipDigests bool) error {
 		bmf := bmfiles[0]
 		bmfiles = bmfiles[1:]
 		name := strings.Replace(zf.Name, "/", "\\", -1)
-		lfhSize := 30 + len(zf.Name) + len(zf.Extra) // size of zip local file header
-		if bmf.Name != name || bmf.Size != zf.UncompressedSize64 || bmf.LfhSize != lfhSize {
-			return errors.New("blockmap: file mismatch")
+		if bmf.Name != name {
+			return fmt.Errorf("blockmap: file mismatch: %s != %s", bmf.Name, name)
+		} else if bmf.Size != zf.UncompressedSize64 {
+			return fmt.Errorf("blockmap: file mismatch: %s: size %d != %d", name, bmf.Size, zf.UncompressedSize64)
 		}
-		if len(bmf.Block) != int((zf.UncompressedSize64+65535)/65536) {
+		if len(bmf.Block) != int((zf.UncompressedSize64+blockMapSize-1)/blockMapSize) {
 			return errors.New("blockmap: file mismatch")
 		}
 		if skipDigests {
@@ -111,8 +119,8 @@ func verifyBlockMap(inz *zip.Reader, files zipFiles, skipDigests bool) error {
 		remaining := zf.UncompressedSize64
 		for i, block := range bmf.Block {
 			count := remaining
-			if count > 65536 {
-				count = 65536
+			if count > blockMapSize {
+				count = blockMapSize
 			}
 			remaining -= count
 			d := hash.New()
@@ -136,4 +144,76 @@ func verifyBlockMap(inz *zip.Reader, files zipFiles, skipDigests bool) error {
 		}
 	}
 	return nil
+}
+
+func (b *blockMap) SetHash(hash crypto.Hash) error {
+	alg := hashAlgs[hash]
+	if alg == "" {
+		return errors.New("unsupported hash algorithm")
+	}
+	b.HashMethod = alg
+	b.Hash = hash
+	return nil
+}
+
+func (b *blockMap) AddFile(f *zipslicer.File, raw, cooked io.Writer) error {
+	var bmf blockFile
+	bmf.Name = strings.Replace(f.Name, "/", "\\", -1)
+	lfh, err := f.GetLocalHeader()
+	if err != nil {
+		return fmt.Errorf("hashing zip metadata: %s", err)
+	}
+	bmf.LfhSize = len(lfh)
+	if raw != nil {
+		raw.Write(lfh)
+	}
+	rc, err := f.OpenAndTeeRaw(raw)
+	if err != nil {
+		return fmt.Errorf("hashing zip metadata: %s", err)
+	}
+	// Copy 64K of uncompressed data at a time, adding block elements as we go
+	var pos int64
+	for {
+		d := b.Hash.New()
+		w := io.Writer(d)
+		if cooked != nil {
+			w = io.MultiWriter(d, cooked)
+		}
+		n, err := io.CopyN(w, rc, blockMapSize)
+		if n > 0 {
+			bmf.Size += uint64(n)
+			hash := base64.StdEncoding.EncodeToString(d.Sum(nil))
+			var size uint64
+			if f.Method != zip.Store {
+				p2 := rc.Tell()
+				fmt.Println(p2)
+				size = uint64(p2 - pos)
+				pos = p2
+			}
+			bmf.Block = append(bmf.Block, block{Hash: hash, Size: size})
+		}
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return err
+		}
+	}
+	if err := rc.Close(); err != nil {
+		return err
+	}
+	dd, err := f.GetDataDescriptor()
+	if err != nil {
+		return fmt.Errorf("hashing zip metadata: %s", err)
+	}
+	if raw != nil {
+		raw.Write(dd)
+	}
+	if !(noHashFiles[f.Name] || strings.HasSuffix(f.Name, ".appx")) {
+		b.File = append(b.File, bmf)
+	}
+	return nil
+}
+
+func (b *blockMap) Marshal() ([]byte, error) {
+	return marshalXml(b)
 }

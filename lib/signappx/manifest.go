@@ -17,20 +17,25 @@
 package signappx
 
 import (
+	"crypto/x509"
 	"encoding/xml"
 	"fmt"
+
+	"github.com/beevik/etree"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
 )
 
 type appxPackage struct {
-	XmlName xml.Name
+	XMLName xml.Name
 
 	Identity appxIdentity
 
 	DisplayName          string `xml:"Properties>DisplayName"`
 	PublisherDisplayName string `xml:"Properties>PublisherDisplayName"`
 	Logo                 string `xml:"Properties>Logo"`
+
+	Etree *etree.Document `xml:"-"`
 }
 
 type appxIdentity struct {
@@ -40,7 +45,19 @@ type appxIdentity struct {
 	ProcessorArchitecture string `xml:",attr"`
 }
 
-func parseManifest(files zipFiles, sig *AppxSignature) error {
+func parseManifest(blob []byte) (*appxPackage, error) {
+	manifest := new(appxPackage)
+	if err := xml.Unmarshal(blob, manifest); err != nil {
+		return nil, err
+	}
+	manifest.Etree = etree.NewDocument()
+	if err := manifest.Etree.ReadFromBytes(blob); err != nil {
+		return nil, err
+	}
+	return manifest, nil
+}
+
+func checkManifest(files zipFiles, sig *AppxSignature) error {
 	blob, err := readZipFile(files[appxManifest])
 	if err != nil {
 		return fmt.Errorf("appx manifest: %s", err)
@@ -57,4 +74,17 @@ func parseManifest(files zipFiles, sig *AppxSignature) error {
 		return fmt.Errorf("appx manifest: publisher identity mismatch:\nexpected: %s\nactual: %s", publisher, manifest.Identity.Publisher)
 	}
 	return nil
+}
+
+func (m *appxPackage) SetPublisher(cert *x509.Certificate) {
+	subj := x509tools.FormatPkixName(cert.RawSubject, x509tools.NameStyleMsOsco)
+	m.Identity.Publisher = subj
+	el := m.Etree.FindElement("Package/Identity")
+	if el != nil {
+		el.CreateAttr("Publisher", subj)
+	}
+}
+
+func (m *appxPackage) Marshal() ([]byte, error) {
+	return m.Etree.WriteToBytes()
 }
