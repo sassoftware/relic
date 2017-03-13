@@ -243,23 +243,7 @@ func VerifyPowershell(r io.ReadSeeker, style PsSigStyle, skipDigests bool) (*pkc
 
 // Sign a previously digested PowerShell script and return the Authenticode structure
 func (pd *PsDigest) Sign(privKey crypto.Signer, certs []*x509.Certificate) (*pkcs7.ContentInfoSignedData, error) {
-	alg, ok := x509tools.PkixDigestAlgorithm(pd.HashFunc)
-	if !ok {
-		return nil, errors.New("unsupported digest algorithm")
-	}
-	var indirect SpcIndirectDataContentMsi
-	indirect.Data.Type = OidSpcSipInfo
-	indirect.Data.Value = psSipInfo
-	indirect.MessageDigest.Digest = pd.Imprint
-	indirect.MessageDigest.DigestAlgorithm = alg
-	sig := pkcs7.NewBuilder(privKey, certs, pd.HashFunc)
-	if err := sig.SetContent(OidSpcIndirectDataContent, indirect); err != nil {
-		return nil, err
-	}
-	if err := sig.AddAuthenticatedAttribute(OidSpcSpOpusInfo, SpcSpOpusInfo{}); err != nil {
-		return nil, err
-	}
-	return sig.Sign()
+	return SignSip(pd.Imprint, pd.HashFunc, psSipInfo, privKey, certs)
 }
 
 // Create a patchset that will add or replace the signature on the digested script

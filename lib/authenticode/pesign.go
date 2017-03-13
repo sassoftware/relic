@@ -27,7 +27,6 @@ import (
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/binpatch"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs7"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
 )
 
 // Sign the digest and return an Authenticode structure
@@ -36,34 +35,21 @@ func (pd *PEDigest) Sign(privKey crypto.Signer, certs []*x509.Certificate) (*pkc
 	if err != nil {
 		return nil, err
 	}
-	sig := pkcs7.NewBuilder(privKey, certs, pd.Hash)
-	if err := sig.SetContent(OidSpcIndirectDataContent, indirect); err != nil {
-		return nil, err
-	}
-	if err := sig.AddAuthenticatedAttribute(OidSpcSpOpusInfo, SpcSpOpusInfo{}); err != nil {
-		return nil, err
-	}
-	return sig.Sign()
+	return signIndirect(indirect, pd.Hash, privKey, certs)
 }
 
-func (pd *PEDigest) GetIndirect() (SpcIndirectDataContentPe, error) {
-	var indirect SpcIndirectDataContentPe
-	alg, ok := x509tools.PkixDigestAlgorithm(pd.Hash)
-	if !ok {
-		return indirect, errors.New("unsupported digest algorithm")
+func (pd *PEDigest) GetIndirect() (indirect SpcIndirectDataContentPe, err error) {
+	indirect, err = makePeIndirect(pd.Imprint, pd.Hash, OidSpcPeImageData)
+	if err != nil {
+		return
 	}
-	indirect.Data.Type = OidSpcPeImageData
-	//indirect.Data.Value.Flags = asn1.BitString{[]byte{0x80}, 1}
-	indirect.MessageDigest.Digest = pd.Imprint
-	indirect.MessageDigest.DigestAlgorithm = alg
 	if len(pd.PageHashes) > 0 {
-		if err := pd.imprintPageHashes(&indirect); err != nil {
-			return indirect, err
+		if err2 := pd.imprintPageHashes(&indirect); err2 != nil {
+			err = err2
+			return
 		}
-	} else {
-		indirect.Data.Value.File.File.Unicode = "<<<Obsolete>>>"
 	}
-	return indirect, nil
+	return
 }
 
 func (pd *PEDigest) imprintPageHashes(indirect *SpcIndirectDataContentPe) error {
@@ -82,11 +68,11 @@ func (pd *PEDigest) imprintPageHashes(indirect *SpcIndirectDataContentPe) error 
 	if err != nil {
 		return err
 	}
-	attrRaw := asn1.RawValue{Tag: asn1.TagSet, IsCompound: true, Bytes: blob}
-	serdata, err := asn1.Marshal(attrRaw)
+	serdata, err := asn1.Marshal(makeSet(blob))
 	if err != nil {
 		return err
 	}
+	indirect.Data.Value.File = SpcLink{}
 	indirect.Data.Value.File.Moniker.ClassId = SpcUuidPageHashes
 	indirect.Data.Value.File.Moniker.SerializedData = serdata
 	return nil

@@ -84,7 +84,16 @@ func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]b
 	if err != nil {
 		return nil, err
 	}
-	psd, err := digest.Sign(cert.Signer(), cert.Chain())
+	var catblob []byte
+	if catalog, err := digest.SignCatalog(cert.Signer(), cert.Chain()); err != nil {
+		return nil, err
+	} else if catalog != nil {
+		catblob, err = pkcs.Timestamp(catalog, cert, opts, true)
+		if err != nil {
+			return nil, err
+		}
+	}
+	psd, err := digest.Sign(catblob, cert.Signer(), cert.Chain())
 	if err != nil {
 		return nil, err
 	}

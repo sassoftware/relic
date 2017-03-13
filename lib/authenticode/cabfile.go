@@ -92,21 +92,9 @@ func VerifyCab(f io.ReaderAt, skipDigests bool) (*CabSignature, error) {
 
 // Create the Authenticode structure for a CAB file signature using a previously-calculated digest (imprint).
 func SignCabImprint(imprint []byte, hash crypto.Hash, privKey crypto.Signer, certs []*x509.Certificate) (*pkcs7.ContentInfoSignedData, error) {
-	alg, ok := x509tools.PkixDigestAlgorithm(hash)
-	if !ok {
-		return nil, errors.New("unsupported digest algorithm")
-	}
-	var indirect SpcIndirectDataContentPe
-	indirect.Data.Type = OidSpcCabImageData
-	indirect.MessageDigest.Digest = imprint
-	indirect.MessageDigest.DigestAlgorithm = alg
-	indirect.Data.Value.File.File.Unicode = "<<<Obsolete>>>"
-	sig := pkcs7.NewBuilder(privKey, certs, hash)
-	if err := sig.SetContent(OidSpcIndirectDataContent, indirect); err != nil {
+	indirect, err := makePeIndirect(imprint, hash, OidSpcCabImageData)
+	if err != nil {
 		return nil, err
 	}
-	if err := sig.AddAuthenticatedAttribute(OidSpcSpOpusInfo, SpcSpOpusInfo{}); err != nil {
-		return nil, err
-	}
-	return sig.Sign()
+	return signIndirect(indirect, hash, privKey, certs)
 }

@@ -38,7 +38,12 @@ var (
 	OidPublicKeyRSA   = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 1, 1}
 	OidPublicKeyDSA   = asn1.ObjectIdentifier{1, 2, 840, 10040, 4, 1}
 	OidPublicKeyECDSA = asn1.ObjectIdentifier{1, 2, 840, 10045, 2, 1}
+
+	Asn1TagNull      = 5
+	Asn1TagBMPString = 30
 )
+
+var Asn1Null = asn1.RawValue{Tag: Asn1TagNull}
 
 var HashOids = map[crypto.Hash]asn1.ObjectIdentifier{
 	crypto.MD5:    OidDigestMD5,
@@ -63,7 +68,7 @@ func PkixDigestAlgorithm(hash crypto.Hash) (alg pkix.AlgorithmIdentifier, ok boo
 	if oid, ok2 := HashOids[hash]; ok2 {
 		alg.Algorithm = oid
 		// some implementations want this to be NULL, not missing entirely
-		alg.Parameters = asn1.RawValue{Tag: 5}
+		alg.Parameters = Asn1Null
 		ok = true
 	}
 	return

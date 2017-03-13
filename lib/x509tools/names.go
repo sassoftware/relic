@@ -17,7 +17,6 @@
 package x509tools
 
 import (
-	"bytes"
 	"crypto/x509"
 	"encoding/asn1"
 	"encoding/binary"
@@ -160,12 +159,8 @@ func attValue(raw asn1.RawValue, style NameStyle) string {
 			return InvalidName
 		}
 		value = ret.(string)
-	case 30: // BMPString
-		words := make([]uint16, len(raw.Bytes)/2)
-		if err := binary.Read(bytes.NewReader(raw.Bytes), binary.BigEndian, words); err != nil {
-			return InvalidName
-		}
-		value = string(utf16.Decode(words))
+	case Asn1TagBMPString:
+		value = ParseBMPString(raw)
 	default:
 		return InvalidName
 	}
@@ -189,6 +184,23 @@ func attValue(raw asn1.RawValue, style NameStyle) string {
 		}
 	}
 	return value
+}
+
+func ParseBMPString(raw asn1.RawValue) string {
+	runes := make([]uint16, len(raw.Bytes)/2)
+	for i := range runes {
+		runes[i] = binary.BigEndian.Uint16(raw.Bytes[i*2:])
+	}
+	return string(utf16.Decode(runes))
+}
+
+func ToBMPString(value string) asn1.RawValue {
+	runes := utf16.Encode([]rune(value))
+	raw := make([]byte, 2*len(runes))
+	for i, r := range runes {
+		binary.BigEndian.PutUint16(raw[i*2:], r)
+	}
+	return asn1.RawValue{Tag: Asn1TagBMPString, Bytes: raw}
 }
 
 // Format the certificate subject name in LDAP style

@@ -19,32 +19,14 @@ package authenticode
 import (
 	"crypto"
 	"crypto/x509"
-	"errors"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/comdoc"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs7"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
 )
 
 // Create the Authenticode structure for a MSI file signature using a previously-calculated digest (imprint).
 func SignMSIImprint(digest []byte, hash crypto.Hash, privKey crypto.Signer, certs []*x509.Certificate) (*pkcs7.ContentInfoSignedData, error) {
-	alg, ok := x509tools.PkixDigestAlgorithm(hash)
-	if !ok {
-		return nil, errors.New("unsupported digest algorithm")
-	}
-	var indirect SpcIndirectDataContentMsi
-	indirect.Data.Type = OidSpcSipInfo
-	indirect.Data.Value = defaultSipInfo
-	indirect.MessageDigest.Digest = digest
-	indirect.MessageDigest.DigestAlgorithm = alg
-	sig := pkcs7.NewBuilder(privKey, certs, hash)
-	if err := sig.SetContent(OidSpcIndirectDataContent, indirect); err != nil {
-		return nil, err
-	}
-	if err := sig.AddAuthenticatedAttribute(OidSpcSpOpusInfo, SpcSpOpusInfo{}); err != nil {
-		return nil, err
-	}
-	return sig.Sign()
+	return SignSip(digest, hash, msiSipInfo, privKey, certs)
 }
 
 // Add a signature blob to an open MSI file. The extended signature blob is

@@ -19,6 +19,7 @@ package authenticode
 import (
 	"crypto/x509/pkix"
 	"encoding/asn1"
+	"time"
 )
 
 var (
@@ -26,12 +27,19 @@ var (
 	OidSpcStatementType       = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 2, 1, 11}
 	OidSpcSpOpusInfo          = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 2, 1, 12}
 	OidSpcPeImageData         = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 2, 1, 15}
+	OidSpcIndividualPurpose   = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 2, 1, 21}
 	OidSpcCabImageData        = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 2, 1, 25}
 	OidSpcSipInfo             = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 2, 1, 30}
 	OidSpcPageHashV1          = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 2, 3, 1}
 	OidSpcPageHashV2          = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 2, 3, 2}
 	OidSpcCabPageHash         = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 2, 5, 1}
 	OidCertTrustList          = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 10, 1}
+	OidCatalogList            = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 12, 1, 1}
+	OidCatalogListMember      = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 12, 1, 2}
+	OidCatalogListMemberV2    = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 12, 1, 3}
+	OidCatalogNameValue       = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 12, 2, 1}
+	OidCatalogMemberInfo      = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 12, 2, 2}
+	OidCatalogMemberInfoV2    = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 12, 2, 3}
 
 	SpcUuidPageHashes = []byte{0xa6, 0xb5, 0x86, 0xd5, 0xb4, 0xa1, 0x24, 0x66, 0xae, 0x05, 0xa2, 0x17, 0xda, 0x8e, 0x60, 0xd6}
 
@@ -44,6 +52,9 @@ var (
 	// Relevant DLLs include: WINTRUST.DLL, MSISIP.DLL, pwrshsip.dll
 	SpcUuidSipInfoMsi = []byte{0xf1, 0x10, 0x0c, 0x00, 0x00, 0x00, 0x00, 0x00, 0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46}
 	SpcUuidSipInfoPs  = []byte{0x1f, 0xcc, 0x3b, 0x60, 0x59, 0x4b, 0x08, 0x4e, 0xb7, 0x24, 0xd2, 0xc6, 0x29, 0x7e, 0xf3, 0x51}
+
+	// This one is used in V1 security catalogs
+	CryptSipCreateIndirectData = "{C689AAB8-8E78-11D0-8C47-00C04FC295EE}"
 
 	// Filenames for MSI streams holding signature data
 	msiDigitalSignature   = "\x05DigitalSignature"
@@ -92,7 +103,12 @@ type SpcAttributePageHashes struct {
 }
 
 type SpcSpOpusInfo struct {
-	// TODO
+	ProgramName SpcString `asn1:"optional,tag:0"`
+	MoreInfo    SpcLink   `asn1:"optional,tag:1"`
+}
+
+type SpcSpStatementType struct {
+	Type asn1.ObjectIdentifier
 }
 
 type SpcIndirectDataContentMsi struct {
@@ -111,13 +127,33 @@ type SpcSipInfo struct {
 	B, C, D, E, F int
 }
 
-var defaultSipInfo = SpcSipInfo{1, SpcUuidSipInfoMsi, 0, 0, 0, 0, 0}
+var msiSipInfo = SpcSipInfo{1, SpcUuidSipInfoMsi, 0, 0, 0, 0, 0}
 var psSipInfo = SpcSipInfo{65536, SpcUuidSipInfoPs, 0, 0, 0, 0, 0}
 
-//type CertTrustList struct {
-//	SubjectUsage     []asn1.ObjectIdentifier
-//	ListIdentifier   []byte
-//	EffectiveDate    time.Time
-//	SubjectAlgorithm pkix.AlgorithmIdentifier
-//	Entries          []CertTrustEntry
-//}
+type CertTrustList struct {
+	SubjectUsage     []asn1.ObjectIdentifier
+	ListIdentifier   []byte
+	EffectiveDate    time.Time
+	SubjectAlgorithm pkix.AlgorithmIdentifier
+	Entries          []CertTrustEntry
+	Attributes       *CertTrustAttributes `asn1:"optional,explicit,tag:0"`
+}
+
+type CertTrustEntry struct {
+	Tag    []byte
+	Values []CertTrustValue `asn1:"set"`
+}
+
+type CertTrustValue struct {
+	Attribute asn1.ObjectIdentifier
+	Value     asn1.RawValue
+}
+
+type CertTrustMemberInfoV1 struct {
+	ClassId  asn1.RawValue
+	Unknown1 int
+}
+
+type CertTrustAttributes struct {
+	// TODO
+}

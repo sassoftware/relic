@@ -7,8 +7,9 @@ It can sign these package types:
 * JAR
 * PE/COFF - Windows executable
 * MSI
-* CAB Windows cabinet file
-* CAT Windows security catalog
+* APPX - Windows universal
+* CAB - Windows cabinet file
+* CAT - Windows security catalog
 * PS1, PS1XML, MOF, etc. - Microsoft Powershell script
 * .manifest, .application - Microsoft ClickOnce manifest
 * PGP - detached or cleartext signature of data
@@ -35,6 +36,6 @@ To install relic:
 
 To install a version without the PKCS#11 features (more easily cross-compileable):
 
-    go get gerrit-pdt.unx.sas.com/tools/relic.git/relic/relic_notoken
+    go get -tags pure gerrit-pdt.unx.sas.com/tools/relic.git/relic
 
 See distro/linux/relic.yml for an example configuration.

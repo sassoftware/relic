@@ -21,13 +21,11 @@ import (
 	"crypto"
 	"crypto/x509"
 	"errors"
-	"fmt"
 	"time"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/authenticode"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/binpatch"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs7"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/zipslicer"
 )
 
@@ -36,41 +34,83 @@ var (
 	appxSipInfo        = authenticode.SpcSipInfo{0x1010000, SpcUuidSipInfoAppx, 0, 0, 0, 0, 0}
 )
 
+func (i *AppxDigest) SignCatalog(privKey crypto.Signer, certs []*x509.Certificate) (*pkcs7.ContentInfoSignedData, error) {
+	if len(i.peDigests) == 0 {
+		return nil, nil
+	}
+	cat := authenticode.NewCatalog(i.Hash)
+	for _, d := range i.peDigests {
+		indirect, err := d.GetIndirect()
+		if err != nil {
+			return nil, err
+		}
+		if err := cat.Add(indirect); err != nil {
+			return nil, err
+		}
+	}
+	return cat.Sign(privKey, certs)
+}
+
 // Sign a previously consumed appx tar, producing a appx signature tar
-func (i *AppxDigest) Sign(privKey crypto.Signer, certs []*x509.Certificate) (*pkcs7.ContentInfoSignedData, error) {
+func (i *AppxDigest) Sign(catalog []byte, privKey crypto.Signer, certs []*x509.Certificate) (*pkcs7.ContentInfoSignedData, error) {
 	i.now = time.Now().UTC()
-	// Update manifest
+	if err := i.writeManifest(certs[0]); err != nil {
+		return nil, err
+	}
+	if err := i.writeBlockMap(); err != nil {
+		return nil, err
+	}
+	if err := i.writeContentTypes(); err != nil {
+		return nil, err
+	}
+	if err := i.writeCodeIntegrity(catalog); err != nil {
+		return nil, err
+	}
+	return i.writeSignature(privKey, certs)
+}
+
+func (i *AppxDigest) addZipEntry(name string, contents []byte) error {
+	f, err := zipslicer.NewFile(i.outz, name, contents, &i.patchBuf)
+	if err != nil {
+		return err
+	}
+	return i.blockMap.AddFile(f, i.axpc, nil)
+}
+
+func (i *AppxDigest) writeManifest(leaf *x509.Certificate) error {
 	if i.manifest != nil {
-		i.manifest.SetPublisher(certs[0])
+		i.manifest.SetPublisher(leaf)
 		manifest, err := i.manifest.Marshal()
 		if err != nil {
-			return nil, err
+			return err
 		}
-		if err := i.addZipEntry(appxManifest, manifest); err != nil {
-			return nil, err
-		}
+		return i.addZipEntry(appxManifest, manifest)
 	} else if i.bundle != nil {
-		i.bundle.SetPublisher(certs[0])
+		i.bundle.SetPublisher(leaf)
 		manifest, err := i.bundle.Marshal()
 		if err != nil {
-			return nil, err
+			return err
 		}
-		if err := i.addZipEntry(bundleManifestFile, manifest); err != nil {
-			return nil, err
-		}
+		return i.addZipEntry(bundleManifestFile, manifest)
 	}
-	// Update blockmap
+	return errors.New("manifest not found")
+}
+
+func (i *AppxDigest) writeBlockMap() error {
 	blockmap, err := i.blockMap.Marshal()
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if err := i.addZipEntry(appxBlockMap, blockmap); err != nil {
-		return nil, err
+		return err
 	}
 	d := i.Hash.New()
 	d.Write(blockmap)
 	i.axbm = d.Sum(nil)
-	// Update content types
+	return nil
+}
+
+func (i *AppxDigest) writeContentTypes() error {
 	for _, f := range i.outz.File {
 		if f.Name != appxContentTypes {
 			i.contentTypes.Add(f.Name)
@@ -82,43 +122,34 @@ func (i *AppxDigest) Sign(privKey crypto.Signer, certs []*x509.Certificate) (*pk
 	i.contentTypes.Add(appxSignature)
 	ctypes, err := i.contentTypes.Marshal()
 	if err != nil {
-		return nil, err
-	}
-	if err := i.addZipEntry(appxContentTypes, ctypes); err != nil {
-		return nil, err
-	}
-	d.Reset()
-	d.Write(ctypes)
-	i.axct = d.Sum(nil)
-	// TODO: catalog
-	if i.cattemp != nil {
-		if err := i.addZipEntry(appxCodeIntegrity, i.cattemp); err != nil {
-			return nil, err
-		}
-		d := i.Hash.New()
-		d.Write(i.cattemp)
-		i.axci = d.Sum(nil)
-		fmt.Printf("%x\n", i.axci)
-	}
-	return i.makeSignature(privKey, certs)
-}
-
-func (i *AppxDigest) addZipEntry(name string, contents []byte) error {
-	f, err := zipslicer.NewFile(i.outz, name, contents, &i.patchBuf)
-	if err != nil {
 		return err
 	}
-	return i.blockMap.AddFile(f, i.axpc, nil)
+	if err := i.addZipEntry(appxContentTypes, ctypes); err != nil {
+		return err
+	}
+	d := i.Hash.New()
+	d.Write(ctypes)
+	i.axct = d.Sum(nil)
+	return nil
 }
 
-func (i *AppxDigest) makeSignature(privKey crypto.Signer, certs []*x509.Certificate) (*pkcs7.ContentInfoSignedData, error) {
+func (i *AppxDigest) writeCodeIntegrity(catalog []byte) error {
+	if len(catalog) == 0 {
+		return nil
+	}
+	if err := i.addZipEntry(appxCodeIntegrity, catalog); err != nil {
+		return err
+	}
+	d := i.Hash.New()
+	d.Write(catalog)
+	i.axci = d.Sum(nil)
+	return nil
+}
+
+func (i *AppxDigest) writeSignature(privKey crypto.Signer, certs []*x509.Certificate) (*pkcs7.ContentInfoSignedData, error) {
 	axcd := i.Hash.New()
 	if err := i.outz.WriteDirectory(axcd); err != nil {
 		return nil, err
-	}
-	alg, ok := x509tools.PkixDigestAlgorithm(i.Hash)
-	if !ok {
-		return nil, errors.New("unsupported digest algorithm")
 	}
 	digest := bytes.NewBuffer(make([]byte, 0, 4+5*(4+i.Hash.Size())))
 	digest.WriteString("APPX")
@@ -134,20 +165,7 @@ func (i *AppxDigest) makeSignature(privKey crypto.Signer, certs []*x509.Certific
 		digest.WriteString("AXCI")
 		digest.Write(i.axci)
 	}
-	var indirect authenticode.SpcIndirectDataContentMsi
-	indirect.Data.Type = authenticode.OidSpcSipInfo
-	indirect.Data.Value = appxSipInfo
-	indirect.MessageDigest.Digest = digest.Bytes()
-	indirect.MessageDigest.DigestAlgorithm = alg
-	sig := pkcs7.NewBuilder(privKey, certs, i.Hash)
-	if err := sig.SetContent(authenticode.OidSpcIndirectDataContent, indirect); err != nil {
-		return nil, err
-	}
-	if err := sig.AddAuthenticatedAttribute(authenticode.OidSpcSpOpusInfo, authenticode.SpcSpOpusInfo{}); err != nil {
-		return nil, err
-	}
-	// TODO: statement type
-	return sig.Sign()
+	return authenticode.SignSip(digest.Bytes(), i.Hash, appxSipInfo, privKey, certs)
 }
 
 func (i *AppxDigest) MakePatch(pkcs []byte) (*binpatch.PatchSet, error) {
@@ -162,6 +180,5 @@ func (i *AppxDigest) MakePatch(pkcs []byte) (*binpatch.PatchSet, error) {
 	}
 	patch := binpatch.New()
 	patch.Add(i.patchStart, uint32(i.patchLen), i.patchBuf.Bytes())
-	fmt.Println("PATCH", i.patchStart)
 	return patch, nil
 }

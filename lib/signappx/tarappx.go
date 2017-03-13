@@ -81,7 +81,7 @@ type AppxDigest struct {
 	manifest         *appxPackage
 	bundle           *bundleManifest
 	contentTypes     *contentTypes
-	peDigests        map[crypto.Hash]*authenticode.PEDigest
+	peDigests        []*authenticode.PEDigest
 	outz             *zipslicer.Directory
 	patchStart       int64
 	patchLen         int64
@@ -209,10 +209,10 @@ func readSlicerFile(f *zipslicer.File) ([]byte, error) {
 	return blob, r.Close()
 }
 
-// 3 or 4 different digests need to happen concurrently:
+// 4 different digests need to happen concurrently:
 // - AXPC for the raw zip headers and data
 // - blockmap 64KiB chunks of cooked data
-// - 1 or 2 digests over PE files for CodeIntegrity.cat
+// - SHA1 and SHA256 digests over PE files for CodeIntegrity.cat
 func (i *AppxDigest) digestFile(f *zipslicer.File, doPageHash bool) error {
 	var peWriters []io.WriteCloser
 	var peResults []<-chan peDigestResult
@@ -235,7 +235,6 @@ func (i *AppxDigest) digestFile(f *zipslicer.File, doPageHash bool) error {
 		return err
 	}
 	if peWriters != nil {
-		i.peDigests = make(map[crypto.Hash]*authenticode.PEDigest)
 		for _, w := range peWriters {
 			w.Close()
 		}
@@ -243,7 +242,7 @@ func (i *AppxDigest) digestFile(f *zipslicer.File, doPageHash bool) error {
 			if result := <-ch; result.err != nil {
 				return result.err
 			} else {
-				i.peDigests[result.digest.Hash] = result.digest
+				i.peDigests = append(i.peDigests, result.digest)
 			}
 		}
 	}

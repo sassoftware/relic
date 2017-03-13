@@ -186,7 +186,6 @@ func (b *blockMap) AddFile(f *zipslicer.File, raw, cooked io.Writer) error {
 			var size uint64
 			if f.Method != zip.Store {
 				p2 := rc.Tell()
-				fmt.Println(p2)
 				size = uint64(p2 - pos)
 				pos = p2
 			}
