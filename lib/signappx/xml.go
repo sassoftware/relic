@@ -16,17 +16,25 @@
 
 package signappx
 
-import "encoding/xml"
+import (
+	"encoding/xml"
+	"fmt"
+)
 
-const xmlHdr = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\r\n"
+const xmlHdr = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"%s\"?>\r\n"
 
-func marshalXml(v interface{}) ([]byte, error) {
+func marshalXml(v interface{}, standalone bool) ([]byte, error) {
 	x, err := xml.Marshal(v)
 	if err != nil {
 		return nil, err
 	}
-	ret := make([]byte, len(xmlHdr), len(xmlHdr)+len(x))
-	copy(ret, xmlHdr)
+	sstr := "no"
+	if standalone {
+		sstr = "yes"
+	}
+	hdr := []byte(fmt.Sprintf(xmlHdr, sstr))
+	ret := make([]byte, len(hdr), len(hdr)+len(x))
+	copy(ret, hdr)
 	ret = append(ret, x...)
 	return ret, nil
 }

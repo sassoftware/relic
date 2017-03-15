@@ -20,7 +20,6 @@ import (
 	"bytes"
 	"crypto/x509"
 	"errors"
-	"time"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/authenticode"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/binpatch"
@@ -35,7 +34,6 @@ var (
 )
 
 func (i *AppxDigest) Sign(cert *certloader.Certificate) (patch *binpatch.PatchSet, priSig, catSig *pkcs9.TimestampedSignature, err error) {
-	i.now = time.Now().UTC()
 	if err := i.writeManifest(cert.Leaf); err != nil {
 		return nil, nil, nil, err
 	}
@@ -62,7 +60,14 @@ func (i *AppxDigest) Sign(cert *certloader.Certificate) (patch *binpatch.PatchSe
 }
 
 func (i *AppxDigest) addZipEntry(name string, contents []byte) error {
-	f, err := zipslicer.NewFile(i.outz, name, contents, &i.patchBuf)
+	// Don't deflate the manifest because I can't figure out how to correctly
+	// calculate block sizes. The blocks for the rest of the files can be
+	// cribbed from the old blockmap.
+	deflate := name != appxManifest
+	// Don't use descriptors for the 3 files that signtool adds, it seems to
+	// aggrevate the generic verifier although the appx works fine.
+	useDesc := !(name == appxContentTypes || name == appxCodeIntegrity || name == appxSignature)
+	f, err := zipslicer.NewFile(i.outz, name, contents, &i.patchBuf, i.mtime, deflate, useDesc)
 	if err != nil {
 		return err
 	}

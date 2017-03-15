@@ -156,6 +156,33 @@ func (b *blockMap) SetHash(hash crypto.Hash) error {
 	return nil
 }
 
+// Copy compressed sizes from the old blockmap since I can't figure out how
+// they come up with the numbers and the thing won't install if they're
+// wrong...
+func (b *blockMap) CopySizes(blob []byte) error {
+	var orig blockMap
+	if err := xml.Unmarshal(blob, &orig); err != nil {
+		return fmt.Errorf("error parsing block map: %s", err)
+	}
+	for i, oldf := range orig.File {
+		if oldf.Name == appxManifest {
+			// The only file that gets changed by us. It's stored with no
+			// compression to avoid screwing up the sizes.
+			continue
+		} else if i >= len(b.File) {
+			return errors.New("old block map has too many files")
+		}
+		newf := &b.File[i]
+		if newf.Name != oldf.Name {
+			return fmt.Errorf("old block map doesn't match new: %s", oldf.Name)
+		}
+		for j, oldblock := range oldf.Block {
+			newf.Block[j].Size = oldblock.Size
+		}
+	}
+	return nil
+}
+
 func (b *blockMap) AddFile(f *zipslicer.File, raw, cooked io.Writer) error {
 	var bmf blockFile
 	bmf.Name = strings.Replace(f.Name, "/", "\\", -1)
@@ -214,5 +241,5 @@ func (b *blockMap) AddFile(f *zipslicer.File, raw, cooked io.Writer) error {
 }
 
 func (b *blockMap) Marshal() ([]byte, error) {
-	return marshalXml(b)
+	return marshalXml(b, false)
 }

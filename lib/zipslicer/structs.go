@@ -73,13 +73,13 @@ type zip64End struct {
 	CDOffset       uint64
 }
 
+type zip64Loc struct {
+	Signature uint32
+	Disk      uint32
+	Offset    uint64
+	DiskCount uint32
+}
 type zipEndRecord struct {
-	// zip64 locator
-	Signature64 uint32
-	Disk64      uint32
-	Offset64    uint64
-	DiskCount64 uint32
-	// regular end record
 	Signature     uint32
 	DiskNumber    uint16
 	DiskCD        uint16

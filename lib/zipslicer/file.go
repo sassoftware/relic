@@ -205,19 +205,25 @@ func (f *File) GetTotalSize() (int64, error) {
 	return fileHeaderLen + int64(len(f.lfhName)+len(f.lfhExtra)+len(f.ddb)) + int64(f.CompressedSize), nil
 }
 
-func NewFile(d *Directory, name string, contents []byte, w io.Writer) (*File, error) {
+func NewFile(d *Directory, name string, contents []byte, w io.Writer, mtime time.Time, deflate, useDesc bool) (*File, error) {
 	var zh zip.FileHeader
-	zh.SetModTime(time.Now())
+	zh.SetModTime(mtime)
 	var fb bytes.Buffer
-	c, err := flate.NewWriter(&fb, 9)
-	if err != nil {
-		return nil, err
-	}
-	if _, err := c.Write(contents); err != nil {
-		return nil, err
-	}
-	if err := c.Close(); err != nil {
-		return nil, err
+	method := zip.Deflate
+	if deflate {
+		c, err := flate.NewWriter(&fb, 9)
+		if err != nil {
+			return nil, err
+		}
+		if _, err := c.Write(contents); err != nil {
+			return nil, err
+		}
+		if err := c.Close(); err != nil {
+			return nil, err
+		}
+	} else {
+		method = zip.Store
+		fb.Write(contents)
 	}
 	crc := crc32.NewIEEE()
 	crc.Write(contents)
@@ -227,8 +233,7 @@ func NewFile(d *Directory, name string, contents []byte, w io.Writer) (*File, er
 	f := &File{
 		CreatorVersion:   zip45,
 		ReaderVersion:    zip20,
-		Flags:            0x8,
-		Method:           zip.Deflate,
+		Method:           method,
 		ModifiedTime:     zh.ModifiedTime,
 		ModifiedDate:     zh.ModifiedDate,
 		CRC32:            sum,
@@ -239,17 +244,23 @@ func NewFile(d *Directory, name string, contents []byte, w io.Writer) (*File, er
 		lfhName: []byte(name),
 		compd:   fb.Bytes(),
 	}
+	if useDesc {
+		f.Flags = 0x8
+		f.ReaderVersion = zip45
+	}
 	f.lfh = zipLocalHeader{
-		Signature:        fileHeaderSignature,
-		ReaderVersion:    f.ReaderVersion,
-		Flags:            f.Flags,
-		Method:           f.Method,
-		ModifiedTime:     f.ModifiedTime,
-		ModifiedDate:     f.ModifiedDate,
-		CRC32:            f.CRC32,
-		CompressedSize:   uint32(f.CompressedSize),
-		UncompressedSize: uint32(f.UncompressedSize),
-		FilenameLen:      uint16(len(name)),
+		Signature:     fileHeaderSignature,
+		ReaderVersion: f.ReaderVersion,
+		Flags:         f.Flags,
+		Method:        f.Method,
+		ModifiedTime:  f.ModifiedTime,
+		ModifiedDate:  f.ModifiedDate,
+		FilenameLen:   uint16(len(name)),
+	}
+	if !useDesc {
+		f.lfh.CRC32 = f.CRC32
+		f.lfh.CompressedSize = uint32(f.CompressedSize)
+		f.lfh.UncompressedSize = uint32(f.UncompressedSize)
 	}
 	if err := binary.Write(buf, binary.LittleEndian, f.lfh); err != nil {
 		return nil, err
@@ -260,22 +271,29 @@ func NewFile(d *Directory, name string, contents []byte, w io.Writer) (*File, er
 	if _, err := buf.Write(fb.Bytes()); err != nil {
 		return nil, err
 	}
-	f.desc = zipDataDesc64{
-		Signature:        dataDescriptorSignature,
-		CRC32:            sum,
-		CompressedSize:   uint64(fb.Len()),
-		UncompressedSize: uint64(len(contents)),
-	}
-	ddb := bytes.NewBuffer(make([]byte, 0, dataDescriptor64Len))
-	binary.Write(ddb, binary.LittleEndian, f.desc)
-	f.ddb = ddb.Bytes()
-	if _, err := buf.Write(f.ddb); err != nil {
-		return nil, err
+	if useDesc {
+		f.desc = zipDataDesc64{
+			Signature:        dataDescriptorSignature,
+			CRC32:            sum,
+			CompressedSize:   uint64(fb.Len()),
+			UncompressedSize: uint64(len(contents)),
+		}
+		ddb := bytes.NewBuffer(make([]byte, 0, dataDescriptor64Len))
+		binary.Write(ddb, binary.LittleEndian, f.desc)
+		f.ddb = ddb.Bytes()
+		if _, err := buf.Write(f.ddb); err != nil {
+			return nil, err
+		}
 	}
 	if err := buf.Flush(); err != nil {
 		return nil, err
 	}
 	return d.AddFile(f)
+}
+
+func (f *File) ModTime() time.Time {
+	fh := zip.FileHeader{ModifiedDate: f.ModifiedDate, ModifiedTime: f.ModifiedTime}
+	return fh.ModTime()
 }
 
 func (f *File) Open() (io.ReadCloser, error) {

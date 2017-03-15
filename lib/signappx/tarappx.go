@@ -86,10 +86,9 @@ type AppxDigest struct {
 	patchStart       int64
 	patchLen         int64
 	patchBuf         bytes.Buffer
-	now              time.Time
+	mtime            time.Time
 	axpc             hash.Hash
 	axbm, axct, axci []byte
-	cattemp          []byte
 }
 
 func DigestAppxTar(r io.Reader, hash crypto.Hash, doPageHash bool) (*AppxDigest, error) {
@@ -132,6 +131,7 @@ copyf:
 			info.patchLen = hdr.Size - info.patchStart
 			break copyf
 		default:
+			info.mtime = f.ModTime()
 			if err := info.digestFile(f, doPageHash); err != nil {
 				return nil, err
 			}
@@ -143,41 +143,32 @@ copyf:
 	idx := len(info.outz.File)
 	// parse signature-related files for later
 	for _, f := range inz.File[idx:] {
+		blob, err := readSlicerFile(f)
+		if err != nil {
+			return nil, err
+		}
 		switch f.Name {
 		case appxManifest:
-			blob, err := readSlicerFile(f)
-			if err != nil {
-				return nil, err
-			}
 			manifest, err := parseManifest(blob)
 			if err != nil {
 				return nil, err
 			}
 			info.manifest = manifest
 		case bundleManifestFile:
-			blob, err := readSlicerFile(f)
-			if err != nil {
-				return nil, err
-			}
 			manifest, err := parseBundle(blob)
 			if err != nil {
 				return nil, err
 			}
 			info.bundle = manifest
-		case appxContentTypes:
-			blob, err := readSlicerFile(f)
-			if err != nil {
+		case appxBlockMap:
+			if err := info.blockMap.CopySizes(blob); err != nil {
 				return nil, err
 			}
+		case appxContentTypes:
 			if err := info.contentTypes.Parse(blob); err != nil {
 				return nil, err
 			}
-		case appxCodeIntegrity:
-			info.cattemp, err = readSlicerFile(f)
-			if err != nil {
-				return nil, err
-			}
-		case appxBlockMap, appxSignature:
+		case appxCodeIntegrity, appxSignature:
 			// discard
 		default:
 			// regular files can't come after files we mangle

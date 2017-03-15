@@ -17,6 +17,7 @@
 package signappx
 
 import (
+	"bytes"
 	"crypto/x509"
 	"encoding/xml"
 	"fmt"
@@ -86,5 +87,9 @@ func (m *appxPackage) SetPublisher(cert *x509.Certificate) {
 }
 
 func (m *appxPackage) Marshal() ([]byte, error) {
-	return m.Etree.WriteToBytes()
+	b, err := m.Etree.WriteToBytes()
+	if err != nil {
+		return nil, err
+	}
+	return bytes.Replace(b, []byte{'\n'}, []byte{'\r', '\n'}, -1), nil
 }

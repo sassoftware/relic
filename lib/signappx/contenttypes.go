@@ -134,5 +134,5 @@ func (c *contentTypes) Marshal() ([]byte, error) {
 			ContentType: c.ByOverride[name],
 		})
 	}
-	return marshalXml(xct)
+	return marshalXml(xct, true)
 }
