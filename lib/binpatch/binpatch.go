@@ -30,7 +30,11 @@ import (
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/atomicfile"
 )
 
-const MimeType = "application/x-binary-patch"
+const (
+	MimeType = "application/x-binary-patch"
+
+	uint32Max = 0xffffffff
+)
 
 type PatchSet struct {
 	Patches []PatchHeader
@@ -53,8 +57,34 @@ func New() *PatchSet {
 
 // Add a new patch region to a PatchSet. The bytes beginning at "offset" and
 // running for "oldSize" are removed and replaced with "blob". oldSize may be 0.
-func (p *PatchSet) Add(offset int64, oldSize uint32, blob []byte) {
-	p.Patches = append(p.Patches, PatchHeader{offset, oldSize, uint32(len(blob))})
+func (p *PatchSet) Add(offset, oldSize int64, blob []byte) {
+	if len(p.Patches) > 0 {
+		i := len(p.Patches) - 1
+		last := p.Patches[i]
+		lastEnd := last.Offset + int64(last.OldSize)
+		lastBlob := p.Blobs[i]
+		oldCombo := int64(last.OldSize) + oldSize
+		newCombo := int64(len(lastBlob)) + int64(len(blob))
+		if offset == lastEnd && oldCombo <= uint32Max && newCombo <= uint32Max {
+			// coalesce this patch into the previous one
+			p.Patches[i].OldSize = uint32(oldCombo)
+			p.Patches[i].NewSize = uint32(newCombo)
+			if len(blob) > 0 {
+				newBlob := make([]byte, newCombo)
+				copy(newBlob, lastBlob)
+				copy(newBlob[len(lastBlob):], blob)
+				p.Blobs[i] = newBlob
+			}
+			return
+		}
+	}
+	for oldSize > uint32Max {
+		p.Patches = append(p.Patches, PatchHeader{offset, uint32Max, 0})
+		p.Blobs = append(p.Blobs, nil)
+		offset += uint32Max
+		oldSize -= uint32Max
+	}
+	p.Patches = append(p.Patches, PatchHeader{offset, uint32(oldSize), uint32(len(blob))})
 	p.Blobs = append(p.Blobs, blob)
 }
 

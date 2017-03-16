@@ -70,7 +70,7 @@ func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]b
 		return nil, err
 	}
 	patch := binpatch.New()
-	patch.Add(0, uint32(header.OriginalSignatureHeaderSize()), blob)
+	patch.Add(0, int64(header.OriginalSignatureHeaderSize()), blob)
 	md5, _ := header.GetBytes(rpmutils.SIG_MD5)
 	sha1, _ := header.GetString(rpmutils.SIG_SHA1)
 	opts.Audit.Attributes["rpm.nevra"] = nevra(header)

@@ -156,7 +156,7 @@ func (d *CabinetDigest) MakePatch(pkcs []byte) *binpatch.PatchSet {
 	hdr := d.Patched
 	binary.LittleEndian.PutUint32(hdr[48:], uint32(len(padded)))
 	p := binpatch.New()
-	p.Add(0, d.Cabinet.Header.OffsetFiles, hdr)
-	p.Add(int64(d.Cabinet.Header.TotalSize), d.Cabinet.SignatureHeader.Size(), padded)
+	p.Add(0, int64(d.Cabinet.Header.OffsetFiles), hdr)
+	p.Add(int64(d.Cabinet.Header.TotalSize), int64(d.Cabinet.SignatureHeader.Size()), padded)
 	return p
 }

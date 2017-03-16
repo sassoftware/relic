@@ -25,7 +25,6 @@ import (
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/binpatch"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs9"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/zipslicer"
 )
 
 var (
@@ -55,7 +54,7 @@ func (i *AppxDigest) Sign(cert *certloader.Certificate) (patch *binpatch.PatchSe
 		return nil, nil, nil, err
 	}
 	patch = binpatch.New()
-	patch.Add(i.patchStart, uint32(i.patchLen), i.patchBuf.Bytes())
+	patch.Add(i.patchStart, i.patchLen, i.patchBuf.Bytes())
 	return patch, ts, catSig, nil
 }
 
@@ -67,7 +66,7 @@ func (i *AppxDigest) addZipEntry(name string, contents []byte) error {
 	// Don't use descriptors for the 3 files that signtool adds, it seems to
 	// aggrevate the generic verifier although the appx works fine.
 	useDesc := !(name == appxContentTypes || name == appxCodeIntegrity || name == appxSignature)
-	f, err := zipslicer.NewFile(i.outz, name, contents, &i.patchBuf, i.mtime, deflate, useDesc)
+	f, err := i.outz.NewFile(name, nil, contents, &i.patchBuf, i.mtime, deflate, useDesc)
 	if err != nil {
 		return err
 	}

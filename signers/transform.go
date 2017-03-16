@@ -77,15 +77,7 @@ func (p fileProducer) GetReader() (io.Reader, int64, error) {
 // file with the response
 func (p fileProducer) Apply(dest, mimetype string, result io.Reader) error {
 	if mimetype == binpatch.MimeType {
-		blob, err := ioutil.ReadAll(result)
-		if err != nil {
-			return err
-		}
-		patch, err := binpatch.Load(blob)
-		if err != nil {
-			return err
-		}
-		return patch.Apply(p.f, dest)
+		return ApplyBinPatch(p.f, dest, result)
 	} else {
 		f, err := atomicfile.WriteAny(dest)
 		if err != nil {
@@ -97,4 +89,16 @@ func (p fileProducer) Apply(dest, mimetype string, result io.Reader) error {
 		p.f.Close()
 		return f.Commit()
 	}
+}
+
+func ApplyBinPatch(src *os.File, dest string, result io.Reader) error {
+	blob, err := ioutil.ReadAll(result)
+	if err != nil {
+		return err
+	}
+	patch, err := binpatch.Load(blob)
+	if err != nil {
+		return err
+	}
+	return patch.Apply(src, dest)
 }

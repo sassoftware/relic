@@ -53,7 +53,6 @@ type File struct {
 	lfh               zipLocalHeader
 	lfhName, lfhExtra []byte
 	ddb               []byte
-	desc              zipDataDesc64
 	compd             []byte
 }
 
@@ -106,28 +105,31 @@ func (f *File) readDataDesc() error {
 	lfhSize := fileHeaderLen + len(f.lfhName) + len(f.lfhExtra)
 	pos := int64(f.Offset) + int64(lfhSize) + int64(f.CompressedSize)
 	f.ddb = make([]byte, dataDescriptor64Len)
-	if _, err := f.r.ReadAt(f.ddb, pos); err != nil {
+	if _, err := f.r.ReadAt(f.ddb[:dataDescriptorLen], pos); err != nil {
 		return err
 	}
-	var desc64 zipDataDesc64
-	binary.Read(bytes.NewReader(f.ddb), binary.LittleEndian, &desc64)
-	if desc64.Signature != dataDescriptorSignature {
+	// Read the 32-bit len so we don't overshoot. The underlying stream might
+	// not be seekable.
+	var desc zipDataDesc
+	binary.Read(bytes.NewReader(f.ddb[:dataDescriptorLen]), binary.LittleEndian, &desc)
+	if desc.Signature != dataDescriptorSignature {
 		return errors.New("data descriptor signature is missing")
 	}
-	if desc64.UncompressedSize == f.UncompressedSize {
+	if f.UncompressedSize >= uint32Max || desc.UncompressedSize != uint32(f.UncompressedSize) || desc.CompressedSize != uint32(f.CompressedSize) {
 		// 64-bit
-		f.desc = desc64
+		if _, err := f.r.ReadAt(f.ddb[dataDescriptorLen:], pos+dataDescriptorLen); err != nil {
+			return err
+		}
+		var desc64 zipDataDesc64
+		binary.Read(bytes.NewReader(f.ddb), binary.LittleEndian, &desc64)
+		if desc64.CompressedSize != f.CompressedSize || desc64.UncompressedSize != f.UncompressedSize {
+			return errors.New("data descriptor is invalid")
+		}
+		f.CRC32 = desc64.CRC32
 	} else {
 		// 32-bit
-		var desc32 zipDataDesc
 		f.ddb = f.ddb[:dataDescriptorLen]
-		binary.Read(bytes.NewReader(f.ddb), binary.LittleEndian, &desc32)
-		f.desc = zipDataDesc64{
-			Signature:        desc32.Signature,
-			CRC32:            desc32.CRC32,
-			UncompressedSize: uint64(desc32.UncompressedSize),
-			CompressedSize:   uint64(desc32.CompressedSize),
-		}
+		f.CRC32 = desc.CRC32
 	}
 	return nil
 }
@@ -205,7 +207,7 @@ func (f *File) GetTotalSize() (int64, error) {
 	return fileHeaderLen + int64(len(f.lfhName)+len(f.lfhExtra)+len(f.ddb)) + int64(f.CompressedSize), nil
 }
 
-func NewFile(d *Directory, name string, contents []byte, w io.Writer, mtime time.Time, deflate, useDesc bool) (*File, error) {
+func (d *Directory) NewFile(name string, extra, contents []byte, w io.Writer, mtime time.Time, deflate, useDesc bool) (*File, error) {
 	var zh zip.FileHeader
 	zh.SetModTime(mtime)
 	var fb bytes.Buffer
@@ -240,9 +242,11 @@ func NewFile(d *Directory, name string, contents []byte, w io.Writer, mtime time
 		CompressedSize:   uint64(fb.Len()),
 		UncompressedSize: uint64(len(contents)),
 		Name:             name,
+		Extra:            extra,
 
-		lfhName: []byte(name),
-		compd:   fb.Bytes(),
+		lfhName:  []byte(name),
+		lfhExtra: extra,
+		compd:    fb.Bytes(),
 	}
 	if useDesc {
 		f.Flags = 0x8
@@ -256,6 +260,7 @@ func NewFile(d *Directory, name string, contents []byte, w io.Writer, mtime time
 		ModifiedTime:  f.ModifiedTime,
 		ModifiedDate:  f.ModifiedDate,
 		FilenameLen:   uint16(len(name)),
+		ExtraLen:      uint16(len(extra)),
 	}
 	if !useDesc {
 		f.lfh.CRC32 = f.CRC32
@@ -268,18 +273,21 @@ func NewFile(d *Directory, name string, contents []byte, w io.Writer, mtime time
 	if _, err := buf.WriteString(name); err != nil {
 		return nil, err
 	}
+	if _, err := buf.Write(extra); err != nil {
+		return nil, err
+	}
 	if _, err := buf.Write(fb.Bytes()); err != nil {
 		return nil, err
 	}
 	if useDesc {
-		f.desc = zipDataDesc64{
+		desc := zipDataDesc64{
 			Signature:        dataDescriptorSignature,
 			CRC32:            sum,
 			CompressedSize:   uint64(fb.Len()),
 			UncompressedSize: uint64(len(contents)),
 		}
 		ddb := bytes.NewBuffer(make([]byte, 0, dataDescriptor64Len))
-		binary.Write(ddb, binary.LittleEndian, f.desc)
+		binary.Write(ddb, binary.LittleEndian, desc)
 		f.ddb = ddb.Bytes()
 		if _, err := buf.Write(f.ddb); err != nil {
 			return nil, err
@@ -354,13 +362,10 @@ func (r *Reader) Read(d []byte) (int, error) {
 			} else {
 				err = err2
 			}
-		} else if r.crc.Sum32() != r.f.desc.CRC32 {
-			err = zip.ErrChecksum
 		}
-	} else {
-		if r.f.CRC32 != 0 && r.crc.Sum32() != r.f.CRC32 {
-			err = zip.ErrChecksum
-		}
+	}
+	if r.f.CRC32 != 0 && r.crc.Sum32() != r.f.CRC32 {
+		err = zip.ErrChecksum
 	}
 	r.err = err
 	return n, err

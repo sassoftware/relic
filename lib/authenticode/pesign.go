@@ -113,7 +113,7 @@ func (pd *PEDigest) MakePatch(sig []byte) (*binpatch.PatchSet, error) {
 	// make patch
 	patch := binpatch.New()
 	patch.Add(pd.markers.posDDCert, 8, buf2.Bytes())
-	patch.Add(pd.OrigSize, uint32(pd.markers.certSize), certTbl)
+	patch.Add(pd.OrigSize, int64(pd.markers.certSize), certTbl)
 	return patch, nil
 }
 

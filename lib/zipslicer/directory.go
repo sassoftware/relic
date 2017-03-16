@@ -70,7 +70,9 @@ func FindDirectory(r io.ReaderAt, size int64) (int64, error) {
 	return int64(end.CDOffset), nil
 }
 
+// Read a zip from a ReaderAt, with a separate copy of the central directory
 func ReadWithDirectory(r io.ReaderAt, size int64, cd []byte) (*Directory, error) {
+	dirLoc := size - int64(len(cd))
 	files := make([]*File, 0)
 	for {
 		if binary.LittleEndian.Uint32(cd) != directoryHeaderSignature {
@@ -137,7 +139,7 @@ func ReadWithDirectory(r io.ReaderAt, size int64, cd []byte) (*Directory, error)
 	d := &Directory{
 		File:   files,
 		Size:   size,
-		DirLoc: size - int64(len(cd)),
+		DirLoc: dirLoc,
 		r:      r,
 	}
 	rd := bytes.NewReader(cd)
@@ -153,6 +155,7 @@ func ReadWithDirectory(r io.ReaderAt, size int64, cd []byte) (*Directory, error)
 	return d, nil
 }
 
+// Read a zip from a ReaderAt
 func Read(r io.ReaderAt, size int64) (*Directory, error) {
 	loc, err := FindDirectory(r, size)
 	if err != nil {
@@ -165,11 +168,16 @@ func Read(r io.ReaderAt, size int64) (*Directory, error) {
 	return ReadWithDirectory(r, size, cd)
 }
 
+// Read a zip from a stream, using a separate copy of the central directory.
+// Contents must be read in zip order or an error will be raised.
 func ReadStream(r io.Reader, size int64, cd []byte) (*Directory, error) {
 	ra := &streamReaderAt{r: r}
 	return ReadWithDirectory(ra, size, cd)
 }
 
+// Serialize a zip file with all of the files up to, but not including, the
+// given index. The contents and central directory are written to separate
+// writers, which may be the same writer.
 func (d *Directory) Truncate(n int, body, dir io.Writer) error {
 	if body != nil {
 		for i := 0; i < n; i++ {
@@ -217,6 +225,7 @@ func (d *Directory) Truncate(n int, body, dir io.Writer) error {
 	return nil
 }
 
+// Serialize a zip central directory to file
 func (d *Directory) WriteDirectory(w io.Writer) error {
 	buf := bufio.NewWriter(w)
 	cdoff := d.DirLoc
@@ -286,13 +295,44 @@ func (r *streamReaderAt) ReadAt(d []byte, p int64) (int, error) {
 	return n, err
 }
 
+// Add a file to the central directory. Its contents are assumed to be already
+// located after the last added file.
 func (d *Directory) AddFile(f *File) (*File, error) {
 	size, err := f.GetTotalSize()
 	if err != nil {
 		return nil, err
 	}
-	f.Offset = uint64(d.DirLoc)
+	offset := uint64(d.DirLoc)
+	if f.Offset != offset {
+		f.raw = nil
+	}
+	f.Offset = offset
 	d.DirLoc += size
 	d.File = append(d.File, f)
 	return f, nil
+}
+
+// Copy the contents of a file from another zip directory to the given writer
+// and add it to this directory.
+func (d *Directory) AddFileContents(f *File, w io.Writer) (*File, error) {
+	lfh, err := f.GetLocalHeader()
+	if err != nil {
+		return nil, err
+	}
+	if _, err := w.Write(lfh); err != nil {
+		return nil, err
+	}
+	pos := int64(f.Offset) + int64(len(lfh))
+	raw := io.NewSectionReader(f.r, pos, int64(f.CompressedSize))
+	if _, err := io.Copy(w, raw); err != nil {
+		return nil, err
+	}
+	dd, err := f.GetDataDescriptor()
+	if err != nil {
+		return nil, err
+	}
+	if _, err := w.Write(dd); err != nil {
+		return nil, err
+	}
+	return d.AddFile(f)
 }

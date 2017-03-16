@@ -54,8 +54,7 @@ func Sign(r io.Reader, signer *openpgp.Entity, opts crypto.SignerOpts, role stri
 	fmt.Fprintln(msg, "Date:", now.Format(time.ANSIC))
 	fmt.Fprintln(msg, "Role:", role)
 	fmt.Fprintln(msg, "Files: ")
-	var patchOffset int64
-	var patchLength uint32
+	var patchOffset, patchLength int64
 	var info *PackageInfo
 	filename := "_gpg" + role
 	for {
@@ -69,7 +68,7 @@ func Sign(r io.Reader, signer *openpgp.Entity, opts crypto.SignerOpts, role stri
 		if name == filename {
 			// mark the old signature for removal
 			patchOffset = counter.n - 60
-			patchLength = uint32(60 + ((hdr.Size+1)/2)*2)
+			patchLength = int64(60 + ((hdr.Size+1)/2)*2)
 		}
 		if strings.HasPrefix(name, "_gpg") {
 			continue

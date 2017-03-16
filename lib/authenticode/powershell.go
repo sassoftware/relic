@@ -278,7 +278,7 @@ func (pd *PsDigest) MakePatch(sig []byte) (*binpatch.PatchSet, error) {
 	} else {
 		encoded = buf.Bytes()
 	}
-	patch.Add(pd.TextSize, uint32(pd.SigSize), encoded)
+	patch.Add(pd.TextSize, int64(pd.SigSize), encoded)
 	return patch, nil
 }
 

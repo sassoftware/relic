@@ -31,6 +31,11 @@ import (
 
 // See https://docs.oracle.com/javase/8/docs/technotes/guides/jar/jar.html#JAR_Manifest
 
+const (
+	metaInf      = "META-INF/"
+	manifestName = metaInf + "MANIFEST.MF"
+)
+
 type FilesMap struct {
 	Main  http.Header
 	Order []string
@@ -68,11 +73,11 @@ func ParseManifest(manifest []byte) (files *FilesMap, err error) {
 	return files, nil
 }
 
-func DumpManifest(files *FilesMap) []byte {
+func (m *FilesMap) Dump() []byte {
 	var out bytes.Buffer
-	writeSection(&out, files.Main, "Manifest-Version")
-	for _, name := range files.Order {
-		section := files.Files[name]
+	writeSection(&out, m.Main, "Manifest-Version")
+	for _, name := range m.Order {
+		section := m.Files[name]
 		if section != nil {
 			writeSection(&out, section, "Name")
 		}

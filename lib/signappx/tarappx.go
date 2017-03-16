@@ -17,7 +17,6 @@
 package signappx
 
 import (
-	"archive/tar"
 	"bytes"
 	"crypto"
 	"errors"
@@ -25,55 +24,12 @@ import (
 	"hash"
 	"io"
 	"io/ioutil"
-	"os"
 	"strings"
 	"time"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/authenticode"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/zipslicer"
 )
-
-const (
-	tarMemberCD  = "zipdir.bin"
-	tarMemberZip = "contents.zip"
-)
-
-// Make a tar archive with two members:
-// - the central directory of the zip file
-// - the complete zip file
-// This lets us process the zip in one pass, which normally isn't possible with
-// the directory at the end.
-func AppxToTar(r *os.File, w io.Writer) error {
-	size, err := r.Seek(0, io.SeekEnd)
-	if err != nil {
-		return err
-	}
-	dirLoc, err := zipslicer.FindDirectory(r, size)
-	if err != nil {
-		return err
-	}
-	tw := tar.NewWriter(w)
-	r.Seek(dirLoc, 0)
-	if err := tarAddStream(tw, r, tarMemberCD, size-dirLoc); err != nil {
-		return err
-	}
-	r.Seek(0, 0)
-	if err := tarAddStream(tw, r, tarMemberZip, size); err != nil {
-		return err
-	}
-	return tw.Close()
-}
-
-func tarAddStream(tw *tar.Writer, r io.Reader, name string, size int64) error {
-	hdr := &tar.Header{Name: name, Mode: 0644, Size: size}
-	if err := tw.WriteHeader(hdr); err != nil {
-		return err
-	}
-	if _, err := io.CopyN(tw, r, size); err != nil {
-		return err
-	}
-	return nil
-}
 
 type AppxDigest struct {
 	Hash             crypto.Hash
@@ -101,24 +57,7 @@ func DigestAppxTar(r io.Reader, hash crypto.Hash, doPageHash bool) (*AppxDigest,
 	if err := info.blockMap.SetHash(hash); err != nil {
 		return nil, err
 	}
-	tr := tar.NewReader(r)
-	hdr, err := tr.Next()
-	if err != nil {
-		return nil, err
-	} else if hdr.Name != tarMemberCD {
-		return nil, errors.New("invalid appx tar")
-	}
-	zipdir, err := ioutil.ReadAll(tr)
-	if err != nil {
-		return nil, err
-	}
-	hdr, err = tr.Next()
-	if err != nil {
-		return nil, err
-	} else if hdr.Name != tarMemberZip {
-		return nil, errors.New("invalid appx tar")
-	}
-	inz, err := zipslicer.ReadStream(tr, hdr.Size, zipdir)
+	inz, err := zipslicer.ReadZipTar(r)
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +67,7 @@ copyf:
 		switch f.Name {
 		case appxManifest, appxBlockMap, appxContentTypes, appxCodeIntegrity, appxSignature, bundleManifestFile:
 			info.patchStart = int64(f.Offset)
-			info.patchLen = hdr.Size - info.patchStart
+			info.patchLen = inz.Size - info.patchStart
 			break copyf
 		default:
 			info.mtime = f.ModTime()
@@ -178,12 +117,9 @@ copyf:
 	if info.manifest == nil && info.bundle == nil {
 		return nil, errors.New("missing manifest")
 	}
-	if _, err := io.Copy(ioutil.Discard, tr); err != nil {
+	// drain the input to ensure the request is completely read before the response goes out
+	if _, err := io.Copy(ioutil.Discard, r); err != nil {
 		return nil, err
-	}
-	hdr, err = tr.Next()
-	if err != io.EOF {
-		return nil, errors.New("invalid appx tar")
 	}
 	return info, nil
 }
