@@ -26,13 +26,14 @@ import (
 	"crypto/x509/pkix"
 	"encoding/asn1"
 	"errors"
+	"io"
 	"math/big"
 )
 
 // Make a random 12 byte big.Int
 func MakeSerial() *big.Int {
 	blob := make([]byte, 12)
-	if n, err := rand.Reader.Read(blob); err != nil || n != len(blob) {
+	if _, err := io.ReadFull(rand.Reader, blob); err != nil {
 		return nil
 	}
 	return new(big.Int).SetBytes(blob)

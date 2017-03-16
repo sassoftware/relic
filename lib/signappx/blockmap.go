@@ -50,7 +50,8 @@ type blockMap struct {
 	HashMethod string   `xml:",attr"`
 	File       []blockFile
 
-	Hash crypto.Hash `xml:"-"`
+	Hash            crypto.Hash `xml:"-"`
+	unverifiedSizes bool        `xml:"-"`
 }
 
 type blockFile struct {
@@ -100,7 +101,7 @@ func verifyBlockMap(inz *zip.Reader, files zipFiles, skipDigests bool) error {
 		}
 		bmf := bmfiles[0]
 		bmfiles = bmfiles[1:]
-		name := strings.Replace(zf.Name, "/", "\\", -1)
+		name := zipToDos(zf.Name)
 		if bmf.Name != name {
 			return fmt.Errorf("blockmap: file mismatch: %s != %s", bmf.Name, name)
 		} else if bmf.Size != zf.UncompressedSize64 {
@@ -165,7 +166,8 @@ func (b *blockMap) CopySizes(blob []byte) error {
 		return fmt.Errorf("error parsing block map: %s", err)
 	}
 	for i, oldf := range orig.File {
-		if oldf.Name == appxManifest {
+		zipName := dosToZip(oldf.Name)
+		if zipName == appxManifest || zipName == bundleManifestFile {
 			// The only file that gets changed by us. It's stored with no
 			// compression to avoid screwing up the sizes.
 			continue
@@ -180,12 +182,12 @@ func (b *blockMap) CopySizes(blob []byte) error {
 			newf.Block[j].Size = oldblock.Size
 		}
 	}
+	b.unverifiedSizes = false
 	return nil
 }
 
 func (b *blockMap) AddFile(f *zipslicer.File, raw, cooked io.Writer) error {
-	var bmf blockFile
-	bmf.Name = strings.Replace(f.Name, "/", "\\", -1)
+	bmf := blockFile{Name: zipToDos(f.Name)}
 	lfh, err := f.GetLocalHeader()
 	if err != nil {
 		return fmt.Errorf("hashing zip metadata: %s", err)
@@ -199,7 +201,6 @@ func (b *blockMap) AddFile(f *zipslicer.File, raw, cooked io.Writer) error {
 		return fmt.Errorf("hashing zip metadata: %s", err)
 	}
 	// Copy 64K of uncompressed data at a time, adding block elements as we go
-	var pos int64
 	for {
 		d := b.Hash.New()
 		w := io.Writer(d)
@@ -210,13 +211,7 @@ func (b *blockMap) AddFile(f *zipslicer.File, raw, cooked io.Writer) error {
 		if n > 0 {
 			bmf.Size += uint64(n)
 			hash := base64.StdEncoding.EncodeToString(d.Sum(nil))
-			var size uint64
-			if f.Method != zip.Store {
-				p2 := rc.Tell()
-				size = uint64(p2 - pos)
-				pos = p2
-			}
-			bmf.Block = append(bmf.Block, block{Hash: hash, Size: size})
+			bmf.Block = append(bmf.Block, block{Hash: hash})
 		}
 		if err == io.EOF {
 			break
@@ -235,11 +230,25 @@ func (b *blockMap) AddFile(f *zipslicer.File, raw, cooked io.Writer) error {
 		raw.Write(dd)
 	}
 	if !(noHashFiles[f.Name] || strings.HasSuffix(f.Name, ".appx")) {
+		if f.Method != zip.Store {
+			b.unverifiedSizes = true
+		}
 		b.File = append(b.File, bmf)
 	}
 	return nil
 }
 
 func (b *blockMap) Marshal() ([]byte, error) {
+	if b.unverifiedSizes {
+		return nil, errors.New("found compressed files not already in blockmap")
+	}
 	return marshalXml(b, false)
+}
+
+func zipToDos(name string) string {
+	return strings.Replace(name, "/", "\\", -1)
+}
+
+func dosToZip(name string) string {
+	return strings.Replace(name, "\\", "/", -1)
 }

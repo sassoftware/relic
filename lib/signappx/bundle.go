@@ -87,8 +87,10 @@ func verifyBundle(r io.ReaderAt, files zipFiles, sig *AppxSignature, skipDigests
 		if err != nil {
 			return fmt.Errorf("bundle manifest: %s", err)
 		}
-		if pkg.Offset != offset || pkg.Size != zf.UncompressedSize64 {
-			return fmt.Errorf("bundled file does not match manifest attributes: %s", zf.Name)
+		if pkg.Offset != offset {
+			return fmt.Errorf("bundle manifest: %s claimed offset of %d but actual offset is %d", zf.Name, pkg.Offset, offset)
+		} else if pkg.Size != zf.UncompressedSize64 {
+			return fmt.Errorf("bundle manifest: %s claimed size of %d but actual size is %d", zf.Name, pkg.Size, zf.UncompressedSize64)
 		}
 		nested := io.NewSectionReader(r, offset, int64(zf.UncompressedSize64))
 		nestedSig, err := Verify(nested, int64(zf.UncompressedSize64), skipDigests)

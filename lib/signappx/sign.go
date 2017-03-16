@@ -62,7 +62,7 @@ func (i *AppxDigest) addZipEntry(name string, contents []byte) error {
 	// Don't deflate the manifest because I can't figure out how to correctly
 	// calculate block sizes. The blocks for the rest of the files can be
 	// cribbed from the old blockmap.
-	deflate := name != appxManifest
+	deflate := !(name == appxManifest || name == bundleManifestFile)
 	// Don't use descriptors for the 3 files that signtool adds, it seems to
 	// aggrevate the generic verifier although the appx works fine.
 	useDesc := !(name == appxContentTypes || name == appxCodeIntegrity || name == appxSignature)

@@ -146,7 +146,7 @@ func (i *AppxDigest) digestFile(f *zipslicer.File, doPageHash bool) error {
 	var sink io.Writer
 	if strings.HasSuffix(f.Name, ".exe") || strings.HasSuffix(f.Name, ".dll") {
 		// DigestPE wants a Reader so make a pipe for each one and sink data into the pipes
-		peWriters, peResults = setupPeDigests(i.Hash, doPageHash)
+		peWriters, peResults = setupPeDigests(f.Name, i.Hash, doPageHash)
 		defer func() {
 			for _, w := range peWriters {
 				w.Close()
@@ -181,30 +181,29 @@ type peDigestResult struct {
 	err    error
 }
 
-func setupPeDigests(hash crypto.Hash, doPageHash bool) (writers []io.WriteCloser, results []<-chan peDigestResult) {
-	w, r := setupPeDigest(hash, doPageHash)
+func setupPeDigests(name string, hash crypto.Hash, doPageHash bool) (writers []io.WriteCloser, results []<-chan peDigestResult) {
+	w, r := setupPeDigest(name, hash, doPageHash)
 	writers = append(writers, w)
 	results = append(results, r)
 	if hash != crypto.SHA1 {
 		// SHA1 for catalog compatibility
-		w, r := setupPeDigest(crypto.SHA1, doPageHash)
+		w, r := setupPeDigest(name, crypto.SHA1, doPageHash)
 		writers = append(writers, w)
 		results = append(results, r)
 	}
 	return
 }
 
-func setupPeDigest(hash crypto.Hash, doPageHash bool) (io.WriteCloser, <-chan peDigestResult) {
+func setupPeDigest(name string, hash crypto.Hash, doPageHash bool) (io.WriteCloser, <-chan peDigestResult) {
 	r, w := io.Pipe()
 	ch := make(chan peDigestResult, 1)
 	go func() {
 		digest, err := authenticode.DigestPE(r, hash, doPageHash)
 		if err != nil {
-			ch <- peDigestResult{nil, err}
-			r.CloseWithError(err)
-		} else {
-			ch <- peDigestResult{digest, nil}
+			err = fmt.Errorf("failed to update CodeIntegrity catalog for %s: %s", name, err)
 		}
+		ch <- peDigestResult{digest, err}
+		r.CloseWithError(err)
 		close(ch)
 	}()
 	return w, ch

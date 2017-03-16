@@ -28,7 +28,7 @@ func readAndHash(r io.Reader, d io.Writer, n int) ([]byte, error) {
 		return nil, nil
 	}
 	buf := make([]byte, n)
-	if _, err := r.Read(buf); err != nil {
+	if _, err := io.ReadFull(r, buf); err != nil {
 		return nil, err
 	}
 	if d != nil {

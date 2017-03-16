@@ -58,7 +58,6 @@ type File struct {
 
 type Reader struct {
 	f     *File
-	count *flateCount
 	rc    io.ReadCloser
 	crc   hash.Hash32
 	err   error
@@ -72,7 +71,7 @@ func (f *File) readLocalHeader() error {
 	}
 	sr := io.NewSectionReader(f.r, int64(f.Offset), f.rs)
 	var lfhb [fileHeaderLen]byte
-	if _, err := sr.Read(lfhb[:]); err != nil {
+	if _, err := io.ReadFull(sr, lfhb[:]); err != nil {
 		return err
 	}
 	binary.Read(bytes.NewReader(lfhb[:]), binary.LittleEndian, &f.lfh)
@@ -80,11 +79,11 @@ func (f *File) readLocalHeader() error {
 		return errors.New("local file header not found")
 	}
 	f.lfhName = make([]byte, f.lfh.FilenameLen)
-	if _, err := sr.Read(f.lfhName); err != nil {
+	if _, err := io.ReadFull(sr, f.lfhName); err != nil {
 		return err
 	}
 	f.lfhExtra = make([]byte, f.lfh.ExtraLen)
-	if _, err := sr.Read(f.lfhExtra); err != nil {
+	if _, err := io.ReadFull(sr, f.lfhExtra); err != nil {
 		return err
 	}
 	return nil
@@ -323,19 +322,17 @@ func (f *File) OpenAndTeeRaw(sink io.Writer) (*Reader, error) {
 	if sink != nil {
 		r = io.TeeReader(r, sink)
 	}
-	buf := bufio.NewReader(r)
-	count := &flateCount{r: buf}
 	crc := crc32.NewIEEE()
 	var rc io.ReadCloser
 	switch f.Method {
 	case zip.Store:
-		rc = ioutil.NopCloser(count)
+		rc = ioutil.NopCloser(r)
 	case zip.Deflate:
-		rc = flate.NewReader(count)
+		rc = flate.NewReader(r)
 	default:
 		return nil, errors.New("unsupported zip compression")
 	}
-	return &Reader{f: f, count: count, rc: rc, crc: crc}, nil
+	return &Reader{f: f, rc: rc, crc: crc}, nil
 }
 
 func (r *Reader) Read(d []byte) (int, error) {
@@ -373,28 +370,4 @@ func (r *Reader) Read(d []byte) (int, error) {
 
 func (r *Reader) Close() error {
 	return r.rc.Close()
-}
-
-// Indicate how many bytes of compressed data have been read
-func (r *Reader) Tell() int64 {
-	return r.count.n
-}
-
-type flateCount struct {
-	r flate.Reader
-	n int64
-}
-
-func (c *flateCount) Read(d []byte) (int, error) {
-	n, err := c.r.Read(d)
-	c.n += int64(n)
-	return n, err
-}
-
-func (c *flateCount) ReadByte() (byte, error) {
-	b, err := c.r.ReadByte()
-	if err == nil {
-		c.n++
-	}
-	return b, err
 }

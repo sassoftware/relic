@@ -121,7 +121,7 @@ func Digest(r io.Reader, hashFunc crypto.Hash) (*CabinetDigest, error) {
 	}
 	if cab.SignatureHeader != nil {
 		cab.Signature = make([]byte, cab.SignatureHeader.SignatureSize)
-		if _, err := r.Read(cab.Signature); err != nil {
+		if _, err := io.ReadFull(r, cab.Signature); err != nil {
 			return nil, err
 		}
 	}

@@ -210,7 +210,7 @@ func readOptHeader(r io.Reader, d io.Writer, peStart int64, fh *pe.FileHeader) (
 	hvals := new(peHeaderValues)
 	hvals.peStart = peStart
 	buf := make([]byte, fh.SizeOfOptionalHeader)
-	if _, err := r.Read(buf); err != nil {
+	if _, err := io.ReadFull(r, buf); err != nil {
 		return nil, err
 	}
 	// locate the bits that need to be omitted from hash
