@@ -1,5 +1,5 @@
 hash: a17515b127b68fe2f01d00f410f6af430c111bc2a490aaf4f3d88089de2caf48
-updated: 2017-03-08T15:48:10.135491647Z
+updated: 2017-03-17T14:58:16.324109368Z
 imports:
 - name: github.com/beevik/etree
   version: 1095c300fba68cb7f7895c0f96b2d34927f8115b
@@ -26,8 +26,10 @@ imports:
   subpackages:
   - cpio
   - fileutil
+- name: github.com/satori/go.uuid
+  version: b061729afc07e77a8aa4fad0a2fd840958f1942a
 - name: github.com/spf13/cobra
-  version: fcd0c5a1df88f5d6784cb4feead962c3f3d0b66c
+  version: 16c014f1a19d865b765b420e74508f80eb831ada
 - name: github.com/spf13/pflag
   version: 9ff6c6923cfffbcd502984b8e0c80539a94968b7
 - name: github.com/streadway/amqp
@@ -35,14 +37,14 @@ imports:
 - name: golang.org/x/crypto
   version: 728b753d0135da6801d45a38e6f43ff55779c5c2
   subpackages:
+  - cast5
   - openpgp
   - openpgp/armor
   - openpgp/clearsign
-  - openpgp/packet
-  - openpgp/errors
-  - openpgp/s2k
-  - cast5
   - openpgp/elgamal
+  - openpgp/errors
+  - openpgp/packet
+  - openpgp/s2k
   - ssh/terminal
 - name: golang.org/x/net
   version: d379faa25cbdc04d653984913a2ceb43b0bc46d7
@@ -54,13 +56,13 @@ imports:
 - name: golang.org/x/sys
   version: 99f16d856c9836c42d24e7ab64ea72916925fa97
   subpackages:
+  - unix
   - windows
+  - windows/registry
   - windows/svc
   - windows/svc/debug
   - windows/svc/eventlog
   - windows/svc/mgr
-  - windows/registry
-  - unix
 - name: gopkg.in/yaml.v2
   version: a3f3340b5840cee44f372bddb5880fcbc419b46a
 - name: xi2.org/x/xz
