@@ -4,6 +4,8 @@ import:
 - package: github.com/howeyc/gopass
 - package: github.com/mattn/go-shellwords
 - package: github.com/miekg/pkcs11
+  repo: https://github.com/mtharp/pkcs11
+  version: windows-packing
 - package: github.com/qur/ar
 - package: github.com/sassoftware/go-rpmutils
 - package: github.com/spf13/cobra

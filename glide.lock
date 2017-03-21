@@ -1,5 +1,5 @@
-hash: a17515b127b68fe2f01d00f410f6af430c111bc2a490aaf4f3d88089de2caf48
-updated: 2017-03-21T17:46:15.490873991Z
+hash: 16d2f17a225cd0ec1b5685b41edaea051df496fba24d4b1b2d59b3a595fe8516
+updated: 2017-03-21T18:08:22.44263798Z
 imports:
 - name: github.com/beevik/etree
   version: 1095c300fba68cb7f7895c0f96b2d34927f8115b
@@ -20,7 +20,8 @@ imports:
 - name: github.com/mattn/go-shellwords
   version: 005a0944d84452842197c2108bd9168ced206f78
 - name: github.com/miekg/pkcs11
-  version: 7283ca79f35edb89bc1b4ecae7f86a3680ce737f
+  version: 877dc7e79bbbb5e789535cc3abea8f5db62f81a9
+  repo: https://github.com/mtharp/pkcs11
 - name: github.com/op/go-logging
   version: 970db520ece77730c7e4724c61121037378659d9
 - name: github.com/qur/ar
