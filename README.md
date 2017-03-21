@@ -7,7 +7,7 @@ It can sign these package types:
 * JAR
 * PE/COFF - Windows executable
 * MSI
-* APPX - Windows universal
+* appx, appxbundle - Windows universal
 * CAB - Windows cabinet file
 * CAT - Windows security catalog
 * PS1, PS1XML, MOF, etc. - Microsoft Powershell script
@@ -33,9 +33,5 @@ Linux and Windows are supported. Other platforms probably work as well.
 To install relic:
 
     go get gerrit-pdt.unx.sas.com/tools/relic.git/relic
-
-To install a version without the PKCS#11 features (more easily cross-compileable):
-
-    go get -tags pure gerrit-pdt.unx.sas.com/tools/relic.git/relic
 
 See distro/linux/relic.yml for an example configuration.

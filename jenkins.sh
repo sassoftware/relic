@@ -25,7 +25,7 @@ export GIT_ALLOW_PROTOCOL=none
 touch $GOPATH/src/$module/config/config.go
 GOOS=linux go build -v -ldflags "$ldflags" -o $WORKDIR/build/relic $module/relic
 GOOS=linux go build -v -ldflags "$ldflags" -o $WORKDIR/build/relic-audit $module/relic/relic-audit
-GOOS=windows go build -v -ldflags "$ldflags" -tags pure -o $WORKDIR/build/relic.exe $module/relic
+GOOS=windows go build -v -ldflags "$ldflags" -o $WORKDIR/build/relic.exe $module/relic
 
 cd $WORKDIR/build
 rhname=relic-redhat-$version

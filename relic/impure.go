@@ -1,4 +1,4 @@
-// +build !pure
+// +build cgo,!pure
 
 /*
  * Copyright (c) SAS Institute Inc.
