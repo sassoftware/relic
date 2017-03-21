@@ -17,11 +17,16 @@
 package server
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
+	"time"
 
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/audit"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/procutil"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/signers"
 )
 
@@ -61,20 +66,46 @@ func (s *Server) serveSign(request *http.Request, writer http.ResponseWriter) (r
 		"--server",
 		"--key", keyConf.Name(),
 		"--sig-type", mod.Name,
-		"--file", "-",
-		"--output", "-",
 	}
 	if digest := request.URL.Query().Get("digest"); digest != "" {
 		cmdline = append(cmdline, "--digest", digest)
 	}
 	flags := mod.QueryToCmdline(request.URL.Query())
 	cmdline = append(cmdline, flags...)
-	stdout, attrs, response, err := s.invokeCommand(request, request.Body, "", false, keyConf.GetTimeout(), cmdline)
-	if response != nil || err != nil {
-		return response, err
+	// build subproc environment
+	cmd := procutil.CommandContext(request.Context(), cmdline, keyConf.GetTimeout())
+	infd, err := cmd.AttachInput(request.Body)
+	if err != nil {
+		return nil, err
 	}
-	if attrs == nil {
-		return nil, errors.New("missing audit info")
+	cmd.Proc.Args = append(cmd.Proc.Args, fmt.Sprintf("--file=/dev/fd/%d", infd))
+	outfd, err := cmd.AttachOutput()
+	if err != nil {
+		return nil, err
+	}
+	cmd.Proc.Args = append(cmd.Proc.Args, fmt.Sprintf("--output=/dev/fd/%d", outfd))
+	auditfd, err := cmd.AttachOutput()
+	if err != nil {
+		return nil, err
+	}
+	env := os.Environ()
+	env = append(env, fmt.Sprintf("%s=%d", audit.EnvAuditFd, auditfd))
+	env = append(env, fmt.Sprintf("RELIC_client.ip=%s", GetClientIP(request)))
+	env = append(env, fmt.Sprintf("RELIC_client.name=%s", GetClientName(request)))
+	env = append(env, fmt.Sprintf("RELIC_client.filename=%s", filename))
+	cmd.Proc.Env = env
+	// execute
+	if err := cmd.Run(); err != nil {
+		return s.showProcError(request, cmd, keyConf.GetTimeout(), err)
+	}
+	// gather results
+	result := cmd.Pipes[outfd]
+	if len(result) == 0 {
+		return nil, errors.New("empty result")
+	}
+	attrs, err := audit.Parse(cmd.Pipes[auditfd])
+	if err != nil {
+		return nil, err
 	}
 	var extra string
 	if mod.FormatLog != nil {
@@ -84,5 +115,24 @@ func (s *Server) serveSign(request *http.Request, writer http.ResponseWriter) (r
 		extra = " " + extra
 	}
 	s.Logr(request, "Signed package: filename=%s key=%s%s", filename, keyConf.Name(), extra)
-	return BytesResponse(stdout, attrs.GetMimeType()), nil
+	return BytesResponse(result, attrs.GetMimeType()), nil
+}
+
+func (s *Server) showProcError(request *http.Request, cmd *procutil.Command, timeout time.Duration, err error) (Response, error) {
+	switch err {
+	case context.DeadlineExceeded:
+		s.Logr(request, "error: command timed out after %d seconds\nCommand: %s\nOutput:\n%s\n\n",
+			timeout/time.Second, cmd.FormatCmdline(), cmd.Output)
+		return StringResponse(http.StatusGatewayTimeout, "Signing command timed out"), nil
+	case context.Canceled:
+		s.Logr(request, "client hung up during signing operation")
+		return StringResponse(http.StatusGatewayTimeout, "Signing command timed out"), nil
+	}
+	s.Logr(request, "error: invoking signing tool: %s\nCommand: %s\nOutput:\n%s\n\n", err, cmd.FormatCmdline(), cmd.Output)
+	switch {
+	case strings.Contains(cmd.Output, "no certificate of type"):
+		return StringResponse(http.StatusBadRequest, "key does not support signatures of this type"), nil
+	default:
+		return ErrorResponse(http.StatusInternalServerError), nil
+	}
 }

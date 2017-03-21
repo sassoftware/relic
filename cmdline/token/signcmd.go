@@ -196,6 +196,8 @@ func setTimestamper(opts *signers.SignOpts) error {
 func openForPatching() (*os.File, error) {
 	if argFile == "-" && argServer {
 		return os.Stdin, nil
+	} else if argServer {
+		return os.Open(argFile)
 	} else {
 		return os.OpenFile(argFile, os.O_RDWR, 0)
 	}

@@ -41,17 +41,15 @@ func PublishAudit(info *audit.AuditInfo) error {
 		return err
 	}
 	aconf := shared.CurrentConfig.Amqp
-	if aconf == nil || aconf.Url == "" {
-		// not enabled
-		return nil
-	}
-	if aconf.SealingKey != "" {
-		if err := sealAudit(info, aconf); err != nil {
-			return shared.Fail(fmt.Errorf("failed to seal audit log: %s", err))
+	if aconf != nil && aconf.Url != "" {
+		if aconf.SealingKey != "" {
+			if err := sealAudit(info, aconf); err != nil {
+				return shared.Fail(fmt.Errorf("failed to seal audit log: %s", err))
+			}
 		}
-	}
-	if err := info.Publish(aconf); err != nil {
-		return shared.Fail(fmt.Errorf("failed to publish audit log: %s", err))
+		if err := info.Publish(aconf); err != nil {
+			return shared.Fail(fmt.Errorf("failed to publish audit log: %s", err))
+		}
 	}
 	if err := info.WriteFd(); err != nil {
 		return shared.Fail(fmt.Errorf("failed to publish audit log: %s", err))

@@ -34,7 +34,7 @@ type PasswordGetter interface {
 type PasswordPrompt struct{}
 
 func (PasswordPrompt) GetPasswd(prompt string) (string, error) {
-	passwd, err := gopass.GetPasswdPrompt(prompt, false, os.Stdin, os.Stderr)
+	passwd, err := gopass.GetPasswdPrompt(prompt, true, os.Stdin, os.Stderr)
 	if err == io.EOF {
 		return "", nil
 	} else if err != nil {

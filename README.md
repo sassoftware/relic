@@ -27,6 +27,7 @@ Other features include:
 * RSA and ECDSA supported for all signature types
 * Verify signatures on all supported package types
 * Sending audit logs to an AMQP broker
+* Save token PINs in the system keyring
 
 Linux and Windows are supported. Other platforms probably work as well.
 

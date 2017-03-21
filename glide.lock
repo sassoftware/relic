@@ -1,10 +1,14 @@
 hash: a17515b127b68fe2f01d00f410f6af430c111bc2a490aaf4f3d88089de2caf48
-updated: 2017-03-17T14:58:16.324109368Z
+updated: 2017-03-21T17:46:15.490873991Z
 imports:
 - name: github.com/beevik/etree
   version: 1095c300fba68cb7f7895c0f96b2d34927f8115b
 - name: github.com/braintree/manners
   version: 82a8879fc5fd0381fa8b2d8033b19bf255252088
+- name: github.com/danieljoos/wincred
+  version: cbe0c0023057b04ad78c6de5e8cb85ea9b5315be
+- name: github.com/godbus/dbus
+  version: fe0e1d54eaeda11a9979659a8d32f459e88bee75
 - name: github.com/howeyc/gopass
   version: bf9dde6d0d2c004a008c27aaee91170c786f6db8
 - name: github.com/inconshreveable/mousetrap
@@ -34,6 +38,10 @@ imports:
   version: 9ff6c6923cfffbcd502984b8e0c80539a94968b7
 - name: github.com/streadway/amqp
   version: ce1c69d94c3efdb1f287015f851b17db8fa205b1
+- name: github.com/zalando/go-keyring
+  version: dcbcb8215e7449155ca2bd5b4fc67e0b91e175f1
+  subpackages:
+  - secret_service
 - name: golang.org/x/crypto
   version: 728b753d0135da6801d45a38e6f43ff55779c5c2
   subpackages:

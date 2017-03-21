@@ -36,12 +36,13 @@ var UserAgent = "relic/" + Version
 var Author = "SAS Institute Inc."
 
 type TokenConfig struct {
-	Provider string  // Path to PKCS#11 provider module (required)
-	Label    string  // Select a token by label
-	Serial   string  // Select a token by serial number
-	Pin      *string // PIN to use, otherwise will be prompted. Can be empty. (optional)
-	Timeout  int     // (server) Terminate command after N seconds (default 300)
-	User     *uint   // User argument for PKCS#11 login (optional)
+	Provider   string  // Path to PKCS#11 provider module (required)
+	Label      string  // Select a token by label
+	Serial     string  // Select a token by serial number
+	Pin        *string // PIN to use, otherwise will be prompted. Can be empty. (optional)
+	Timeout    int     // (server) Terminate command after N seconds (default 300)
+	User       *uint   // User argument for PKCS#11 login (optional)
+	UseKeyring bool    // Read PIN from system keyring
 
 	name string
 }

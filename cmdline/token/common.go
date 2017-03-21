@@ -119,7 +119,11 @@ func openToken(tokenName string) (*p11token.Token, error) {
 	if err != nil {
 		return nil, err
 	}
-	token, err = p11token.Open(shared.CurrentConfig, tokenName, &passprompt.PasswordPrompt{})
+	var prompt passprompt.PasswordGetter
+	if !argServer {
+		prompt = new(passprompt.PasswordPrompt)
+	}
+	token, err = p11token.Open(shared.CurrentConfig, tokenName, prompt)
 	if err != nil {
 		return nil, err
 	}

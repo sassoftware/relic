@@ -1,3 +1,5 @@
+// +build windows,!cgo !linux,!darwin,!windows
+
 /*
  * Copyright (c) SAS Institute Inc.
  *
@@ -14,8 +16,20 @@
  * limitations under the License.
  */
 
-package audit
+package passprompt
 
-func (info *AuditInfo) WriteFd() error {
-	return nil
+import "errors"
+
+var errNotFound = errors.New("keyring support not available")
+
+func keyringGet(service, user string) (string, error) {
+	return "", errNotFound
+}
+
+func keyringSet(service, user, password string) error {
+	return errNotFound
+}
+
+func keyringDelete(service, user string) error {
+	return errNotFound
 }

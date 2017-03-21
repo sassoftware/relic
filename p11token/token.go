@@ -19,6 +19,7 @@ package p11token
 import (
 	"errors"
 	"fmt"
+	"io"
 	"runtime"
 	"sync"
 
@@ -189,31 +190,37 @@ func (token *Token) autoLogIn(tokenConf *config.TokenConfig, pinProvider passpro
 		user = *tokenConf.User
 	}
 	if tokenConf.Pin != nil {
-		err = token.login(user, *tokenConf.Pin)
-		if err != nil {
-			return err
+		return token.login(user, *tokenConf.Pin)
+	}
+	initialPrompt := fmt.Sprintf("PIN for token %s user %08x: ", token.Name, user)
+	failPrefix := "Incorrect PIN\r\n"
+	var keyringService, keyringUser string
+	if tokenConf.UseKeyring {
+		keyringService = "relic"
+		keyringUser = fmt.Sprintf("%s.%08x", token.Name, user)
+	}
+	loginFunc := func(pin string) (bool, error) {
+		if err := token.login(user, pin); err == nil {
+			return true, nil
+		} else if _, ok := err.(sigerrors.PinIncorrectError); ok {
+			return false, nil
+		} else {
+			return false, err
 		}
-	} else if pinProvider != nil {
-		initialPrompt := fmt.Sprintf("PIN for token %s: ", token.Name)
-		prompt := initialPrompt
-		for {
-			pin, err := pinProvider.GetPasswd(prompt)
-			if err != nil {
-				return err
-			} else if pin == "" {
-				return errors.New("Aborted")
+	}
+	err = passprompt.Login(loginFunc, pinProvider, keyringService, keyringUser, initialPrompt, failPrefix)
+	if err == io.EOF {
+		if pinProvider == nil {
+			msg := "PIN required but none was provided"
+			if tokenConf.UseKeyring {
+				msg += "; use 'relic ping' to save password in keyring"
 			}
-			err = token.login(user, pin)
-			if _, ok := err.(sigerrors.PinIncorrectError); ok {
-				prompt = "Incorrect PIN\r\n" + initialPrompt
-				continue
-			} else if err != nil {
-				return err
-			}
-			break
+			return errors.New(msg)
+		} else {
+			return errors.New("Aborted")
 		}
 	} else {
-		return errors.New("PIN required but none was provided")
+		return err
 	}
 	return nil
 }

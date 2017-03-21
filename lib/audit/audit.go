@@ -33,6 +33,8 @@ import (
 	"golang.org/x/crypto/openpgp"
 )
 
+const EnvAuditFd = "RELIC_AUDIT_FD"
+
 type AuditInfo struct {
 	Attributes   map[string]interface{}
 	sealed, seal []byte
@@ -162,6 +164,9 @@ func (info *AuditInfo) GetSealed() ([]byte, []byte) {
 
 // Parse audit data from a JSON blob
 func Parse(blob []byte) (*AuditInfo, error) {
+	if len(blob) == 0 {
+		return nil, errors.New("missing attributes")
+	}
 	var doc sealedDoc
 	if err := json.Unmarshal(blob, &doc); err != nil {
 		return nil, err

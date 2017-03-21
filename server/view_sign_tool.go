@@ -27,6 +27,7 @@ import (
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/audit"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/procutil"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/server/diskmgr"
 )
 
@@ -87,9 +88,10 @@ func (s *Server) signWithTool(keyConf *config.KeyConfig, request *http.Request, 
 	} else if err != nil {
 		return nil, err
 	}
-	_, _, response, err = s.invokeCommand(request, nil, scratchDir, true, keyConf.GetTimeout(), cmdline)
-	if response != nil || err != nil {
-		return response, err
+	cmd := procutil.CommandContext(request.Context(), cmdline, keyConf.GetTimeout())
+	cmd.Proc.Dir = scratchDir
+	if err := cmd.Run(); err != nil {
+		return s.showProcError(request, cmd, keyConf.GetTimeout(), err)
 	}
 	if err := s.auditTool(keyConf, request, filename); err != nil {
 		return nil, fmt.Errorf("failed to publish audit info: %s", err)

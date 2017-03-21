@@ -1,3 +1,5 @@
+// +build linux darwin windows,cgo
+
 /*
  * Copyright (c) SAS Institute Inc.
  *
@@ -14,8 +16,22 @@
  * limitations under the License.
  */
 
-package audit
+package passprompt
 
-func (info *AuditInfo) WriteFd() error {
-	return nil
+import (
+	"github.com/zalando/go-keyring"
+)
+
+var errNotFound = keyring.ErrNotFound
+
+func keyringGet(service, user string) (string, error) {
+	return keyring.Get(service, user)
+}
+
+func keyringSet(service, user, password string) error {
+	return keyring.Set(service, user, password)
+}
+
+func keyringDelete(service, user string) error {
+	return keyring.Delete(service, user)
 }
