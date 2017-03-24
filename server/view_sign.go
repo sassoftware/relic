@@ -89,10 +89,10 @@ func (s *Server) serveSign(request *http.Request, writer http.ResponseWriter) (r
 		return nil, err
 	}
 	env := os.Environ()
-	env = append(env, fmt.Sprintf("%s=%d", audit.EnvAuditFd, auditfd))
-	env = append(env, fmt.Sprintf("RELIC_client.ip=%s", GetClientIP(request)))
-	env = append(env, fmt.Sprintf("RELIC_client.name=%s", GetClientName(request)))
-	env = append(env, fmt.Sprintf("RELIC_client.filename=%s", filename))
+	env = audit.PutAuditFd(env, auditfd)
+	env = audit.PutEnv(env, "client.ip", GetClientIP(request))
+	env = audit.PutEnv(env, "client.name", GetClientName(request))
+	env = audit.PutEnv(env, "client.filename", filename)
 	cmd.Proc.Env = env
 	// execute
 	if err := cmd.Run(); err != nil {

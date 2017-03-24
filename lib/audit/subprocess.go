@@ -18,6 +18,10 @@ package audit
 
 import "fmt"
 
+func PutAuditFd(env []string, fd int) []string {
+	return append(env, fmt.Sprintf("%s=%d", EnvAuditFd, fd))
+}
+
 func PutEnv(env []string, k, v string) []string {
 	return append(env, fmt.Sprintf("RELIC_ATTR_%s=%s", k, v))
 }
