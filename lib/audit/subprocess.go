@@ -1,5 +1,3 @@
-// +build linux darwin windows,amd64
-
 /*
  * Copyright (c) SAS Institute Inc.
  *
@@ -16,22 +14,10 @@
  * limitations under the License.
  */
 
-package passprompt
+package audit
 
-import (
-	"github.com/zalando/go-keyring"
-)
+import "fmt"
 
-var errNotFound = keyring.ErrNotFound
-
-func keyringGet(service, user string) (string, error) {
-	return keyring.Get(service, user)
-}
-
-func keyringSet(service, user, password string) error {
-	return keyring.Set(service, user, password)
-}
-
-func keyringDelete(service, user string) error {
-	return keyring.Delete(service, user)
+func PutEnv(env []string, k, v string) []string {
+	return append(env, fmt.Sprintf("RELIC_ATTR_%s=%s", k, v))
 }

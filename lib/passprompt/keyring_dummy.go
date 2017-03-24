@@ -1,4 +1,4 @@
-// +build windows,!cgo !linux,!darwin,!windows
+// +build !linux,!darwin,!windows windows,386
 
 /*
  * Copyright (c) SAS Institute Inc.

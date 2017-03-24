@@ -26,8 +26,8 @@ import (
 )
 
 const (
-	tarMemberCD  = "zipdir.bin"
-	tarMemberZip = "contents.zip"
+	TarMemberCD  = "zipdir.bin"
+	TarMemberZip = "contents.zip"
 )
 
 // Make a tar archive with two members:
@@ -46,11 +46,11 @@ func ZipToTar(r *os.File, w io.Writer) error {
 	}
 	tw := tar.NewWriter(w)
 	r.Seek(dirLoc, 0)
-	if err := tarAddStream(tw, r, tarMemberCD, size-dirLoc); err != nil {
+	if err := tarAddStream(tw, r, TarMemberCD, size-dirLoc); err != nil {
 		return err
 	}
 	r.Seek(0, 0)
-	if err := tarAddStream(tw, r, tarMemberZip, size); err != nil {
+	if err := tarAddStream(tw, r, TarMemberZip, size); err != nil {
 		return err
 	}
 	return tw.Close()
@@ -74,7 +74,7 @@ func ReadZipTar(r io.Reader) (*Directory, error) {
 	hdr, err := tr.Next()
 	if err != nil {
 		return nil, fmt.Errorf("error reading tar: %s", err)
-	} else if hdr.Name != tarMemberCD {
+	} else if hdr.Name != TarMemberCD {
 		return nil, errors.New("invalid tarzip")
 	}
 	zipdir, err := ioutil.ReadAll(tr)
@@ -84,7 +84,7 @@ func ReadZipTar(r io.Reader) (*Directory, error) {
 	hdr, err = tr.Next()
 	if err != nil {
 		return nil, err
-	} else if hdr.Name != tarMemberZip {
+	} else if hdr.Name != TarMemberZip {
 		return nil, errors.New("invalid tarzip")
 	}
 	zr := &zipTarReader{tr: tr}

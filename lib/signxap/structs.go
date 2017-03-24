@@ -1,5 +1,3 @@
-// +build linux darwin windows,amd64
-
 /*
  * Copyright (c) SAS Institute Inc.
  *
@@ -16,22 +14,26 @@
  * limitations under the License.
  */
 
-package passprompt
+package signxap
 
-import (
-	"github.com/zalando/go-keyring"
+import "gerrit-pdt.unx.sas.com/tools/relic.git/lib/authenticode"
+
+const (
+	trailerMagic = 0x53706158 // XapS
 )
 
-var errNotFound = keyring.ErrNotFound
+var (
+	SpcUuidSipInfoXap = []byte{0x6F, 0xA6, 0x08, 0xBA, 0x3B, 0x11, 0x58, 0x4D, 0x93, 0x29, 0xA1, 0xB3, 0x7A, 0xF3, 0x0F, 0x0E}
+	xapSipInfo        = authenticode.SpcSipInfo{1, SpcUuidSipInfoXap, 0, 0, 0, 0, 0}
+)
 
-func keyringGet(service, user string) (string, error) {
-	return keyring.Get(service, user)
+type xapTrailer struct {
+	Magic       uint32
+	Unknown1    uint16
+	TrailerSize uint32
 }
 
-func keyringSet(service, user, password string) error {
-	return keyring.Set(service, user, password)
-}
-
-func keyringDelete(service, user string) error {
-	return keyring.Delete(service, user)
+type xapHeader struct {
+	Unknown1, Unknown2 uint16
+	SignatureSize      uint32
 }

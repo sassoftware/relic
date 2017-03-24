@@ -35,6 +35,7 @@ import (
 	_ "gerrit-pdt.unx.sas.com/tools/relic.git/signers/pkcs"
 	_ "gerrit-pdt.unx.sas.com/tools/relic.git/signers/ps"
 	_ "gerrit-pdt.unx.sas.com/tools/relic.git/signers/rpm"
+	_ "gerrit-pdt.unx.sas.com/tools/relic.git/signers/xap"
 )
 
 func main() {

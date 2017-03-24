@@ -10,6 +10,7 @@ It can sign these package types:
 * appx, appxbundle - Windows universal
 * CAB - Windows cabinet file
 * CAT - Windows security catalog
+* XAP - Silverlight and legacy Windows Phone applications
 * PS1, PS1XML, MOF, etc. - Microsoft Powershell script
 * .manifest, .application - Microsoft ClickOnce manifest
 * PGP - detached or cleartext signature of data
