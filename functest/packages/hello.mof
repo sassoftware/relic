@@ -1,0 +1,5 @@
+#pragma autorecover
+#pragma classflags("forceupdate")
+
+
+#pragma namespace("\\\\.\\root\\ServiceModel")

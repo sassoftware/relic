@@ -1,5 +1,6 @@
 keys/
-*.yml
+trust/
+work/
 
 *.application
 *.appx
@@ -24,6 +25,7 @@ keys/
 *.RSA
 *.SF
 *.SIG
+*.xap
 
 # Created by https://www.gitignore.io/api/go,vim
 

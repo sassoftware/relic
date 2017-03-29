@@ -1,0 +1,25 @@
+---
+tokens:
+  softhsm:
+    provider: /usr/lib64/pkcs11/libsofthsm2.so
+    label: functest
+    pin: 123456
+keys:
+  rsa2048:
+    token: softhsm
+    label: rsa2048
+    pgpcertificate: ./testkeys/rsa2048.pgp
+    x509certificate: ./testkeys/rsa2048.crt
+    roles: ['client']
+server:
+  listen: ":6363"
+  keyfile: ./testkeys/server.key
+  certfile: ./testkeys/server.crt
+remote:
+  url: https://localhost:6363
+  keyfile: ./testkeys/client.pem
+  certfile: ./testkeys/client.pem
+  cacert: ./testkeys/server.crt
+clients:
+  426886bcf5dedbd73f78477d5151738e39c245c27c3cae792503592ae4417c59:
+    roles: ['client']
