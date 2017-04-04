@@ -19,7 +19,6 @@ package remotecmd
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"net/url"
 	"os"
@@ -39,7 +38,6 @@ func init() {
 }
 
 type keyInfo struct {
-	ExternalTool    bool
 	X509Certificate string
 	PGPCertificate  string
 }
@@ -69,9 +67,6 @@ func getKeyCmd(cmd *cobra.Command, args []string) error {
 		info, err := getKeyInfo(keyName)
 		if err != nil {
 			return shared.Fail(err)
-		}
-		if info.X509Certificate == "" && info.PGPCertificate == "" && info.ExternalTool {
-			fmt.Fprintln(os.Stderr, keyName, "is an external tool and has no certificates")
 		}
 		os.Stdout.WriteString(info.X509Certificate)
 		os.Stdout.WriteString(info.PGPCertificate)

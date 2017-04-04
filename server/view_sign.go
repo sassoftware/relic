@@ -49,10 +49,8 @@ func (s *Server) serveSign(request *http.Request, writer http.ResponseWriter) (r
 		s.Logr(request, "access denied to key %s\n", keyName)
 		return AccessDeniedResponse, nil
 	}
-	if keyConf.Tool != "" {
-		return s.signWithTool(keyConf, request, writer)
-	} else if keyConf.Token == "" {
-		return nil, fmt.Errorf("Key %s needs a tool or token setting", keyName)
+	if keyConf.Token == "" {
+		return nil, fmt.Errorf("Key %s needs a token setting", keyName)
 	}
 	mod := signers.ByName(sigType)
 	if mod == nil {

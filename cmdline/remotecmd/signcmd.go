@@ -26,7 +26,6 @@ import (
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/signers"
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 )
 
 var SignCmd = &cobra.Command{
@@ -56,31 +55,22 @@ func signCmd(cmd *cobra.Command, args []string) (err error) {
 	if argOutput == "" {
 		argOutput = argFile
 	}
-	// check if an external tool will be used. if so we want to upload the file
-	// as-is, even for filetypes we'd normally transform first.
-	info, err := getKeyInfo(argKeyName)
+	// detect signature type
+	mod, err := signers.ByFile(argFile, argSigType)
 	if err != nil {
-		return shared.Fail(fmt.Errorf("failed to get info about key %s: %s", argKeyName, err))
+		return shared.Fail(err)
 	}
-	// detect signature type when not using an external tool
-	var mod *signers.Signer
-	var flags *pflag.FlagSet
-	if !info.ExternalTool {
-		mod, err = signers.ByFile(argFile, argSigType)
-		if err != nil {
-			return shared.Fail(err)
-		}
-		if mod.Sign == nil {
-			return shared.Fail(errors.New("can't sign this type of file"))
-		}
-		flags, err = mod.GetFlags(cmd.Flags())
-		if err != nil {
-			return shared.Fail(err)
-		}
+	if mod.Sign == nil {
+		return shared.Fail(errors.New("can't sign this type of file"))
+	}
+	// parse signer-specific flags
+	flags, err := mod.GetFlags(cmd.Flags())
+	if err != nil {
+		return shared.Fail(err)
 	}
 	var infile *os.File
 	if argFile == "-" {
-		if mod != nil && !mod.AllowStdin {
+		if !mod.AllowStdin {
 			return shared.Fail(errors.New("this signature type does not support reading from stdin"))
 		}
 		infile = os.Stdin
@@ -111,14 +101,12 @@ func signCmd(cmd *cobra.Command, args []string) (err error) {
 	values := url.Values{}
 	values.Add("key", argKeyName)
 	values.Add("filename", path.Base(argFile))
-	if mod != nil {
-		values.Add("sigtype", mod.Name)
-		if err := mod.FlagsToQuery(cmd.Flags(), opts.FlagOverride, values); err != nil {
-			return shared.Fail(err)
-		}
-		if err := setDigestQueryParam(values); err != nil {
-			return err
-		}
+	values.Add("sigtype", mod.Name)
+	if err := mod.FlagsToQuery(cmd.Flags(), opts.FlagOverride, values); err != nil {
+		return shared.Fail(err)
+	}
+	if err := setDigestQueryParam(values); err != nil {
+		return err
 	}
 	// do request
 	response, err := CallRemote("sign", "POST", &values, transform)
@@ -131,7 +119,7 @@ func signCmd(cmd *cobra.Command, args []string) (err error) {
 		return shared.Fail(err)
 	}
 	// if needed, do a final fixup step
-	if mod != nil && mod.Fixup != nil {
+	if mod.Fixup != nil {
 		f, err := os.OpenFile(argOutput, os.O_RDWR, 0)
 		if err != nil {
 			return shared.Fail(err)

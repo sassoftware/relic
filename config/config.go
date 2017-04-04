@@ -26,9 +26,8 @@ import (
 )
 
 const (
-	defaultMaxDocSize = 10000000
-	defaultSigXchg    = "relic.signatures"
-	sigKey            = "relic.signatures"
+	defaultSigXchg = "relic.signatures"
+	sigKey         = "relic.signatures"
 )
 
 var Version = "unknown" // set this at link time
@@ -47,14 +46,8 @@ type TokenConfig struct {
 	name string
 }
 
-type ToolConfig struct {
-	Command string // Command template
-	Timeout int    // (server) Terminate command after N seconds (default 300)
-}
-
 type KeyConfig struct {
 	Token           string   // Token section to use for this key (linux)
-	Tool            string   // Tool section to use for this key (windows)
 	Alias           string   // This is an alias for another key
 	Label           string   // Select a key by label
 	Id              string   // Select a key by ID (hex notation)
@@ -64,11 +57,8 @@ type KeyConfig struct {
 	Timestamp       bool     // If true, attach a timestamped countersignature when possible
 	Hide            bool     // If true, then omit this key from 'remote list-keys'
 
-	Params map[string]string // Parameters for a tool-based key, substituted into the command-line
-
 	name  string
 	token *TokenConfig
-	tool  *ToolConfig
 }
 
 type ServerConfig struct {
@@ -77,10 +67,7 @@ type ServerConfig struct {
 	CertFile string // Path to TLS certificate chain
 	LogFile  string // Optional error log
 
-	MaxDocSize     int64 // Largest request that will be spooled to RAM
-	MaxDiskUsage   uint  // Max disk usage in megabytes
-	DebugDiskUsage bool
-	Disabled       bool // Always return 503 Service Unavailable
+	Disabled bool // Always return 503 Service Unavailable
 
 	TokenCheckInterval int
 	TokenCheckFailures int
@@ -123,7 +110,6 @@ type AmqpConfig struct {
 
 type Config struct {
 	Tokens    map[string]*TokenConfig  `,omitempty`
-	Tools     map[string]*ToolConfig   `,omitempty`
 	Keys      map[string]*KeyConfig    `,omitempty`
 	Server    *ServerConfig            `,omitempty`
 	Clients   map[string]*ClientConfig `,omitempty`
@@ -155,9 +141,6 @@ func ReadFile(path string) (*Config, error) {
 		normalized[lower] = client
 	}
 	config.Clients = normalized
-	if config.Server != nil && config.Server.MaxDocSize == 0 {
-		config.Server.MaxDocSize = defaultMaxDocSize
-	}
 	if config.PinFile != "" {
 		contents, err := ioutil.ReadFile(config.PinFile)
 		if err != nil {
@@ -182,9 +165,6 @@ func ReadFile(path string) (*Config, error) {
 		keyConf.name = keyName
 		if keyConf.Token != "" {
 			keyConf.token = config.Tokens[keyConf.Token]
-		}
-		if keyConf.Tool != "" {
-			keyConf.tool = config.Tools[keyConf.Tool]
 		}
 	}
 	config.path = path
@@ -213,8 +193,8 @@ func (config *Config) GetKey(keyName string) (*KeyConfig, error) {
 			return nil, fmt.Errorf("Alias \"%s\" points to undefined key \"%s\"", keyName, keyConf.Alias)
 		}
 	}
-	if keyConf.Token == "" && keyConf.Tool == "" {
-		return nil, fmt.Errorf("Key \"%s\" does not specify required value 'token' or 'tool'", keyName)
+	if keyConf.Token == "" {
+		return nil, fmt.Errorf("Key \"%s\" does not specify required value 'token'", keyName)
 	} else {
 		return keyConf, nil
 	}

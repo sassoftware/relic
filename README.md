@@ -16,9 +16,7 @@ It can sign these package types:
 * PGP - detached or cleartext signature of data
 
 Relic can also operate as a signing server, allowing clients to authenticate
-with a TLS certificate and sign packages remotely. Preconfigured tools can also
-be invoked by the server, e.g. signtool.exe, to perform operations not directly
-supported by relic.
+with a TLS certificate and sign packages remotely.
 
 Other features include:
 

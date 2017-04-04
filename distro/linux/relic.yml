@@ -17,16 +17,7 @@ tokens:
     # 2 - CKU_CONTEXT_SPECIFIC, SafeNet: CKU_AUDIT
     # 0x80000001 - SafeNet: CKU_LIMITED_USER
     #user: 1
-tools:
-  # Servers can also invoke a predefined command-line tool to sign packages
-  signtool:
-    # Template for tool command-line. Variables:
-    # - {file} - Path to the file to be signed
-    # - {key} - defined in the key section below
-    # - {certificate} - defined in the key section below
-    command: '"C:\\signtool.exe" sign /f {certificate} /csp myprovider /kc {key} {file}'
 keys:
-  # Two kinds of keys exist: token keys, and tool keys
   my_token_key:
     # Which token, defined above, to find the key on
     token: mytoken
@@ -43,15 +34,6 @@ keys:
     # true if a RFC 3161 timestamp should be attached, see 'timestamp' below
     timestamp: false
     roles: ['somegroup']
-  my_tool_key:
-    # Which tool, defined above, to use the key with
-    tool: mytool
-    # Arbitrary string to substitute for {key}
-    key: keyname
-    # Arbitrary string to substitute for {x509certificate}
-    x509certificate: c:/mycert.cer
-    # List of user-roles that are permitted to use this key
-    roles: ['somegroup']
 server:
   # What port to listen on. Defaults to :6300.
   # Socket activation via systemd is also supported, in which case this is ignored.
@@ -63,8 +45,6 @@ server:
   certfile: /etc/relic/server/server.key
   # Optional logfile for server errors. If not set, then standard error is used
   logfile: /var/log/relic/server.log
-  # Maximum number of bytes to buffer in RAM (i.e. for PGP clearsign)
-  maxdocsize: 10000000
 # Instead of including token PINs in this file, you can specify an alternate
 # "pin file" which is a YAML file holding key-value pairs where the key is the
 # name of the token and the value is the PIN.

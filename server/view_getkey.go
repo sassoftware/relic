@@ -28,7 +28,6 @@ import (
 )
 
 type keyInfo struct {
-	ExternalTool    bool
 	X509Certificate string
 	PGPCertificate  string
 }
@@ -51,7 +50,6 @@ func (s *Server) serveGetKey(request *http.Request) (res Response, err error) {
 		return AccessDeniedResponse, nil
 	}
 	var info keyInfo
-	info.ExternalTool = keyConf.Tool != ""
 	var paths []string
 	if keyConf.PgpCertificate != "" {
 		paths = append(paths, keyConf.PgpCertificate)

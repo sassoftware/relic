@@ -30,13 +30,11 @@ import (
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/compresshttp"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/server/diskmgr"
 )
 
 type Server struct {
 	Config   *config.Config
 	ErrorLog *log.Logger
-	DiskMgr  *diskmgr.Manager
 	Closed   <-chan bool
 	closeCh  chan<- bool
 }
@@ -175,16 +173,9 @@ func New(config *config.Config, force bool) (*Server, error) {
 	} else {
 		logger = log.New(os.Stderr, "", 0)
 	}
-	usage := config.Server.MaxDiskUsage
-	if usage == 0 {
-		usage = 1000
-	}
-	mgr := diskmgr.New(uint64(usage) * 1000000)
-	mgr.SetDebug(config.Server.DebugDiskUsage)
 	closed := make(chan bool)
 	s := &Server{
 		Config:  config,
-		DiskMgr: mgr,
 		Closed:  closed,
 		closeCh: closed,
 	}

@@ -16,13 +16,7 @@
 
 package config
 
-import (
-	"fmt"
-	"strings"
-	"time"
-
-	"github.com/mattn/go-shellwords"
-)
+import "time"
 
 const defaultTimeout = time.Second * 300
 
@@ -30,39 +24,9 @@ func (keyConf *KeyConfig) Name() string {
 	return keyConf.name
 }
 
-func (keyConf *KeyConfig) GetToolCmd(file string) ([]string, error) {
-	if keyConf.Tool == "" {
-		return nil, fmt.Errorf("Key \"%s\" does not specify required value 'tool'", keyConf.name)
-	} else if keyConf.tool == nil {
-		return nil, fmt.Errorf("Tool \"%s\" not defined in configuration (key \"%s\")", keyConf.Tool, keyConf.Name())
-	}
-	toolConf := keyConf.tool
-	if toolConf.Command == "" {
-		return nil, fmt.Errorf("Tool \"%s\" does not specify required value 'command'", keyConf.Tool)
-	}
-	words, err := shellwords.Parse(toolConf.Command)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to parse tool commandline: %s", err)
-	}
-	for i, word := range words {
-		for key, value := range keyConf.Params {
-			key = fmt.Sprintf("{%s}", key)
-			word = strings.Replace(word, key, value, -1)
-		}
-		word = strings.Replace(word, "{file}", file, -1)
-		word = strings.Replace(word, "{key}", keyConf.name, -1)
-		word = strings.Replace(word, "{x509certificate}", keyConf.X509Certificate, -1)
-		word = strings.Replace(word, "{pgpcertificate}", keyConf.PgpCertificate, -1)
-		words[i] = word
-	}
-	return words, nil
-}
-
 func (keyConf *KeyConfig) GetTimeout() time.Duration {
 	if keyConf.token != nil && keyConf.token.Timeout != 0 {
 		return time.Second * time.Duration(keyConf.token.Timeout)
-	} else if keyConf.tool != nil && keyConf.tool.Timeout != 0 {
-		return time.Second * time.Duration(keyConf.tool.Timeout)
 	} else {
 		return defaultTimeout
 	}

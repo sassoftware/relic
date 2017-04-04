@@ -26,7 +26,6 @@ import (
 // Set the logger where the server will write its messages
 func (s *Server) SetLogger(logger *log.Logger) {
 	s.ErrorLog = logger
-	s.DiskMgr.SetLogger(logger)
 }
 
 // Log a general message
