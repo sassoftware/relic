@@ -31,6 +31,7 @@ import (
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/compresshttp"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
 	"golang.org/x/net/http2"
 )
@@ -38,7 +39,7 @@ import (
 const connectTimeout = time.Second * 15
 
 type ReaderGetter interface {
-	GetReader() (io.Reader, int64, error)
+	GetReader() (io.Reader, error)
 }
 
 // Make a single API request to a named endpoint, handling directory lookup and failover automatically.
@@ -72,6 +73,7 @@ func getDirectory(dirurl string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	response.Body.Close()
 	text := strings.Trim(string(bodybytes), "\r\n")
 	if len(text) > 0 {
 		return strings.Split(text, "\r\n"), nil
@@ -81,7 +83,7 @@ func getDirectory(dirurl string) ([]string, error) {
 }
 
 // Build a HTTP request from various bits and pieces
-func buildRequest(base, endpoint, method string, query *url.Values, bodyFile ReaderGetter) (*http.Request, error) {
+func buildRequest(base, endpoint, method, encoding string, query *url.Values, bodyFile ReaderGetter) (*http.Request, error) {
 	eurl, err := url.Parse(endpoint)
 	if err != nil {
 		return nil, err
@@ -99,15 +101,18 @@ func buildRequest(base, endpoint, method string, query *url.Values, bodyFile Rea
 		URL:    url,
 		Header: http.Header{"User-Agent": []string{config.UserAgent}},
 	}
+	if encoding != "" {
+		request.Header.Set("Accept-Encoding", encoding)
+	}
 	if bodyFile != nil {
-		stream, size, err := bodyFile.GetReader()
+		stream, err := bodyFile.GetReader()
 		if err != nil {
 			return nil, err
 		}
-		if size >= 0 {
-			request.ContentLength = size
-		}
 		request.Body = ioutil.NopCloser(stream)
+		if err := compresshttp.CompressRequest(request, encoding); err != nil {
+			return nil, err
+		}
 	}
 	return request, nil
 }
@@ -151,28 +156,42 @@ func doRequest(bases []string, endpoint, method string, query *url.Values, bodyF
 	}
 	client := &http.Client{Transport: transport}
 
+	encoding := compresshttp.AcceptedEncodings
+loop:
 	for i, base := range bases {
 		var request *http.Request
-		request, err = buildRequest(base, endpoint, method, query, bodyFile)
+		request, err = buildRequest(base, endpoint, method, encoding, query, bodyFile)
 		if err != nil {
 			return nil, err
 		}
 		response, err = client.Do(request)
+		if request.Body != nil {
+			request.Body.Close()
+		}
 		if err == nil {
 			if response.StatusCode < 300 {
 				if i != 0 {
 					fmt.Printf("successfully contacted %s\n", request.URL)
 				}
-				return response, nil
+				break loop
 			}
 			// HTTP error, probably a 503
 			body, _ := ioutil.ReadAll(response.Body)
 			response.Body.Close()
 			err = ResponseError{method, request.URL.String(), response.Status, response.StatusCode, string(body)}
 		}
-		if isTemporary(err) && i+1 < len(bases) {
+		if response != nil && response.StatusCode == http.StatusNotAcceptable && encoding != "" {
+			// try again without compression
+			encoding = ""
+			goto loop
+		} else if isTemporary(err) && i+1 < len(bases) {
 			fmt.Printf("%s\nunable to connect to %s; trying next server\n", err, request.URL)
 		} else {
+			return nil, err
+		}
+	}
+	if response != nil {
+		if err := compresshttp.DecompressResponse(response); err != nil {
 			return nil, err
 		}
 	}

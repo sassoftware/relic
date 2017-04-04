@@ -23,25 +23,31 @@ import (
 )
 
 type Response interface {
-	Write(http.ResponseWriter)
-	Close()
+	Headers() map[string]string
+	Status() int
+	Bytes() []byte
 }
 
 type bytesResponse struct {
 	StatusCode  int
 	ContentType string
-	Headers     map[string]string
 	Body        []byte
 }
 
-func (r *bytesResponse) Write(writer http.ResponseWriter) {
-	writer.Header().Set("Content-Length", fmt.Sprintf("%d", len(r.Body)))
-	writer.Header().Set("Content-Type", r.ContentType)
-	writer.WriteHeader(r.StatusCode)
-	writer.Write(r.Body)
+func (r bytesResponse) Bytes() []byte {
+	return r.Body
 }
 
-func (r *bytesResponse) Close() {}
+func (r bytesResponse) Status() int {
+	return r.StatusCode
+}
+
+func (r bytesResponse) Headers() map[string]string {
+	return map[string]string{
+		"Content-Length": fmt.Sprintf("%d", len(r.Body)),
+		"Content-Type":   r.ContentType,
+	}
+}
 
 func BytesResponse(body []byte, contentType string) Response {
 	return &bytesResponse{
@@ -83,4 +89,12 @@ func JsonResponse(data interface{}) (Response, error) {
 		ContentType: "application/json",
 		Body:        blob,
 	}, nil
+}
+
+func writeResponse(writer http.ResponseWriter, response Response) {
+	for k, v := range response.Headers() {
+		writer.Header().Set(k, v)
+	}
+	writer.WriteHeader(response.Status())
+	writer.Write(response.Bytes())
 }

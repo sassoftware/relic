@@ -36,9 +36,8 @@ import (
 
 type Transformer interface {
 	// Return a stream that will be uploaded to a remote server. This may be
-	// called multiple times in case of failover. If the size is not known then
-	// return -1
-	GetReader() (stream io.Reader, size int64, err error)
+	// called multiple times in case of failover.
+	GetReader() (stream io.Reader, err error)
 	// Apply a HTTP response to the named destination file
 	Apply(dest, mimetype string, result io.Reader) error
 }
@@ -64,13 +63,11 @@ type fileProducer struct {
 	f *os.File
 }
 
-func (p fileProducer) GetReader() (io.Reader, int64, error) {
-	size, err := p.f.Seek(0, io.SeekEnd)
-	if err != nil {
-		return nil, -1, fmt.Errorf("failed to seek input file: %s", err)
+func (p fileProducer) GetReader() (io.Reader, error) {
+	if _, err := p.f.Seek(0, io.SeekStart); err != nil {
+		return nil, fmt.Errorf("failed to seek input file: %s", err)
 	}
-	p.f.Seek(0, io.SeekStart)
-	return p.f, size, nil
+	return p.f, nil
 }
 
 // If the response is a binpatch, apply it. Otherwise overwrite the destination

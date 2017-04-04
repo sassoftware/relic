@@ -46,6 +46,7 @@ func listKeysCmd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return shared.Fail(err)
 	}
+	response.Body.Close()
 	err = json.Unmarshal(resbytes, &keyList)
 	if err != nil {
 		return shared.Fail(err)

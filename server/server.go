@@ -17,6 +17,7 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -28,6 +29,7 @@ import (
 	"strings"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/compresshttp"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/server/diskmgr"
 )
 
@@ -63,6 +65,11 @@ func (s *Server) callHandler(request *http.Request, lw *loggingWriter) (response
 	}()
 	request = request.WithContext(ctx)
 	lw.r = request
+	if err := compresshttp.DecompressRequest(request); err == compresshttp.ErrUnacceptableEncoding {
+		return StringResponse(http.StatusNotAcceptable, err.Error()), nil
+	} else if err != nil {
+		return nil, err
+	}
 	if request.URL.Path == "/health" {
 		// this view is the only one allowed without a client cert
 		return s.serveHealth(request)
@@ -123,15 +130,29 @@ func (s *Server) CheckKeyAccess(request *http.Request, keyName string) *config.K
 	}
 	return nil
 }
+
 func (s *Server) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
-	lw := &loggingWriter{writer, s, request, false}
+	writer.Header().Set("Accept-Encoding", compresshttp.AcceptedEncodings)
+	lw := &loggingWriter{ResponseWriter: writer, s: s, r: request}
+	defer lw.Close()
 	response, err := s.callHandler(request, lw)
 	if err != nil {
 		response = s.LogError(lw.r, err, nil)
 	}
 	if response != nil {
-		defer response.Close()
-		response.Write(lw)
+		for k, v := range response.Headers() {
+			lw.Header().Set(k, v)
+		}
+		ae := request.Header.Get("Accept-Encoding")
+		r := bytes.NewReader(response.Bytes())
+		if response.Status() >= 300 {
+			// don't compress errors
+			ae = ""
+		}
+		if err := compresshttp.CompressResponse(r, ae, lw, response.Status()); err != nil {
+			response = s.LogError(lw.r, err, nil)
+			writeResponse(lw, response)
+		}
 	}
 }
 

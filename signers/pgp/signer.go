@@ -62,7 +62,6 @@ func init() {
 
 type pgpTransformer struct {
 	clearsign bool
-	size      int64
 	stream    io.ReadSeeker
 	closer    io.Closer
 }
@@ -70,8 +69,7 @@ type pgpTransformer struct {
 func transform(f *os.File, opts signers.SignOpts) (signers.Transformer, error) {
 	clearsign, _ := opts.Flags.GetBool("clearsign")
 	stream := io.ReadSeeker(f)
-	size, err := stream.Seek(0, io.SeekEnd)
-	if err != nil {
+	if _, err := f.Seek(0, 0); err != nil {
 		// not seekable so consume it all now
 		contents, err := ioutil.ReadAll(io.LimitReader(stream, maxStreamClearSignSize))
 		if err != nil {
@@ -80,16 +78,15 @@ func transform(f *os.File, opts signers.SignOpts) (signers.Transformer, error) {
 			return nil, errors.New("input stream is too big, try writing it to file first")
 		}
 		stream = bytes.NewReader(contents)
-		size = int64(len(contents))
 	}
-	return &pgpTransformer{clearsign, size, stream, f}, nil
+	return &pgpTransformer{clearsign: clearsign, stream: stream, closer: f}, nil
 }
 
-func (t *pgpTransformer) GetReader() (io.Reader, int64, error) {
+func (t *pgpTransformer) GetReader() (io.Reader, error) {
 	if _, err := t.stream.Seek(0, 0); err != nil {
-		return nil, 0, err
+		return nil, err
 	}
-	return t.stream, t.size, nil
+	return t.stream, nil
 }
 
 func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]byte, error) {
@@ -163,7 +160,7 @@ func verify(r io.Reader, opts signers.VerifyOpts) ([]*signers.Signature, error) 
 		if bytes.HasPrefix(x, []byte("-----BEGIN PGP SIGNED MESSAGE-----")) {
 			// clearsign
 			sig, _, err := pgptools.VerifyClearSign(reader, opts.TrustedPgp)
-			return verifyPgp(sig, f.Name(), err)
+			return verifyPgp(sig, opts.FileName, err)
 		}
 		block, err := armor.Decode(reader)
 		if err != nil {
@@ -179,11 +176,11 @@ func verify(r io.Reader, opts signers.VerifyOpts) ([]*signers.Signature, error) 
 		}
 		defer fc.Close()
 		sig, err := pgptools.VerifyDetached(reader, fc, opts.TrustedPgp)
-		return verifyPgp(sig, f.Name(), err)
+		return verifyPgp(sig, opts.FileName, err)
 	} else {
 		// inline signature
 		sig, _, err := pgptools.VerifyInline(reader, opts.TrustedPgp)
-		return verifyPgp(sig, f.Name(), err)
+		return verifyPgp(sig, opts.FileName, err)
 	}
 }
 

@@ -69,12 +69,12 @@ func transform(f *os.File, opts signers.SignOpts) (signers.Transformer, error) {
 }
 
 // transform the MSI to a tar stream for upload
-func (t *msiTransformer) GetReader() (io.Reader, int64, error) {
+func (t *msiTransformer) GetReader() (io.Reader, error) {
 	r, w := io.Pipe()
 	go func() {
 		w.CloseWithError(authenticode.MsiToTar(t.cdf, w))
 	}()
-	return r, -1, nil
+	return r, nil
 }
 
 // apply a signed PKCS#7 blob to an already-open MSI document

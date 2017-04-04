@@ -54,26 +54,16 @@ func (s *Server) LogError(request *http.Request, err interface{}, traceback []by
 // Wraps a http.ResponseWriter and writes an access log entry on completion
 type loggingWriter struct {
 	http.ResponseWriter
-	s     *Server
-	r     *http.Request
-	wrote bool
+	s      *Server
+	r      *http.Request
+	wrote  bool
+	length int64
+	status int
 }
 
 func (lw *loggingWriter) WriteHeader(status int) {
 	lw.wrote = true
-	cl := lw.Header().Get("Content-Length")
-	if cl == "" {
-		cl = "-"
-	}
-	ua := lw.r.Header.Get("User-Agent")
-	if ua == "" {
-		ua = "-"
-	}
-	path := lw.r.URL.Path
-	// don't log health check spam
-	if path != "/health" {
-		lw.s.Logr(lw.r, "%s \"%s\" %d %s %s", lw.r.Method, lw.r.URL, status, cl, ua)
-	}
+	lw.status = status
 	lw.ResponseWriter.WriteHeader(status)
 }
 
@@ -81,9 +71,24 @@ func (lw *loggingWriter) Write(d []byte) (int, error) {
 	if !lw.wrote {
 		lw.WriteHeader(http.StatusOK)
 	}
-	return lw.ResponseWriter.Write(d)
+	n, err := lw.ResponseWriter.Write(d)
+	lw.length += int64(n)
+	return n, err
 }
 
 func (lw *loggingWriter) CloseNotify() <-chan bool {
 	return lw.ResponseWriter.(http.CloseNotifier).CloseNotify()
+}
+
+func (lw *loggingWriter) Close() {
+	path := lw.r.URL.Path
+	if path == "/health" {
+		// don't log health check spam
+		return
+	}
+	ua := lw.r.Header.Get("User-Agent")
+	if ua == "" {
+		ua = "-"
+	}
+	lw.s.Logr(lw.r, "%s \"%s\" %d %d %s", lw.r.Method, lw.r.URL, lw.status, lw.length, ua)
 }

@@ -121,7 +121,7 @@ func signCmd(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return shared.Fail(err)
 		}
-		stream, _, err := transform.GetReader()
+		stream, err := transform.GetReader()
 		if err != nil {
 			return shared.Fail(err)
 		}

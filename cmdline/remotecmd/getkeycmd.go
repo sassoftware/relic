@@ -50,10 +50,10 @@ func getKeyInfo(keyName string) (keyInfo, error) {
 		return keyInfo{}, err
 	}
 	blob, err := ioutil.ReadAll(response.Body)
-	response.Body.Close()
 	if err != nil {
 		return keyInfo{}, err
 	}
+	response.Body.Close()
 	var info keyInfo
 	if err := json.Unmarshal(blob, &info); err != nil {
 		return keyInfo{}, err

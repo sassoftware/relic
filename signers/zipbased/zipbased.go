@@ -34,12 +34,12 @@ func Transform(f *os.File, opts signers.SignOpts) (signers.Transformer, error) {
 
 // Wrap the zip in a tarball with the central directory first so that it can be
 // processed as a stream
-func (t *zipTransformer) GetReader() (io.Reader, int64, error) {
+func (t *zipTransformer) GetReader() (io.Reader, error) {
 	r, w := io.Pipe()
 	go func() {
 		w.CloseWithError(zipslicer.ZipToTar(t.f, w))
 	}()
-	return r, -1, nil
+	return r, nil
 }
 
 func (t *zipTransformer) Apply(dest, mimeType string, result io.Reader) error {
