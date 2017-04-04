@@ -50,35 +50,38 @@ func CallRemote(endpoint, method string, query *url.Values, body ReaderGetter) (
 	if shared.CurrentConfig.Remote == nil {
 		return nil, errors.New("config file has no \"remote\" section")
 	}
+	encodings := compresshttp.AcceptedEncodings
 	bases := []string{shared.CurrentConfig.Remote.Url}
 	if dirurl := shared.CurrentConfig.Remote.DirectoryUrl; dirurl != "" {
-		newBases, err := getDirectory(dirurl)
+		newBases, serverEncodings, err := getDirectory(dirurl)
 		if err != nil {
 			return nil, err
 		} else if len(newBases) > 0 {
 			bases = newBases
 		}
+		encodings = serverEncodings
 	}
-	return doRequest(bases, endpoint, method, query, body)
+	return doRequest(bases, endpoint, method, encodings, query, body)
 }
 
 // Call the configured directory URL to get a list of servers to try.
 // callRemote() calls this automatically, use that instead.
-func getDirectory(dirurl string) ([]string, error) {
-	response, err := doRequest([]string{dirurl}, "directory", "GET", nil, nil)
+func getDirectory(dirurl string) ([]string, string, error) {
+	response, err := doRequest([]string{dirurl}, "directory", "GET", "", nil, nil)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
+	encodings := response.Header.Get("Accept-Encoding")
 	bodybytes, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	response.Body.Close()
 	text := strings.Trim(string(bodybytes), "\r\n")
 	if len(text) > 0 {
-		return strings.Split(text, "\r\n"), nil
+		return strings.Split(text, "\r\n"), encodings, nil
 	} else {
-		return nil, nil
+		return nil, encodings, nil
 	}
 }
 
@@ -144,7 +147,7 @@ func makeTlsConfig() (*tls.Config, error) {
 }
 
 // Transact one request, trying multiple servers if necessary. Internal use only.
-func doRequest(bases []string, endpoint, method string, query *url.Values, bodyFile ReaderGetter) (response *http.Response, err error) {
+func doRequest(bases []string, endpoint, method, encodings string, query *url.Values, bodyFile ReaderGetter) (response *http.Response, err error) {
 	tconf, err := makeTlsConfig()
 	if err != nil {
 		return nil, err
@@ -156,11 +159,10 @@ func doRequest(bases []string, endpoint, method string, query *url.Values, bodyF
 	}
 	client := &http.Client{Transport: transport}
 
-	encoding := compresshttp.AcceptedEncodings
 loop:
 	for i, base := range bases {
 		var request *http.Request
-		request, err = buildRequest(base, endpoint, method, encoding, query, bodyFile)
+		request, err = buildRequest(base, endpoint, method, encodings, query, bodyFile)
 		if err != nil {
 			return nil, err
 		}
@@ -180,9 +182,9 @@ loop:
 			response.Body.Close()
 			err = ResponseError{method, request.URL.String(), response.Status, response.StatusCode, string(body)}
 		}
-		if response != nil && response.StatusCode == http.StatusNotAcceptable && encoding != "" {
+		if response != nil && response.StatusCode == http.StatusNotAcceptable && encodings != "" {
 			// try again without compression
-			encoding = ""
+			encodings = ""
 			goto loop
 		} else if isTemporary(err) && i+1 < len(bases) {
 			fmt.Printf("%s\nunable to connect to %s; trying next server\n", err, request.URL)
