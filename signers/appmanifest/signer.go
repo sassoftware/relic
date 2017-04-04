@@ -39,12 +39,12 @@ import (
 )
 
 var AppSigner = &signers.Signer{
-	Name:      "appmanifest",
-	Magic:     magic.FileTypeAppManifest,
-	CertTypes: signers.CertTypeX509,
-	FormatLog: formatLog,
-	Sign:      sign,
-	Verify:    verify,
+	Name:         "appmanifest",
+	Magic:        magic.FileTypeAppManifest,
+	CertTypes:    signers.CertTypeX509,
+	FormatLog:    formatLog,
+	Sign:         sign,
+	VerifyStream: verify,
 }
 
 func init() {
@@ -104,8 +104,8 @@ func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]b
 	return signed.Signed, nil
 }
 
-func verify(f *os.File, opts signers.VerifyOpts) ([]*signers.Signature, error) {
-	blob, err := ioutil.ReadAll(f)
+func verify(r io.Reader, opts signers.VerifyOpts) ([]*signers.Signature, error) {
+	blob, err := ioutil.ReadAll(r)
 	if err != nil {
 		return nil, err
 	}

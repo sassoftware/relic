@@ -54,6 +54,8 @@ type Signer struct {
 	// Verify a file, returning the set of signatures found. Performs integrity
 	// checks but does not build X509 chains.
 	Verify func(*os.File, VerifyOpts) ([]*Signature, error)
+	// VerifyStream is like Verify but doesn't need to seek.
+	VerifyStream func(io.Reader, VerifyOpts) ([]*Signature, error)
 	// Transform a file into a stream to upload
 	Transform func(*os.File, SignOpts) (Transformer, error)
 	// Sign a input stream (possibly transformed) and return a mode-specific result blob
@@ -95,12 +97,14 @@ func (o SignOpts) SetPkcs7(ts *pkcs9.TimestampedSignature) ([]byte, error) {
 }
 
 type VerifyOpts struct {
+	FileName    string
 	TrustedX509 []*x509.Certificate
 	TrustedPgp  openpgp.EntityList
 	TrustedPool *x509.CertPool
 	NoDigests   bool
 	NoChain     bool
 	Content     string
+	Compression magic.CompressionType
 }
 
 type Signature struct {

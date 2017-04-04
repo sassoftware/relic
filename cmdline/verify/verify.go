@@ -81,17 +81,31 @@ func verifyOne(path string, opts signers.VerifyOpts) error {
 		return err
 	}
 	defer f.Close()
-	fileType := magic.Detect(f)
+	fileType, compression := magic.DetectCompressed(f)
+	opts.FileName = path
+	opts.Compression = compression
 	if _, err := f.Seek(0, 0); err != nil {
 		return err
 	}
-	var sigs []*signers.Signature
-	if mod := signers.ByMagic(fileType); mod != nil {
-		sigs, err = mod.Verify(f, opts)
-	} else if mod := signers.ByFileName(path); mod != nil {
-		sigs, err = mod.Verify(f, opts)
-	} else {
+	mod := signers.ByMagic(fileType)
+	if mod == nil {
+		mod = signers.ByFileName(path)
+	}
+	if mod == nil {
 		return errors.New("unknown filetype")
+	}
+	var sigs []*signers.Signature
+	if mod.VerifyStream != nil {
+		r, err := magic.Decompress(f, opts.Compression)
+		if err != nil {
+			return err
+		}
+		sigs, err = mod.VerifyStream(r, opts)
+	} else {
+		if opts.Compression != magic.CompressedNone {
+			return errors.New("cannot verify compressed file")
+		}
+		sigs, err = mod.Verify(f, opts)
 	}
 	if err != nil {
 		return err

@@ -39,13 +39,13 @@ import (
 )
 
 var PgpSigner = &signers.Signer{
-	Name:       "pgp",
-	Magic:      magic.FileTypePGP,
-	CertTypes:  signers.CertTypePgp,
-	AllowStdin: true,
-	Transform:  transform,
-	Sign:       sign,
-	Verify:     verify,
+	Name:         "pgp",
+	Magic:        magic.FileTypePGP,
+	CertTypes:    signers.CertTypePgp,
+	AllowStdin:   true,
+	Transform:    transform,
+	Sign:         sign,
+	VerifyStream: verify,
 }
 
 const maxStreamClearSignSize = 10 * 1000 * 1000
@@ -155,8 +155,8 @@ func (t *pgpTransformer) Apply(dest, mimeType string, result io.Reader) error {
 	return outfile.Commit()
 }
 
-func verify(f *os.File, opts signers.VerifyOpts) ([]*signers.Signature, error) {
-	br := bufio.NewReader(f)
+func verify(r io.Reader, opts signers.VerifyOpts) ([]*signers.Signature, error) {
+	br := bufio.NewReader(r)
 	// remove ASCII armor
 	reader := io.Reader(br)
 	if x, _ := br.Peek(34); len(x) >= 1 && x[0] == '-' {

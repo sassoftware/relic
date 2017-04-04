@@ -17,16 +17,23 @@
 package magic
 
 import (
+	"archive/tar"
 	"bufio"
 	"bytes"
+	"compress/gzip"
 	"encoding/binary"
+	"errors"
 	"io"
+	"strings"
+
+	"xi2.org/x/xz"
 )
 
 type FileType int
+type CompressionType int
 
 const (
-	FileTypeUnknown = iota
+	FileTypeUnknown FileType = iota
 	FileTypeRPM
 	FileTypeDEB
 	FileTypePGP
@@ -37,14 +44,17 @@ const (
 	FileTypeCAB
 	FileTypeAppManifest
 	FileTypeCAT
+	FileTypeStarman
+)
+
+const (
+	CompressedNone CompressionType = iota
+	CompressedGzip
+	CompressedXz
 )
 
 func hasPrefix(br *bufio.Reader, blob []byte) bool {
-	d, _ := br.Peek(len(blob))
-	if len(d) < len(blob) {
-		return false
-	}
-	return bytes.Equal(d, blob)
+	return atPosition(br, blob, 0)
 }
 
 func contains(br *bufio.Reader, blob []byte, n int) bool {
@@ -53,6 +63,15 @@ func contains(br *bufio.Reader, blob []byte, n int) bool {
 		return false
 	}
 	return bytes.Contains(d, blob)
+}
+
+func atPosition(br *bufio.Reader, blob []byte, n int) bool {
+	l := n + len(blob)
+	d, _ := br.Peek(l)
+	if len(d) < l {
+		return false
+	}
+	return bytes.Equal(d[n:], blob)
 }
 
 // Detect a handful of package and signature file types based on the first few
@@ -64,9 +83,7 @@ func Detect(r io.Reader) FileType {
 		return FileTypeRPM
 	case hasPrefix(br, []byte("!<arch>\ndebian")):
 		return FileTypeDEB
-	case hasPrefix(br, []byte("-----BEGIN PGP")),
-		hasPrefix(br, []byte{0x89, 0x01}),
-		hasPrefix(br, []byte{0xc2, 0xc0}):
+	case hasPrefix(br, []byte("-----BEGIN PGP")):
 		return FileTypePGP
 	case hasPrefix(br, []byte{0x50, 0x4b, 0x03, 0x04}):
 		if blob, _ := br.Peek(28); len(blob) == 28 {
@@ -86,6 +103,8 @@ func Detect(r io.Reader) FileType {
 	case contains(br, []byte{0x06, 0x09, 0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x01, 0x07, 0x02}, 256):
 		// OID signedData
 		return FileTypePKCS7
+	case isTar(br):
+		return detectTar(br)
 	case hasPrefix(br, []byte("MZ")):
 		if blob, _ := br.Peek(0x3e); len(blob) == 0x3e {
 			reloc := binary.LittleEndian.Uint16(blob[0x3c:0x3e])
@@ -102,6 +121,63 @@ func Detect(r io.Reader) FileType {
 	case contains(br, []byte("<assembly "), 256),
 		contains(br, []byte(":assembly "), 256):
 		return FileTypeAppManifest
+	case hasPrefix(br, []byte{0x89}), hasPrefix(br, []byte{0xc2}):
+		return FileTypePGP
+	}
+	return FileTypeUnknown
+}
+
+func DetectCompressed(r io.Reader) (FileType, CompressionType) {
+	br := bufio.NewReader(r)
+	ftype := FileTypeUnknown
+	switch {
+	case hasPrefix(br, []byte{0x1f, 0x8b}):
+		zr, err := gzip.NewReader(br)
+		if err == nil {
+			zbr := bufio.NewReader(zr)
+			if isTar(zbr) {
+				ftype = detectTar(zbr)
+			}
+		}
+		return ftype, CompressedGzip
+	case hasPrefix(br, []byte("\xfd7zXZ\x00")):
+		zr, err := xz.NewReader(br, 0)
+		if err == nil {
+			zbr := bufio.NewReader(zr)
+			if isTar(zbr) {
+				ftype = detectTar(zbr)
+			}
+		}
+		return ftype, CompressedXz
+	}
+	return Detect(br), CompressedNone
+}
+
+func Decompress(r io.Reader, ctype CompressionType) (io.Reader, error) {
+	switch ctype {
+	case CompressedNone:
+		return r, nil
+	case CompressedGzip:
+		return gzip.NewReader(r)
+	case CompressedXz:
+		return xz.NewReader(r, 0)
+	default:
+		return nil, errors.New("invalid compression type")
+	}
+}
+
+func isTar(br *bufio.Reader) bool {
+	return atPosition(br, []byte("ustar"), 257)
+}
+
+func detectTar(r io.Reader) FileType {
+	hdr, err := tar.NewReader(r).Next()
+	if err != nil {
+		return FileTypeUnknown
+	}
+	switch {
+	case strings.HasPrefix(hdr.Name, ".metadata/") && strings.HasSuffix(hdr.Name, ".meta"):
+		return FileTypeStarman
 	}
 	return FileTypeUnknown
 }
