@@ -29,7 +29,7 @@ import (
 	"io/ioutil"
 	"math/big"
 	"os"
-	"path"
+	"path/filepath"
 	"time"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
@@ -75,8 +75,8 @@ func registerCmd(cmd *cobra.Command, args []string) error {
 		fmt.Fprintf(os.Stderr, "Config file %s already exists\n", shared.ArgConfig)
 		return nil
 	}
-	defaultDir := path.Dir(shared.ArgConfig)
-	keyPath := path.Join(defaultDir, "client.pem")
+	defaultDir := filepath.Dir(shared.ArgConfig)
+	keyPath := filepath.Join(defaultDir, "client.pem")
 	if fileExists(keyPath) {
 		if !argForce {
 			return shared.Fail(fmt.Errorf("Key file %s already exists", keyPath))
@@ -95,7 +95,7 @@ func registerCmd(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return shared.Fail(fmt.Errorf("Error reading cacert: %s", err))
 		}
-		capath = path.Join(defaultDir, "cacert.pem")
+		capath = filepath.Join(defaultDir, "cacert.pem")
 		if err := ioutil.WriteFile(capath, cacert, 0644); err != nil {
 			return shared.Fail(err)
 		}
@@ -125,7 +125,7 @@ func writeConfig(cfgPath, url, keyPath, caPath string) error {
 	if err != nil {
 		return err
 	}
-	if err = os.MkdirAll(path.Dir(cfgPath), 0755); err != nil {
+	if err = os.MkdirAll(filepath.Dir(cfgPath), 0755); err != nil {
 		return err
 	}
 	return ioutil.WriteFile(cfgPath, cfgblob, 0600)
@@ -145,7 +145,7 @@ func writeKeyPair(keyPath string) error {
 		return err
 	}
 	pemdata = append(pemdata, cert...)
-	if err = os.MkdirAll(path.Dir(keyPath), 0755); err != nil {
+	if err = os.MkdirAll(filepath.Dir(keyPath), 0755); err != nil {
 		return err
 	}
 	if err = ioutil.WriteFile(keyPath, pemdata, 0600); err != nil {

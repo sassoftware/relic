@@ -19,7 +19,7 @@ package token
 import (
 	"crypto"
 	"fmt"
-	"path"
+	"path/filepath"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
@@ -31,7 +31,7 @@ import (
 func NewAudit(key *p11token.Key, sigType string, hash crypto.Hash) *audit.AuditInfo {
 	info := audit.New(key.Name, sigType, hash)
 	if argFile != "" && argFile != "-" && info.Attributes["client.filename"] == nil {
-		info.Attributes["client.filename"] = path.Base(argFile)
+		info.Attributes["client.filename"] = filepath.Base(argFile)
 	}
 	return info
 }

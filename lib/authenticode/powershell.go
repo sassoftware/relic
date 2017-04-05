@@ -27,7 +27,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"path"
+	"path/filepath"
 	"strings"
 	"unicode/utf16"
 
@@ -73,7 +73,7 @@ var psStyles = map[PsSigStyle]sigStyle{
 
 // Get the PowerShell signature style for a filename or extension
 func GetSigStyle(filename string) (PsSigStyle, bool) {
-	style, ok := psExtMap[path.Ext(filename)]
+	style, ok := psExtMap[filepath.Ext(filename)]
 	return style, ok
 }
 

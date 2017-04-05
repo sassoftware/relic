@@ -18,22 +18,22 @@ package config
 
 import (
 	"os"
-	"path"
+	"path/filepath"
 )
 
 func DefaultConfig() string {
-	filepath := os.Getenv("RELIC_CFG")
-	if filepath != "" {
-		return filepath
+	fp := os.Getenv("RELIC_CFG")
+	if fp != "" {
+		return fp
 	}
 	profile := os.Getenv("APPDATA")
 	if profile != "" {
 		// windows
-		return path.Join(profile, "relic", "relic.yml")
+		return filepath.Join(profile, "relic", "relic.yml")
 	}
 	home := os.Getenv("HOME")
 	if home != "" {
-		return path.Join(home, ".config", "relic", "relic.yml")
+		return filepath.Join(home, ".config", "relic", "relic.yml")
 	}
 	return ""
 }

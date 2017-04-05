@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"path"
+	"path/filepath"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/signers"
@@ -100,7 +100,7 @@ func signCmd(cmd *cobra.Command, args []string) (err error) {
 	// build request
 	values := url.Values{}
 	values.Add("key", argKeyName)
-	values.Add("filename", path.Base(argFile))
+	values.Add("filename", filepath.Base(argFile))
 	values.Add("sigtype", mod.Name)
 	if err := mod.FlagsToQuery(cmd.Flags(), opts.FlagOverride, values); err != nil {
 		return shared.Fail(err)

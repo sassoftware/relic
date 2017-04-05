@@ -22,7 +22,7 @@ import (
 	"errors"
 	"io"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/authenticode"
@@ -45,8 +45,8 @@ func init() {
 	signers.Register(PsSigner)
 }
 
-func testPath(filepath string) bool {
-	_, ok := authenticode.GetSigStyle(filepath)
+func testPath(fp string) bool {
+	_, ok := authenticode.GetSigStyle(fp)
 	return ok
 }
 
@@ -54,7 +54,7 @@ func transform(f *os.File, opts signers.SignOpts) (signers.Transformer, error) {
 	// detect signature style and explicitly set it for the request
 	argStyle, _ := opts.Flags.GetString("ps-style")
 	if argStyle == "" {
-		argStyle = path.Ext(opts.Path)
+		argStyle = filepath.Ext(opts.Path)
 	}
 	opts.FlagOverride["ps-style"] = argStyle
 	return signers.DefaultTransform(f), nil

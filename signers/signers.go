@@ -166,9 +166,9 @@ func ByMagic(m magic.FileType) *Signer {
 }
 
 // Return the signer associated with the given filename extension
-func ByFileName(filepath string) *Signer {
+func ByFileName(name string) *Signer {
 	for _, s := range registered {
-		if s.TestPath != nil && s.TestPath(filepath) {
+		if s.TestPath != nil && s.TestPath(name) {
 			return s
 		}
 	}
@@ -177,7 +177,7 @@ func ByFileName(filepath string) *Signer {
 
 // Return the named signer module if given, otherwise identify the file at the
 // given path by contents or extension
-func ByFile(filepath, sigtype string) (*Signer, error) {
+func ByFile(name, sigtype string) (*Signer, error) {
 	if sigtype != "" {
 		mod := ByName(sigtype)
 		if mod == nil {
@@ -185,10 +185,10 @@ func ByFile(filepath, sigtype string) (*Signer, error) {
 		}
 		return mod, nil
 	}
-	if filepath == "-" {
+	if name == "-" {
 		return nil, errors.New("reading from standard input is not supported")
 	}
-	f, err := os.Open(filepath)
+	f, err := os.Open(name)
 	if err != nil {
 		return nil, err
 	}
@@ -196,7 +196,7 @@ func ByFile(filepath, sigtype string) (*Signer, error) {
 	fileType := magic.Detect(f)
 	if mod := ByMagic(fileType); mod != nil {
 		return mod, nil
-	} else if mod := ByFileName(filepath); mod != nil {
+	} else if mod := ByFileName(name); mod != nil {
 		return mod, nil
 	}
 	return nil, errors.New("unknown filetype")

@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path"
+	"path/filepath"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/signappx"
@@ -43,8 +43,8 @@ func init() {
 	signers.Register(AppxSigner)
 }
 
-func testPath(filepath string) bool {
-	ext := path.Ext(filepath)
+func testPath(fp string) bool {
+	ext := filepath.Ext(fp)
 	return ext == ".appx" || ext == ".appxbundle"
 }
 

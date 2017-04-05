@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -69,7 +69,7 @@ func getServerConfs() ([]*config.Config, error) {
 	var confs []*config.Config
 	for _, name := range names {
 		if strings.HasSuffix(name, ".yml") {
-			cpath := path.Join(auditConfig.ConfigDir, name)
+			cpath := filepath.Join(auditConfig.ConfigDir, name)
 			cfg, err := config.ReadFile(cpath)
 			if err != nil {
 				return nil, fmt.Errorf("%s: %s", cpath, err)

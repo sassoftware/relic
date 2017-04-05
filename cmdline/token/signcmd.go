@@ -22,7 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
 	"time"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
@@ -88,7 +88,7 @@ func signCmd(cmd *cobra.Command, args []string) error {
 		return shared.Fail(err)
 	}
 	if ai.Attributes["client.filename"] == nil {
-		ai.Attributes["client.filename"] = path.Base(argFile)
+		ai.Attributes["client.filename"] = filepath.Base(argFile)
 	}
 	opts := signers.SignOpts{
 		Path:         argFile,
