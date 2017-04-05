@@ -1,5 +1,5 @@
 hash: 16d2f17a225cd0ec1b5685b41edaea051df496fba24d4b1b2d59b3a595fe8516
-updated: 2017-03-21T18:08:22.44263798Z
+updated: 2017-04-05T15:18:34.425510602Z
 imports:
 - name: github.com/beevik/etree
   version: 1095c300fba68cb7f7895c0f96b2d34927f8115b
@@ -9,6 +9,8 @@ imports:
   version: cbe0c0023057b04ad78c6de5e8cb85ea9b5315be
 - name: github.com/godbus/dbus
   version: fe0e1d54eaeda11a9979659a8d32f459e88bee75
+- name: github.com/golang/snappy
+  version: 553a641470496b2327abcac10b36396bd98e45c9
 - name: github.com/howeyc/gopass
   version: bf9dde6d0d2c004a008c27aaee91170c786f6db8
 - name: github.com/inconshreveable/mousetrap
