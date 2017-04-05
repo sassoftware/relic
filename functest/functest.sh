@@ -20,6 +20,7 @@ echo
 pkg="zlib-1.2.8-10.fc24.i686.rpm"
 relic verify --cert "testkeys/RPM-GPG-KEY-fedora-25-i386" "packages/$pkg"
 $relic remote sign -k rsa2048 -f "packages/$pkg" -o "$signed/$pkg"
+relic verify "$signed/$pkg" 2>/dev/null && { echo expected an error; exit 1; }
 relic verify --cert "testkeys/rsa2048.pgp" "$signed/$pkg"
 echo
 
@@ -32,11 +33,14 @@ echo
 ### DEB
 pkg="zlib1g_1.2.8.dfsg-5_i386.deb"
 $relic remote sign -k rsa2048 -f "packages/$pkg" -o "$signed/$pkg"
+relic verify "$signed/$pkg" 2>/dev/null && { echo expected an error; exit 1; }
 relic verify --cert "testkeys/rsa2048.pgp" "$signed/$pkg"
 echo
 
 ### PGP
+relic verify "packages/InRelease" 2>/dev/null && { echo expected an error; exit 1; }
 relic verify --cert "testkeys/ubuntu2012.pgp" "packages/InRelease"
+relic verify "packages/Release.gpg" --content "packages/Release" 2>/dev/null && { echo expected an error; exit 1; }
 relic verify --cert "testkeys/ubuntu2012.pgp" "packages/Release.gpg" --content "packages/Release"
 $relic remote sign-pgp -u rsa2048 -ba "packages/Release" -o "$signed/Release.gpg"
 relic verify --cert "testkeys/rsa2048.pgp" "$signed/Release.gpg" --content "packages/Release"

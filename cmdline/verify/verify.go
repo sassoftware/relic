@@ -96,8 +96,8 @@ func verifyOne(path string, opts signers.VerifyOpts) error {
 	}
 	var sigs []*signers.Signature
 	if mod.VerifyStream != nil {
-		r, err := magic.Decompress(f, opts.Compression)
-		if err != nil {
+		r, err2 := magic.Decompress(f, opts.Compression)
+		if err2 != nil {
 			return err
 		}
 		sigs, err = mod.VerifyStream(r, opts)
