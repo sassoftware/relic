@@ -23,6 +23,12 @@ $relic remote sign -k rsa2048 -f "packages/$pkg" -o "$signed/$pkg"
 relic verify --cert "testkeys/rsa2048.pgp" "$signed/$pkg"
 echo
 
+### Starman
+pkg="zlib-1.2.8-10.fc24.i686.tar"
+$relic remote sign -k rsa2048 -f "packages/$pkg" -o "$signed/$pkg"
+relic verify --cert "testkeys/rsa2048.pgp" "$signed/$pkg"
+echo
+
 ### DEB
 pkg="zlib1g_1.2.8.dfsg-5_i386.deb"
 $relic remote sign -k rsa2048 -f "packages/$pkg" -o "$signed/$pkg"
