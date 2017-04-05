@@ -42,8 +42,8 @@ rm -rf %{buildroot}
 %attr(0755,root,root) %dir      %{confdir}
 %attr(0755,root,root) %dir      %{confdir}/audit.d
 %attr(0755,root,root) %dir      %{confdir}/certs
-%attr(0640,root,relic) %config  %{confdir}/relic.yml
-%attr(0644,root,root) %config   %{confdir}/audit.yml
+%attr(0640,root,relic) %config(noreplace) %{confdir}/relic.yml
+%attr(0644,root,root) %config(noreplace) %{confdir}/audit.yml
 %attr(0750,root,relic) %dir     %{confdir}/server
 %attr(0750,relic,relic) %dir    %{_localstatedir}/log/relic
 %attr(0750,relic-audit,relic-audit) %dir    %{_localstatedir}/log/relic-audit
@@ -70,10 +70,6 @@ fi
 %postun
 if [ $1 -ge 1 ] ; then
         # upgrade, not removal
-        if ! [ -f /etc/relic/relic.yml.rpmsave ]; then
-            systemctl try-restart relic.service >/dev/null 2>&1 || :
-        fi
-        if ! [ -f /etc/relic/audit.yml.rpmsave ]; then
-            systemctl try-restart relic-audit.service >/dev/null 2>&1 || :
-        fi
+        systemctl try-restart relic.service >/dev/null 2>&1 || :
+        systemctl try-restart relic-audit.service >/dev/null 2>&1 || :
 fi
