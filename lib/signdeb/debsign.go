@@ -29,6 +29,7 @@ import (
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/binpatch"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pgptools"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/readercounter"
 
 	"github.com/qur/ar"
 	"golang.org/x/crypto/openpgp"
@@ -45,7 +46,7 @@ type DebSignature struct {
 // signature, e.g. "builder". Returns a structure holding a PatchSet that can
 // be applied to the original file to add or replace the signature.
 func Sign(r io.Reader, signer *openpgp.Entity, opts crypto.SignerOpts, role string) (*DebSignature, error) {
-	counter := &readCounter{r: r}
+	counter := readercounter.New(r)
 	now := time.Now().UTC()
 	reader := ar.NewReader(counter)
 	msg := new(bytes.Buffer)
@@ -67,7 +68,7 @@ func Sign(r io.Reader, signer *openpgp.Entity, opts crypto.SignerOpts, role stri
 		name := path.Clean(hdr.Name)
 		if name == filename {
 			// mark the old signature for removal
-			patchOffset = counter.n - 60
+			patchOffset = counter.N - 60
 			patchLength = int64(60 + ((hdr.Size+1)/2)*2)
 		}
 		if strings.HasPrefix(name, "_gpg") {
@@ -132,20 +133,9 @@ func Sign(r io.Reader, signer *openpgp.Entity, opts crypto.SignerOpts, role stri
 		return nil, err
 	}
 	if patchOffset == 0 {
-		patchOffset = counter.n // end of file
+		patchOffset = counter.N // end of file
 	}
 	patch := binpatch.New()
 	patch.Add(patchOffset, patchLength, pbuf.Bytes())
 	return &DebSignature{*info, now, patch}, nil
-}
-
-type readCounter struct {
-	r io.Reader
-	n int64
-}
-
-func (c *readCounter) Read(d []byte) (int, error) {
-	n, err := c.r.Read(d)
-	c.n += int64(n)
-	return n, err
 }
