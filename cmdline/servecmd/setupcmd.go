@@ -55,11 +55,11 @@ func init() {
 }
 
 func readKey(path string) (crypto.PrivateKey, error) {
-	if pemData, err := ioutil.ReadFile(path); err != nil {
+	pemData, err := ioutil.ReadFile(path)
+	if err != nil {
 		return nil, err
-	} else {
-		return certloader.ParseAnyPrivateKey(pemData, nil)
 	}
+	return certloader.ParseAnyPrivateKey(pemData, nil)
 }
 
 func selectOrGenerate(path string) (crypto.PrivateKey, error) {
@@ -118,9 +118,9 @@ func setupCmd(cmd *cobra.Command, args []string) error {
 	if x509tools.ArgCommonName == "" {
 		return errors.New("--commonName is required")
 	}
-	if x509tools.ArgDnsNames == "" && x509tools.ArgEmailNames == "" {
+	if x509tools.ArgDNSNames == "" && x509tools.ArgEmailNames == "" {
 		fmt.Fprintf(os.Stderr, "Subject alternate names is empty; appending %s\n", x509tools.ArgCommonName)
-		x509tools.ArgDnsNames = x509tools.ArgCommonName
+		x509tools.ArgDNSNames = x509tools.ArgCommonName
 	}
 	key, err := selectOrGenerate(shared.CurrentConfig.Server.KeyFile)
 	if err != nil {

@@ -28,7 +28,7 @@ import (
 )
 
 // Publish audit record to a AMQP exchange
-func (info *AuditInfo) Publish(aconf *config.AmqpConfig) error {
+func (info *Info) Publish(aconf *config.AmqpConfig) error {
 	blob, err := info.Marshal()
 	if err != nil {
 		return err
@@ -66,7 +66,7 @@ func (info *AuditInfo) Publish(aconf *config.AmqpConfig) error {
 
 // Connect to the configured AMQP broker
 func Connect(aconf *config.AmqpConfig) (*amqp.Connection, error) {
-	uri, err := amqp.ParseURI(aconf.Url)
+	uri, err := amqp.ParseURI(aconf.URL)
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +95,7 @@ func Connect(aconf *config.AmqpConfig) (*amqp.Connection, error) {
 		auth = append(auth, uri.PlainAuth())
 	}
 	qconf := amqp.Config{SASL: auth, TLSClientConfig: tconf}
-	return amqp.DialConfig(aconf.Url, qconf)
+	return amqp.DialConfig(aconf.URL, qconf)
 }
 
 type externalAuth struct{}

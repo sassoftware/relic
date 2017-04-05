@@ -79,7 +79,7 @@ var AccessDeniedResponse Response = &bytesResponse{
 	Body:        []byte("Access denied\r\n"),
 }
 
-func JsonResponse(data interface{}) (Response, error) {
+func JSONResponse(data interface{}) (Response, error) {
 	blob, err := json.Marshal(data)
 	if err != nil {
 		return nil, err

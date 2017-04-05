@@ -22,15 +22,15 @@ import (
 	"math/big"
 )
 
-func makeKeyId() []byte {
-	keyId := make([]byte, 20)
-	if n, err := rand.Reader.Read(keyId); err != nil || n != 20 {
+func makeKeyID() []byte {
+	keyID := make([]byte, 20)
+	if n, err := rand.Reader.Read(keyID); err != nil || n != 20 {
 		return nil
 	}
-	return keyId
+	return keyID
 }
 
-func parseKeyId(value string) ([]byte, error) {
+func parseKeyID(value string) ([]byte, error) {
 	return hex.DecodeString(value)
 }
 

@@ -51,7 +51,7 @@ func init() {
 	signers.Register(AppSigner)
 }
 
-func formatLog(info *audit.AuditInfo) string {
+func formatLog(info *audit.Info) string {
 	return fmt.Sprintf("assembly=%s version=%s publicKeyToken=%s",
 		info.Attributes["assembly.name"],
 		info.Attributes["assembly.version"],
@@ -70,8 +70,8 @@ func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]b
 	}
 	tconf := opts.TimestampConfig
 	if tconf != nil {
-		if len(tconf.MsUrls) == 0 {
-			return nil, errors.New("Need 1 or more MsUrls defined in Timestamp configuration in order to create old-style counter-signatures")
+		if len(tconf.MsURLs) == 0 {
+			return nil, errors.New("Need 1 or more MsURLs defined in Timestamp configuration in order to create old-style counter-signatures")
 		}
 		cl := pkcs9.TimestampClient{
 			UserAgent: config.UserAgent,
@@ -79,10 +79,10 @@ func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]b
 			Timeout:   time.Second * time.Duration(tconf.Timeout),
 		}
 		var token *pkcs7.ContentInfoSignedData
-		for _, url := range tconf.MsUrls {
-			cl.Url = url
+		for _, url := range tconf.MsURLs {
+			cl.URL = url
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Timestamping failed: %s\nTrying next server %s...\n", err, cl.Url)
+				fmt.Fprintf(os.Stderr, "Timestamping failed: %s\nTrying next server %s...\n", err, cl.URL)
 			}
 			token, err = cl.MicrosoftRequest(signed.EncryptedDigest)
 			if err == nil {

@@ -73,6 +73,6 @@ func importKeyCmd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(os.Stderr, "Token CKA_ID: ", formatKeyId(key.GetId()))
+	fmt.Fprintln(os.Stderr, "Token CKA_ID: ", formatKeyID(key.GetID()))
 	return nil
 }

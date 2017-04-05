@@ -79,7 +79,7 @@ func newKeyConfig() (*config.KeyConfig, error) {
 	}
 	if argLabel != "" {
 		keyConf.Label = argLabel
-		keyConf.Id = ""
+		keyConf.ID = ""
 	}
 	return keyConf, nil
 }
@@ -166,9 +166,9 @@ func openKey(keyName string) (*p11token.Key, error) {
 	return key, err
 }
 
-func formatKeyId(key_id []byte) string {
-	chunks := make([]string, len(key_id))
-	for i, j := range key_id {
+func formatKeyID(keyID []byte) string {
+	chunks := make([]string, len(keyID))
+	for i, j := range keyID {
 		chunks[i] = fmt.Sprintf("%02x", j)
 	}
 	return strings.Join(chunks, ":")

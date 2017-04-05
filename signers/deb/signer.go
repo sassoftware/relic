@@ -46,7 +46,7 @@ func init() {
 	signers.Register(DebSigner)
 }
 
-func formatLog(attrs *audit.AuditInfo) string {
+func formatLog(attrs *audit.Info) string {
 	return fmt.Sprintf("name=%s version=%s arch=%s",
 		attrs.Attributes["deb.name"],
 		attrs.Attributes["deb.version"],

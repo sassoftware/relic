@@ -136,9 +136,8 @@ func verifyFile(files zipFiles, sig *AppxSignature, tag, name string) error {
 	if zf == nil {
 		if expected == nil {
 			return nil
-		} else {
-			return fmt.Errorf("appx missing signed file: %s", name)
 		}
+		return fmt.Errorf("appx missing signed file: %s", name)
 	} else if expected == nil {
 		return fmt.Errorf("appx missing signature for file: %s", name)
 	}
@@ -182,9 +181,8 @@ func verifyCatalog(zf *zip.File, sig *AppxSignature) error {
 	if zf == nil {
 		if sig.IsBundle {
 			return nil
-		} else {
-			return errors.New("missing security catalog")
 		}
+		return errors.New("missing security catalog")
 	}
 	blob, err := readZipFile(zf)
 	if err != nil {

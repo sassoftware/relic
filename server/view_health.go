@@ -130,9 +130,8 @@ func (s *Server) Healthy(request *http.Request) bool {
 			s.Logr(request, "error: health check AWOL for %d seconds", time.Since(healthLastPing)/time.Second)
 		}
 		return false
-	} else {
-		return healthStatus > 0
 	}
+	return healthStatus > 0
 }
 
 func (s *Server) serveHealth(request *http.Request) (res Response, err error) {
@@ -141,7 +140,6 @@ func (s *Server) serveHealth(request *http.Request) (res Response, err error) {
 	}
 	if s.Healthy(request) {
 		return StringResponse(http.StatusOK, "OK"), nil
-	} else {
-		return ErrorResponse(http.StatusServiceUnavailable), nil
 	}
+	return ErrorResponse(http.StatusServiceUnavailable), nil
 }

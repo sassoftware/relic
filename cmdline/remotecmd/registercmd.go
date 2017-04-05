@@ -47,7 +47,7 @@ var RegisterCmd = &cobra.Command{
 }
 
 var (
-	argRemoteUrl string
+	argRemoteURL string
 	argCaCert    string
 	argDirectory bool
 	argForce     bool
@@ -55,14 +55,14 @@ var (
 
 func init() {
 	RemoteCmd.AddCommand(RegisterCmd)
-	RegisterCmd.Flags().StringVarP(&argRemoteUrl, "url", "u", "", "URL of remote server to register to")
+	RegisterCmd.Flags().StringVarP(&argRemoteURL, "url", "u", "", "URL of remote server to register to")
 	RegisterCmd.Flags().StringVarP(&argCaCert, "ca-cert", "C", "", "Path to CA certificate file (will be copied)")
 	RegisterCmd.Flags().BoolVarP(&argDirectory, "directory", "D", false, "Remote URL is a cluster directory")
 	RegisterCmd.Flags().BoolVarP(&argForce, "force", "f", false, "Overwrite existing configuration file")
 }
 
 func registerCmd(cmd *cobra.Command, args []string) error {
-	if argRemoteUrl == "" {
+	if argRemoteURL == "" {
 		return errors.New("--url and --ca-cert are required")
 	}
 	if shared.ArgConfig == "" {
@@ -100,7 +100,7 @@ func registerCmd(cmd *cobra.Command, args []string) error {
 			return shared.Fail(err)
 		}
 	}
-	if err := writeConfig(shared.ArgConfig, argRemoteUrl, keyPath, capath); err != nil {
+	if err := writeConfig(shared.ArgConfig, argRemoteURL, keyPath, capath); err != nil {
 		return shared.Fail(err)
 	}
 	return nil
@@ -114,9 +114,9 @@ func fileExists(path string) bool {
 func writeConfig(cfgPath, url, keyPath, caPath string) error {
 	newConfig := &config.Config{Remote: &config.RemoteConfig{}}
 	if argDirectory {
-		newConfig.Remote.DirectoryUrl = url
+		newConfig.Remote.DirectoryURL = url
 	} else {
-		newConfig.Remote.Url = url
+		newConfig.Remote.URL = url
 	}
 	newConfig.Remote.CertFile = keyPath
 	newConfig.Remote.KeyFile = keyPath

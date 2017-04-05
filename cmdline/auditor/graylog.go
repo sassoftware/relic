@@ -27,8 +27,8 @@ import (
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/audit"
 )
 
-func logGraylog(info *audit.AuditInfo, rowid int64) error {
-	if auditConfig.GraylogUrl == "" {
+func logGraylog(info *audit.Info, rowid int64) error {
+	if auditConfig.GraylogURL == "" {
 		return nil
 	}
 	msg := map[string]interface{}{
@@ -54,7 +54,7 @@ func logGraylog(info *audit.AuditInfo, rowid int64) error {
 	if err != nil {
 		return err
 	}
-	resp, err := http.Post(auditConfig.GraylogUrl, "application/json", bytes.NewReader(blob))
+	resp, err := http.Post(auditConfig.GraylogURL, "application/json", bytes.NewReader(blob))
 	if err != nil {
 		return err
 	} else if resp.StatusCode >= 300 {

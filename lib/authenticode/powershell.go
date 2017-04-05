@@ -45,18 +45,18 @@ const (
 	// "Hash" style used by e.g. .ps1 files
 	SigStyleHash PsSigStyle = iota + 1
 	// XML style used by e.g. .ps1xml files
-	SigStyleXml
+	SigStyleXML
 	// C# style used by .mof files
 	SigStyleC
 )
 
 var psExtMap = map[string]PsSigStyle{
 	".ps1":    SigStyleHash,
-	".ps1xml": SigStyleXml,
-	".psc1":   SigStyleXml,
+	".ps1xml": SigStyleXML,
+	".psc1":   SigStyleXML,
 	".psd1":   SigStyleHash,
 	".psm1":   SigStyleHash,
-	".cdxml":  SigStyleXml,
+	".cdxml":  SigStyleXML,
 	".mof":    SigStyleC,
 }
 
@@ -67,7 +67,7 @@ type sigStyle struct{ start, end string }
 
 var psStyles = map[PsSigStyle]sigStyle{
 	SigStyleHash: sigStyle{"# ", ""},
-	SigStyleXml:  sigStyle{"<!-- ", " -->"},
+	SigStyleXML:  sigStyle{"<!-- ", " -->"},
 	SigStyleC:    sigStyle{"/* ", " */"},
 }
 
@@ -124,11 +124,11 @@ func DigestPowershell(r io.Reader, style PsSigStyle, hash crypto.Hash) (*PsDiges
 			}
 			// count the size of the signature
 			sigSize += int64(len(line))
-			if n, err := io.Copy(ioutil.Discard, br); err != nil {
+			n, err := io.Copy(ioutil.Discard, br)
+			if err != nil {
 				return nil, err
-			} else {
-				sigSize += n
 			}
+			sigSize += n
 			break
 		} else {
 			writeUtf16(d, saved, isUtf16)
@@ -150,9 +150,8 @@ func detectUtf16(br *bufio.Reader, start, end string) (bool, string, string) {
 	if bom, err := br.Peek(2); err == nil && bom[0] == 0xff && bom[1] == 0xfe {
 		// UTF-16-LE
 		return true, toUtf16(first), toUtf16(last)
-	} else {
-		return false, first, last
 	}
+	return false, first, last
 }
 
 // Verify a PowerShell script. The signature "style" must already have been
@@ -186,11 +185,11 @@ func VerifyPowershell(r io.ReadSeeker, style PsSigStyle, skipDigests bool) (*pkc
 			}
 			i := len(si.start)
 			j := len(lstr) - len(si.end) - 2
-			if lder, err := base64.StdEncoding.DecodeString(lstr[i:j]); err != nil {
+			lder, err := base64.StdEncoding.DecodeString(lstr[i:j])
+			if err != nil {
 				return nil, err
-			} else {
-				pkcsb.Write(lder)
 			}
+			pkcsb.Write(lder)
 		} else if line == first {
 			// remove preceding \r\n from size
 			if isUtf16 {
@@ -309,10 +308,9 @@ func writeUtf16(d io.Writer, x string, isUtf16 bool) error {
 	if isUtf16 {
 		_, err := d.Write([]byte(x))
 		return err
-	} else {
-		runes := utf16.Encode([]rune(x))
-		return binary.Write(d, binary.LittleEndian, runes)
 	}
+	runes := utf16.Encode([]rune(x))
+	return binary.Write(d, binary.LittleEndian, runes)
 }
 
 // Convert UTF-16-LE to UTF8

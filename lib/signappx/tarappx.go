@@ -166,11 +166,11 @@ func (i *AppxDigest) digestFile(f *zipslicer.File, doPageHash bool) error {
 			w.Close()
 		}
 		for _, ch := range peResults {
-			if result := <-ch; result.err != nil {
+			result := <-ch
+			if result.err != nil {
 				return result.err
-			} else {
-				i.peDigests = append(i.peDigests, result.digest)
 			}
+			i.peDigests = append(i.peDigests, result.digest)
 		}
 	}
 	return nil

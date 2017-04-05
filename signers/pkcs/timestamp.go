@@ -71,10 +71,10 @@ func (t Timestamper) Timestamp(psd *pkcs7.ContentInfoSignedData) (*pkcs7.Content
 	}
 	var token *pkcs7.ContentInfoSignedData
 	var err error
-	for _, url := range t.Config.Urls {
-		cl.Url = url
+	for _, url := range t.Config.URLs {
+		cl.URL = url
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Timestamping failed: %s\nTrying next server %s...\n", err, cl.Url)
+			fmt.Fprintf(os.Stderr, "Timestamping failed: %s\nTrying next server %s...\n", err, cl.URL)
 		}
 		token, err = cl.Request(hash, imprint)
 		if err == nil {

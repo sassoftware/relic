@@ -30,5 +30,5 @@ func (s *Server) serveListKeys(request *http.Request) (res Response, err error) 
 			keys = append(keys, key)
 		}
 	}
-	return JsonResponse(keys)
+	return JSONResponse(keys)
 }

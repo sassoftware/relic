@@ -75,17 +75,16 @@ func (p fileProducer) GetReader() (io.Reader, error) {
 func (p fileProducer) Apply(dest, mimetype string, result io.Reader) error {
 	if mimetype == binpatch.MimeType {
 		return ApplyBinPatch(p.f, dest, result)
-	} else {
-		f, err := atomicfile.WriteAny(dest)
-		if err != nil {
-			return err
-		}
-		if _, err := io.Copy(f, result); err != nil {
-			return err
-		}
-		p.f.Close()
-		return f.Commit()
 	}
+	f, err := atomicfile.WriteAny(dest)
+	if err != nil {
+		return err
+	}
+	if _, err := io.Copy(f, result); err != nil {
+		return err
+	}
+	p.f.Close()
+	return f.Commit()
 }
 
 func ApplyBinPatch(src *os.File, dest string, result io.Reader) error {

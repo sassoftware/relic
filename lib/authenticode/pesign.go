@@ -81,7 +81,7 @@ func (pd *PEDigest) imprintPageHashes(indirect *SpcIndirectDataContentPe) error 
 		return err
 	}
 	indirect.Data.Value.File = SpcLink{}
-	indirect.Data.Value.File.Moniker.ClassId = SpcUuidPageHashes
+	indirect.Data.Value.File.Moniker.ClassID = SpcUUIDPageHashes
 	indirect.Data.Value.File.Moniker.SerializedData = serdata
 	return nil
 }

@@ -65,19 +65,18 @@ func WriteAny(path string) (AtomicFile, error) {
 func WriteInPlace(src *os.File, dest string) (AtomicFile, error) {
 	if src.Name() == dest {
 		return nopAtomic{src, false}, nil
-	} else {
-		outfile, err := New(dest)
-		if err != nil {
-			return nil, err
-		}
-		src.Seek(0, 0)
-		if _, err := io.Copy(outfile, src); err != nil {
-			return nil, err
-		}
-		outfile.Seek(0, 0)
-		src.Close()
-		return outfile, nil
 	}
+	outfile, err := New(dest)
+	if err != nil {
+		return nil, err
+	}
+	src.Seek(0, 0)
+	if _, err := io.Copy(outfile, src); err != nil {
+		return nil, err
+	}
+	outfile.Seek(0, 0)
+	src.Close()
+	return outfile, nil
 }
 
 // Write bytes to a file, using write-rename when appropriate

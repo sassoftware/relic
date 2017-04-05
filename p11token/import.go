@@ -89,8 +89,8 @@ func (token *Token) Import(keyName string, privKey crypto.PrivateKey) (*Key, err
 	if keyConf.Label == "" {
 		return nil, errors.New("Key attribute 'label' must be defined in order to create an object")
 	}
-	keyId := makeKeyId()
-	if keyId == nil {
+	keyID := makeKeyID()
+	if keyID == nil {
 		return nil, errors.New("failed to make key ID")
 	}
 	var pubTypeAttrs, privTypeAttrs []*pkcs11.Attribute
@@ -110,12 +110,12 @@ func (token *Token) Import(keyName string, privKey crypto.PrivateKey) (*Key, err
 	}
 	commonAttrs := []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, keyType),
-		pkcs11.NewAttribute(pkcs11.CKA_ID, keyId),
+		pkcs11.NewAttribute(pkcs11.CKA_ID, keyID),
 		pkcs11.NewAttribute(pkcs11.CKA_LABEL, keyConf.Label),
 	}
 	pubAttrs := attrConcat(commonAttrs, newPublicKeyAttrs, pubTypeAttrs)
 	privAttrsSensitive := attrConcat(commonAttrs, newPrivateKeyAttrs, privTypeAttrs)
-	pub_handle, err := token.ctx.CreateObject(token.sh, pubAttrs)
+	pubHandle, err := token.ctx.CreateObject(token.sh, pubAttrs)
 	if err != nil {
 		return nil, err
 	}
@@ -132,10 +132,10 @@ func (token *Token) Import(keyName string, privKey crypto.PrivateKey) (*Key, err
 		}
 	}
 	if err != nil {
-		token.ctx.DestroyObject(token.sh, pub_handle)
+		token.ctx.DestroyObject(token.sh, pubHandle)
 		return nil, err
 	}
-	keyConf.Id = hex.EncodeToString(keyId)
+	keyConf.ID = hex.EncodeToString(keyID)
 	return token.getKey(keyConf, keyName)
 }
 
@@ -150,8 +150,8 @@ func (token *Token) Generate(keyName string, keyType uint, bits uint) (*Key, err
 	if keyConf.Label == "" {
 		return nil, errors.New("Key attribute 'label' must be defined in order to create an object")
 	}
-	keyId := makeKeyId()
-	if keyId == nil {
+	keyID := makeKeyID()
+	if keyID == nil {
 		return nil, errors.New("failed to make key ID")
 	}
 	var pubTypeAttrs []*pkcs11.Attribute
@@ -168,7 +168,7 @@ func (token *Token) Generate(keyName string, keyType uint, bits uint) (*Key, err
 		return nil, err
 	}
 	commonAttrs := []*pkcs11.Attribute{
-		pkcs11.NewAttribute(pkcs11.CKA_ID, keyId),
+		pkcs11.NewAttribute(pkcs11.CKA_ID, keyID),
 		pkcs11.NewAttribute(pkcs11.CKA_LABEL, keyConf.Label),
 	}
 	pubAttrs := attrConcat(commonAttrs, newPublicKeyAttrs, pubTypeAttrs)
@@ -176,7 +176,7 @@ func (token *Token) Generate(keyName string, keyType uint, bits uint) (*Key, err
 	if _, _, err := token.ctx.GenerateKeyPair(token.sh, []*pkcs11.Mechanism{mech}, pubAttrs, privAttrs); err != nil {
 		return nil, err
 	}
-	keyConf.Id = hex.EncodeToString(keyId)
+	keyConf.ID = hex.EncodeToString(keyID)
 	return token.getKey(keyConf, keyName)
 }
 

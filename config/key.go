@@ -27,9 +27,8 @@ func (keyConf *KeyConfig) Name() string {
 func (keyConf *KeyConfig) GetTimeout() time.Duration {
 	if keyConf.token != nil && keyConf.token.Timeout != 0 {
 		return time.Second * time.Duration(keyConf.token.Timeout)
-	} else {
-		return defaultTimeout
 	}
+	return defaultTimeout
 }
 
 func (keyConf *KeyConfig) SetToken(tokenConf *TokenConfig) {

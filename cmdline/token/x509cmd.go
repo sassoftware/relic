@@ -67,6 +67,6 @@ func x509Cmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	os.Stdout.WriteString(result)
-	fmt.Println("CKA_ID:", formatKeyId(key.GetId()))
+	fmt.Println("CKA_ID:", formatKeyID(key.GetID()))
 	return nil
 }

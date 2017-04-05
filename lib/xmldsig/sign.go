@@ -34,7 +34,7 @@ import (
 	"github.com/beevik/etree"
 )
 
-type XmlSignOptions struct {
+type SignOptions struct {
 	// Use non-standard namespace for SHA-256 found in Microsoft ClickOnce manifests
 	MsCompatHashNames bool
 	// Add the X509 certificate chain to the KeyInfo
@@ -43,7 +43,7 @@ type XmlSignOptions struct {
 
 // Create an enveloped signature from the document rooted at "root", replacing
 // any existing signature and adding it as a last child of "parent".
-func Sign(root *etree.Element, parent *etree.Element, hash crypto.Hash, privKey crypto.Signer, certs []*x509.Certificate, opts XmlSignOptions) error {
+func Sign(root *etree.Element, parent *etree.Element, hash crypto.Hash, privKey crypto.Signer, certs []*x509.Certificate, opts SignOptions) error {
 	pubKey := privKey.Public()
 	if len(certs) < 1 || !x509tools.SameKey(pubKey, certs[0].PublicKey) {
 		return errors.New("xmldsig: first certificate must match private key")
@@ -57,15 +57,15 @@ func Sign(root *etree.Element, parent *etree.Element, hash crypto.Hash, privKey 
 	}
 	// build a signedinfo that references the enveloping document
 	signature := parent.CreateElement("Signature")
-	signature.CreateAttr("xmlns", NsXmlDsig)
+	signature.CreateAttr("xmlns", NsXMLDsig)
 	signedinfo := signature.CreateElement("SignedInfo")
-	signedinfo.CreateElement("CanonicalizationMethod").CreateAttr("Algorithm", AlgXmlExcC14n)
+	signedinfo.CreateElement("CanonicalizationMethod").CreateAttr("Algorithm", AlgXMLExcC14n)
 	signedinfo.CreateElement("SignatureMethod").CreateAttr("Algorithm", sigAlg)
 	reference := signedinfo.CreateElement("Reference")
 	reference.CreateAttr("URI", "")
 	transforms := reference.CreateElement("Transforms")
 	transforms.CreateElement("Transform").CreateAttr("Algorithm", AlgDsigEnvelopedSignature)
-	transforms.CreateElement("Transform").CreateAttr("Algorithm", AlgXmlExcC14n)
+	transforms.CreateElement("Transform").CreateAttr("Algorithm", AlgXMLExcC14n)
 	reference.CreateElement("DigestMethod").CreateAttr("Algorithm", hashAlg)
 	reference.CreateElement("DigestValue").SetText(base64.StdEncoding.EncodeToString(refDigest))
 	// canonicalize the signedinfo section and sign it
@@ -110,7 +110,7 @@ func RemoveElements(root *etree.Element, tag string) {
 }
 
 // Determine algorithm URIs for hashing and signing
-func hashAlgs(hash crypto.Hash, pubKey crypto.PublicKey, opts XmlSignOptions) (string, string, error) {
+func hashAlgs(hash crypto.Hash, pubKey crypto.PublicKey, opts SignOptions) (string, string, error) {
 	hashName := hashNames[hash]
 	if hashName == "" {
 		return "", "", errors.New("unsupported hash type")
@@ -126,14 +126,14 @@ func hashAlgs(hash crypto.Hash, pubKey crypto.PublicKey, opts XmlSignOptions) (s
 	}
 	var hashAlg, sigAlg string
 	if hashName == "sha1" || opts.MsCompatHashNames {
-		hashAlg = NsXmlDsig + hashName
+		hashAlg = NsXMLDsig + hashName
 	} else {
-		hashAlg = NsXmlDsigMore + hashName
+		hashAlg = NsXMLDsigMore + hashName
 	}
 	if pubName == "rsa" && (hashName == "sha1" || opts.MsCompatHashNames) {
-		sigAlg = NsXmlDsig + pubName + "-" + hashName
+		sigAlg = NsXMLDsig + pubName + "-" + hashName
 	} else {
-		sigAlg = NsXmlDsigMore + pubName + "-" + hashName
+		sigAlg = NsXMLDsigMore + pubName + "-" + hashName
 	}
 	return hashAlg, sigAlg, nil
 }

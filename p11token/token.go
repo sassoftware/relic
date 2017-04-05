@@ -216,13 +216,10 @@ func (token *Token) autoLogIn(tokenConf *config.TokenConfig, pinProvider passpro
 				msg += "; use 'relic ping' to save password in keyring"
 			}
 			return errors.New(msg)
-		} else {
-			return errors.New("Aborted")
 		}
-	} else {
-		return err
+		return errors.New("Aborted")
 	}
-	return nil
+	return err
 }
 
 func (token *Token) getAttribute(handle pkcs11.ObjectHandle, attr uint) []byte {
@@ -234,7 +231,7 @@ func (token *Token) getAttribute(handle pkcs11.ObjectHandle, attr uint) []byte {
 }
 
 func attrToInt(value []byte) uint {
-	var n uint = 0
+	var n uint
 	for i := len(value) - 1; i >= 0; i-- {
 		n = n<<8 | uint(value[i])
 	}

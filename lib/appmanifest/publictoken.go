@@ -36,7 +36,7 @@ func PublisherIdentity(cert *certloader.Certificate) (string, string, error) {
 	if issuer == nil {
 		return "", "", errors.New("unable to find issuer certificate in chain")
 	}
-	aki, err := x509tools.SubjectKeyId(issuer.PublicKey)
+	aki, err := x509tools.SubjectKeyID(issuer.PublicKey)
 	if err != nil {
 		return "", "", err
 	}

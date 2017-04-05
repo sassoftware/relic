@@ -57,7 +57,7 @@ type pkixPublicKey struct {
 }
 
 // Calculcate subject key identifier from a public key per RFC 3280
-func SubjectKeyId(pub crypto.PublicKey) ([]byte, error) {
+func SubjectKeyID(pub crypto.PublicKey) ([]byte, error) {
 	der, err := x509.MarshalPKIXPublicKey(pub)
 	if err != nil {
 		return nil, err

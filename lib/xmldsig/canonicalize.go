@@ -58,9 +58,8 @@ func getDecl(attr etree.Attr) (string, bool) {
 func putDecl(space string) string {
 	if space == "" {
 		return "xmlns"
-	} else {
-		return "xmlns:" + space
 	}
+	return "xmlns:" + space
 }
 
 func walkAttributes(elem *etree.Element) {
@@ -92,9 +91,8 @@ func walkAttributes(elem *etree.Element) {
 		// then order by namespace and finally by key
 		if x.Space != y.Space {
 			return x.Space < y.Space
-		} else {
-			return x.Key < y.Key
 		}
+		return x.Key < y.Key
 	})
 	for i := 0; i < len(elem.Child); {
 		token := elem.Child[i]

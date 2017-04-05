@@ -141,7 +141,7 @@ func signCmd(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func openCert(mod *signers.Signer, hash crypto.Hash) (*certloader.Certificate, *audit.AuditInfo, error) {
+func openCert(mod *signers.Signer, hash crypto.Hash) (*certloader.Certificate, *audit.Info, error) {
 	key, err := openKey(argKeyName)
 	if err != nil {
 		return nil, nil, err

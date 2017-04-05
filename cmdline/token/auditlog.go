@@ -28,7 +28,7 @@ import (
 	"gerrit-pdt.unx.sas.com/tools/relic.git/p11token"
 )
 
-func NewAudit(key *p11token.Key, sigType string, hash crypto.Hash) *audit.AuditInfo {
+func NewAudit(key *p11token.Key, sigType string, hash crypto.Hash) *audit.Info {
 	info := audit.New(key.Name, sigType, hash)
 	if argFile != "" && argFile != "-" && info.Attributes["client.filename"] == nil {
 		info.Attributes["client.filename"] = filepath.Base(argFile)
@@ -36,12 +36,12 @@ func NewAudit(key *p11token.Key, sigType string, hash crypto.Hash) *audit.AuditI
 	return info
 }
 
-func PublishAudit(info *audit.AuditInfo) error {
+func PublishAudit(info *audit.Info) error {
 	if err := shared.InitConfig(); err != nil {
 		return err
 	}
 	aconf := shared.CurrentConfig.Amqp
-	if aconf != nil && aconf.Url != "" {
+	if aconf != nil && aconf.URL != "" {
 		if aconf.SealingKey != "" {
 			if err := sealAudit(info, aconf); err != nil {
 				return shared.Fail(fmt.Errorf("failed to seal audit log: %s", err))
@@ -57,7 +57,7 @@ func PublishAudit(info *audit.AuditInfo) error {
 	return nil
 }
 
-func sealAudit(info *audit.AuditInfo, aconf *config.AmqpConfig) error {
+func sealAudit(info *audit.Info, aconf *config.AmqpConfig) error {
 	key, err := openKey(aconf.SealingKey)
 	if err != nil {
 		return err

@@ -61,7 +61,7 @@ func getKeyInfo(keyName string) (keyInfo, error) {
 
 func getKeyCmd(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
-		return errors.New("Specify one or more key names. See also 'list-keys'.")
+		return errors.New("specify one or more key names. See also 'list-keys'")
 	}
 	for _, keyName := range args {
 		info, err := getKeyInfo(keyName)

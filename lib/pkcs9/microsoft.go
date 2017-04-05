@@ -46,7 +46,7 @@ func (t TimestampClient) MicrosoftRequest(encryptedDigest []byte) (*pkcs7.Conten
 	if err != nil {
 		return nil, err
 	}
-	req, err := http.NewRequest("POST", t.Url, bytes.NewReader(blob))
+	req, err := http.NewRequest("POST", t.URL, bytes.NewReader(blob))
 	if err != nil {
 		return nil, err
 	}

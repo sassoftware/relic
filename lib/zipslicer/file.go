@@ -160,7 +160,7 @@ func (f *File) GetDirectoryHeader() ([]byte, error) {
 		hdr.UncompressedSize = uint32Max
 		hdr.Offset = uint32Max
 		extra := zip64Extra{
-			Signature:        zip64ExtraId,
+			Signature:        zip64ExtraID,
 			RecordSize:       zip64ExtraLen,
 			UncompressedSize: f.UncompressedSize,
 			CompressedSize:   f.CompressedSize,

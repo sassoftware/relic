@@ -47,7 +47,7 @@ var fileMagic = []byte{0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1}
 // Raw CDF file header
 type Header struct {
 	Magic            [8]byte
-	Uid              [16]byte
+	UID              [16]byte
 	Revision         uint16
 	Version          uint16
 	ByteOrder        uint16
@@ -74,7 +74,7 @@ type RawDirEnt struct {
 	LeftChild   int32
 	RightChild  int32
 	StorageRoot int32
-	Uid         [16]byte
+	UID         [16]byte
 	UserFlags   uint32
 	CreateTime  uint64
 	ModifyTime  uint64

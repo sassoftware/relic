@@ -61,17 +61,17 @@ func (key *Key) signRSA(digest []byte, opts crypto.SignerOpts) ([]byte, error) {
 }
 
 // Generate RSA-specific public and private key attributes from a PrivateKey
-func rsaImportAttrs(priv *rsa.PrivateKey) (pub_attrs, priv_attrs []*pkcs11.Attribute, err error) {
+func rsaImportAttrs(priv *rsa.PrivateKey) (pubAttrs, privAttrs []*pkcs11.Attribute, err error) {
 	if len(priv.Primes) != 2 || priv.Precomputed.Dp == nil || priv.Precomputed.Dq == nil || priv.Precomputed.Qinv == nil {
 		// multi-prime keys and keys without the precomputed values are rare
 		// enough not to be interesting
 		return nil, nil, errors.New("unsupported RSA key")
 	}
-	pub_attrs = []*pkcs11.Attribute{
+	pubAttrs = []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_PUBLIC_EXPONENT, big.NewInt(int64(priv.E)).Bytes()),
 		pkcs11.NewAttribute(pkcs11.CKA_MODULUS, priv.N.Bytes()),
 	}
-	priv_attrs = []*pkcs11.Attribute{
+	privAttrs = []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_PUBLIC_EXPONENT, big.NewInt(int64(priv.E)).Bytes()),
 		pkcs11.NewAttribute(pkcs11.CKA_MODULUS, priv.N.Bytes()),
 		pkcs11.NewAttribute(pkcs11.CKA_PRIVATE_EXPONENT, priv.D.Bytes()),
@@ -89,10 +89,10 @@ func rsaGenerateAttrs(bits uint) ([]*pkcs11.Attribute, *pkcs11.Mechanism, error)
 	if bits < 1024 || bits > 4096 {
 		return nil, nil, errors.New("unsupported number of bits")
 	}
-	pub_exponent := []byte{1, 0, 1} // 65537
+	pubExponent := []byte{1, 0, 1} // 65537
 	attrs := []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_MODULUS_BITS, bits),
-		pkcs11.NewAttribute(pkcs11.CKA_PUBLIC_EXPONENT, pub_exponent),
+		pkcs11.NewAttribute(pkcs11.CKA_PUBLIC_EXPONENT, pubExponent),
 	}
 	mech := pkcs11.NewMechanism(pkcs11.CKM_RSA_PKCS_KEY_PAIR_GEN, nil)
 	return attrs, mech, nil

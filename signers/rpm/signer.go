@@ -48,7 +48,7 @@ func init() {
 	signers.Register(RpmSigner)
 }
 
-func formatLog(attrs *audit.AuditInfo) string {
+func formatLog(attrs *audit.Info) string {
 	return fmt.Sprintf("nevra=%s md5=%s sha1=%s",
 		attrs.Attributes["rpm.nevra"],
 		attrs.Attributes["rpm.md5"],

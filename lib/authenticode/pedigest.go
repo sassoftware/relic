@@ -228,9 +228,8 @@ func readOptHeader(r io.Reader, d io.Writer, peStart int64, fh *pe.FileHeader) (
 		}
 		if opt.NumberOfRvaAndSizes < 5 {
 			return nil, errors.New("PE header did not leave room for signature")
-		} else {
-			dd = opt.DataDirectory[4]
 		}
+		dd = opt.DataDirectory[4]
 		dd4Start = 128
 		hvals.sizeOfHdr = int64(opt.SizeOfHeaders)
 		hvals.sectionAlign = int(opt.SectionAlignment)
@@ -242,9 +241,8 @@ func readOptHeader(r io.Reader, d io.Writer, peStart int64, fh *pe.FileHeader) (
 		}
 		if opt.NumberOfRvaAndSizes < 5 {
 			return nil, errors.New("PE header did not leave room for signature")
-		} else {
-			dd = opt.DataDirectory[4]
 		}
+		dd = opt.DataDirectory[4]
 		dd4Start = 144
 		hvals.sizeOfHdr = int64(opt.SizeOfHeaders)
 		hvals.sectionAlign = int(opt.SectionAlignment)
@@ -283,24 +281,23 @@ func readSections(r io.Reader, d io.Writer, fh *pe.FileHeader, hvals *peHeaderVa
 }
 
 func readTrailer(r io.Reader, d io.Writer, lastSection, certStart, certSize int64) (int64, error) {
-	if certSize != 0 {
-		if certStart < lastSection {
-			return 0, errors.New("existing signature overlaps with PE sections")
-		}
-		if _, err := io.CopyN(d, r, certStart-lastSection); err != nil {
-			return 0, err
-		}
-		if _, err := io.CopyN(ioutil.Discard, r, certSize); err != nil {
-			return 0, err
-		}
-		if n, _ := io.Copy(ioutil.Discard, r); n > 0 {
-			return 0, errors.New("trailing garbage after existing certificate")
-		}
-		return certStart, nil
-	} else {
+	if certSize == 0 {
 		n, err := io.Copy(d, r)
 		return lastSection + n, err
 	}
+	if certStart < lastSection {
+		return 0, errors.New("existing signature overlaps with PE sections")
+	}
+	if _, err := io.CopyN(d, r, certStart-lastSection); err != nil {
+		return 0, err
+	}
+	if _, err := io.CopyN(ioutil.Discard, r, certSize); err != nil {
+		return 0, err
+	}
+	if n, _ := io.Copy(ioutil.Discard, r); n > 0 {
+		return 0, errors.New("trailing garbage after existing certificate")
+	}
+	return certStart, nil
 }
 
 type peHeaderValues struct {

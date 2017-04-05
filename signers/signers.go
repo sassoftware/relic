@@ -50,7 +50,7 @@ type Signer struct {
 	// Return true if the given filename is associated with this signer
 	TestPath func(string) bool
 	// Format audit attributes for logfile
-	FormatLog func(*audit.AuditInfo) string
+	FormatLog func(*audit.Info) string
 	// Verify a file, returning the set of signatures found. Performs integrity
 	// checks but does not build X509 chains.
 	Verify func(*os.File, VerifyOpts) ([]*Signature, error)
@@ -79,7 +79,7 @@ type SignOpts struct {
 	Time            time.Time
 	Flags           *pflag.FlagSet
 	FlagOverride    map[string]string
-	Audit           *audit.AuditInfo
+	Audit           *audit.Info
 	TimestampConfig *config.TimestampConfig
 }
 

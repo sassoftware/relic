@@ -32,18 +32,16 @@ func GetClientRoles(request *http.Request) []string {
 	roles := request.Context().Value(ctxRoles)
 	if roles == nil {
 		return nil
-	} else {
-		return roles.([]string)
 	}
+	return roles.([]string)
 }
 
 func GetClientName(request *http.Request) string {
 	name := request.Context().Value(ctxClientName)
 	if name == nil {
 		return ""
-	} else {
-		return name.(string)
 	}
+	return name.(string)
 }
 
 func GetClientIP(request *http.Request) string {

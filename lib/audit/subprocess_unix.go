@@ -27,7 +27,7 @@ import (
 // Write audit record to an inherited file descriptor. This is how the
 // subprocess that does the actual signing conveys audit data back to the
 // server for its own logs.
-func (info *AuditInfo) WriteFd() error {
+func (info *Info) WriteFd() error {
 	fdstr := os.Getenv(EnvAuditFd)
 	if fdstr == "" {
 		return nil

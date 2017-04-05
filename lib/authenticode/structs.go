@@ -41,7 +41,7 @@ var (
 	OidCatalogMemberInfo      = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 12, 2, 2}
 	OidCatalogMemberInfoV2    = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 311, 12, 2, 3}
 
-	SpcUuidPageHashes = []byte{0xa6, 0xb5, 0x86, 0xd5, 0xb4, 0xa1, 0x24, 0x66, 0xae, 0x05, 0xa2, 0x17, 0xda, 0x8e, 0x60, 0xd6}
+	SpcUUIDPageHashes = []byte{0xa6, 0xb5, 0x86, 0xd5, 0xb4, 0xa1, 0x24, 0x66, 0xae, 0x05, 0xa2, 0x17, 0xda, 0x8e, 0x60, 0xd6}
 
 	// SIP or Subject Interface Package is an internal Microsoft API for
 	// transforming arbitrary files into a digestible stream. These ClassIDs
@@ -50,8 +50,8 @@ var (
 	// HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Cryptography\OID\EncodingType 0\CryptSIPDllCreateIndirectData
 	// although these particular ClassIDs do not seem to appear there.
 	// Relevant DLLs include: WINTRUST.DLL, MSISIP.DLL, pwrshsip.dll
-	SpcUuidSipInfoMsi = []byte{0xf1, 0x10, 0x0c, 0x00, 0x00, 0x00, 0x00, 0x00, 0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46}
-	SpcUuidSipInfoPs  = []byte{0x1f, 0xcc, 0x3b, 0x60, 0x59, 0x4b, 0x08, 0x4e, 0xb7, 0x24, 0xd2, 0xc6, 0x29, 0x7e, 0xf3, 0x51}
+	SpcUUIDSipInfoMsi = []byte{0xf1, 0x10, 0x0c, 0x00, 0x00, 0x00, 0x00, 0x00, 0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46}
+	SpcUUIDSipInfoPs  = []byte{0x1f, 0xcc, 0x3b, 0x60, 0x59, 0x4b, 0x08, 0x4e, 0xb7, 0x24, 0xd2, 0xc6, 0x29, 0x7e, 0xf3, 0x51}
 
 	// This one is used in V1 security catalogs
 	CryptSipCreateIndirectData = "{C689AAB8-8E78-11D0-8C47-00C04FC295EE}"
@@ -82,18 +82,18 @@ type SpcPeImageData struct {
 }
 
 type SpcLink struct {
-	Url     string              `asn1:"optional,tag:0,ia5"`
+	URL     string              `asn1:"optional,tag:0,ia5"`
 	Moniker SpcSerializedObject `asn1:"optional,tag:1"`
 	File    SpcString           `asn1:"optional,tag:2"`
 }
 
 type SpcString struct {
 	Unicode string `asn1:"optional,tag:0,utf8"`
-	Ascii   string `asn1:"optional,tag:1,ia5"`
+	ASCII   string `asn1:"optional,tag:1,ia5"`
 }
 
 type SpcSerializedObject struct {
-	ClassId        []byte
+	ClassID        []byte
 	SerializedData []byte
 }
 
@@ -123,12 +123,12 @@ type SpcAttributeMsiImageData struct {
 
 type SpcSipInfo struct {
 	A             int
-	Uuid          []byte
+	UUID          []byte
 	B, C, D, E, F int
 }
 
-var msiSipInfo = SpcSipInfo{1, SpcUuidSipInfoMsi, 0, 0, 0, 0, 0}
-var psSipInfo = SpcSipInfo{65536, SpcUuidSipInfoPs, 0, 0, 0, 0, 0}
+var msiSipInfo = SpcSipInfo{1, SpcUUIDSipInfoMsi, 0, 0, 0, 0, 0}
+var psSipInfo = SpcSipInfo{65536, SpcUUIDSipInfoPs, 0, 0, 0, 0, 0}
 
 type CertTrustList struct {
 	SubjectUsage     []asn1.ObjectIdentifier
@@ -150,7 +150,7 @@ type CertTrustValue struct {
 }
 
 type CertTrustMemberInfoV1 struct {
-	ClassId  asn1.RawValue
+	ClassID  asn1.RawValue
 	Unknown1 int
 }
 

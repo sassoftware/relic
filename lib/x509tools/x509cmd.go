@@ -36,7 +36,7 @@ var (
 	ArgLocality           string
 	ArgProvince           string
 	ArgCommonName         string
-	ArgDnsNames           string
+	ArgDNSNames           string
 	ArgEmailNames         string
 	ArgKeyUsage           string
 	ArgExpireDays         uint
@@ -51,7 +51,7 @@ func AddRequestFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&ArgOrganization, "organizationName", "", "Subject name")
 	cmd.Flags().StringVar(&ArgOrganizationalUnit, "organizationalUnitName", "", "Subject name")
 	cmd.Flags().StringVarP(&ArgCommonName, "commonName", "n", "", "Subject commonName")
-	cmd.Flags().StringVar(&ArgDnsNames, "alternate-dns", "", "DNS subject alternate name (comma or space separated)")
+	cmd.Flags().StringVar(&ArgDNSNames, "alternate-dns", "", "DNS subject alternate name (comma or space separated)")
 	cmd.Flags().StringVar(&ArgEmailNames, "alternate-email", "", "Email subject alternate name (comma or space separated)")
 }
 
@@ -132,7 +132,7 @@ func setUsage(template *x509.Certificate) error {
 func MakeRequest(rand io.Reader, key crypto.Signer) (string, error) {
 	var template x509.CertificateRequest
 	template.Subject = subjName()
-	template.DNSNames = splitAndTrim(ArgDnsNames)
+	template.DNSNames = splitAndTrim(ArgDNSNames)
 	template.EmailAddresses = splitAndTrim(ArgEmailNames)
 	template.SignatureAlgorithm = X509SignatureAlgorithm(key.Public())
 	csr, err := x509.CreateCertificateRequest(rand, &template, key)
@@ -152,7 +152,7 @@ func MakeCertificate(rand io.Reader, key crypto.Signer) (string, error) {
 		return "", errors.New("Failed to generate a serial number")
 	}
 	template.Subject = subjName()
-	template.DNSNames = splitAndTrim(ArgDnsNames)
+	template.DNSNames = splitAndTrim(ArgDNSNames)
 	template.EmailAddresses = splitAndTrim(ArgEmailNames)
 	template.SignatureAlgorithm = X509SignatureAlgorithm(key.Public())
 	template.NotBefore = time.Now().Add(time.Hour * -24)
@@ -163,11 +163,11 @@ func MakeCertificate(rand io.Reader, key crypto.Signer) (string, error) {
 		return "", err
 	}
 	template.Issuer = template.Subject
-	if ski, err := SubjectKeyId(key.Public()); err != nil {
+	ski, err := SubjectKeyID(key.Public())
+	if err != nil {
 		return "", err
-	} else {
-		template.SubjectKeyId = ski
 	}
+	template.SubjectKeyId = ski
 	cert, err := x509.CreateCertificate(rand, &template, &template, key.Public(), key)
 	if err != nil {
 		return "", err

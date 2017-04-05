@@ -50,7 +50,7 @@ type KeyConfig struct {
 	Token           string   // Token section to use for this key (linux)
 	Alias           string   // This is an alias for another key
 	Label           string   // Select a key by label
-	Id              string   // Select a key by ID (hex notation)
+	ID              string   // Select a key by ID (hex notation)
 	PgpCertificate  string   // Path to PGP certificate associated with this key
 	X509Certificate string   // Path to X.509 certificate associated with this key
 	Roles           []string // List of user roles that can use this key
@@ -73,7 +73,7 @@ type ServerConfig struct {
 	TokenCheckFailures int
 	TokenCheckTimeout  int
 
-	// URLs to all servers in the cluster. If a client uses DirectoryUrl to
+	// URLs to all servers in the cluster. If a client uses DirectoryURL to
 	// point to this server (or a load balancer), then we will give them these
 	// URLs as a means to distribute load without needing a middle-box.
 	Siblings []string
@@ -85,22 +85,22 @@ type ClientConfig struct {
 }
 
 type RemoteConfig struct {
-	Url          string `,omitempty` // URL of remote server
-	DirectoryUrl string `,omitempty` // URL of directory server
+	URL          string `,omitempty` // URL of remote server
+	DirectoryURL string `,omitempty` // URL of directory server
 	KeyFile      string `,omitempty` // Path to TLS client key file
 	CertFile     string `,omitempty` // Path to TLS client certificate
 	CaCert       string `,omitempty` // Path to CA certificate
 }
 
 type TimestampConfig struct {
-	Urls    []string // List of timestamp server URLs
-	MsUrls  []string // List of microsoft-style URLs
+	URLs    []string // List of timestamp server URLs
+	MsURLs  []string // List of microsoft-style URLs
 	Timeout int      // Connect timeout in seconds
 	CaCert  string   // Path to CA certificate
 }
 
 type AmqpConfig struct {
-	Url        string // AMQP URL to report signatures to i.e. amqp://user:password@host
+	URL        string // AMQP URL to report signatures to i.e. amqp://user:password@host
 	CaCert     string
 	KeyFile    string
 	CertFile   string
@@ -178,9 +178,8 @@ func (config *Config) GetToken(tokenName string) (*TokenConfig, error) {
 	tokenConf, ok := config.Tokens[tokenName]
 	if !ok {
 		return nil, fmt.Errorf("Token \"%s\" not found in configuration", tokenName)
-	} else {
-		return tokenConf, nil
 	}
+	return tokenConf, nil
 }
 
 func (config *Config) GetKey(keyName string) (*KeyConfig, error) {
@@ -195,9 +194,8 @@ func (config *Config) GetKey(keyName string) (*KeyConfig, error) {
 	}
 	if keyConf.Token == "" {
 		return nil, fmt.Errorf("Key \"%s\" does not specify required value 'token'", keyName)
-	} else {
-		return keyConf, nil
 	}
+	return keyConf, nil
 }
 
 func (config *Config) NewKey(name string) *KeyConfig {
@@ -216,19 +214,17 @@ func (config *Config) GetTimestampConfig() (*TimestampConfig, error) {
 	tconf := config.Timestamp
 	if tconf == nil {
 		return nil, errors.New("No timestamp section exists in the configuration")
-	} else if len(tconf.Urls) == 0 {
+	} else if len(tconf.URLs) == 0 {
 		return nil, errors.New("No timestamp urls are defined in the configuration")
-	} else {
-		return tconf, nil
 	}
+	return tconf, nil
 }
 
 func (aconf *AmqpConfig) ExchangeName() string {
 	if aconf.SigsXchg != "" {
 		return aconf.SigsXchg
-	} else {
-		return defaultSigXchg
 	}
+	return defaultSigXchg
 }
 
 func (aconf *AmqpConfig) RoutingKey() string {

@@ -85,12 +85,12 @@ func (r *ComDoc) writeShortSAT() error {
 func (r *ComDoc) readShortSector(shortSector SecID, buf []byte) error {
 	// figure out which big sector holds the short sector
 	bigSectorIndex := int(shortSector) * r.ShortSectorSize / r.SectorSize
-	bigSectorId := r.Files[r.rootStorage].NextSector
+	bigSectorID := r.Files[r.rootStorage].NextSector
 	for i := 0; i < bigSectorIndex; i++ {
-		bigSectorId = r.SAT[bigSectorId]
+		bigSectorID = r.SAT[bigSectorID]
 	}
 	// translate to a file position
-	n := r.sectorToOffset(bigSectorId)
+	n := r.sectorToOffset(bigSectorID)
 	n += int64(int(shortSector)*r.ShortSectorSize - bigSectorIndex*r.SectorSize)
 	_, err := r.File.ReadAt(buf, n)
 	return err
@@ -113,24 +113,24 @@ func (r *ComDoc) writeShortSector(shortSector SecID, content []byte) error {
 	bigSectorIndex := int(shortSector) * r.ShortSectorSize / r.SectorSize
 	offset := int(shortSector)*r.ShortSectorSize - bigSectorIndex*r.SectorSize
 	root := &r.Files[r.rootStorage]
-	bigSectorId := root.NextSector
+	bigSectorID := root.NextSector
 	for ; bigSectorIndex > 0; bigSectorIndex-- {
-		next := r.SAT[bigSectorId]
+		next := r.SAT[bigSectorID]
 		if next < 0 {
 			break
 		}
-		bigSectorId = next
+		bigSectorID = next
 	}
 	if bigSectorIndex > 0 {
 		// extend short sector stream
 		freeList := r.makeFreeSectors(bigSectorIndex, false)
 		for _, sector := range freeList {
-			r.SAT[bigSectorId] = sector
-			bigSectorId = sector
+			r.SAT[bigSectorID] = sector
+			bigSectorID = sector
 		}
-		r.SAT[bigSectorId] = SecIDEndOfChain
+		r.SAT[bigSectorID] = SecIDEndOfChain
 	}
-	n := r.sectorToOffset(bigSectorId) + int64(offset)
+	n := r.sectorToOffset(bigSectorID) + int64(offset)
 	if _, err := r.writer.WriteAt(content, n); err != nil {
 		return err
 	}

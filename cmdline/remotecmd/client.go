@@ -51,8 +51,8 @@ func CallRemote(endpoint, method string, query *url.Values, body ReaderGetter) (
 		return nil, errors.New("config file has no \"remote\" section")
 	}
 	encodings := compresshttp.AcceptedEncodings
-	bases := []string{shared.CurrentConfig.Remote.Url}
-	if dirurl := shared.CurrentConfig.Remote.DirectoryUrl; dirurl != "" {
+	bases := []string{shared.CurrentConfig.Remote.URL}
+	if dirurl := shared.CurrentConfig.Remote.DirectoryURL; dirurl != "" {
 		newBases, serverEncodings, err := getDirectory(dirurl)
 		if err != nil {
 			return nil, err
@@ -78,11 +78,10 @@ func getDirectory(dirurl string) ([]string, string, error) {
 	}
 	response.Body.Close()
 	text := strings.Trim(string(bodybytes), "\r\n")
-	if len(text) > 0 {
-		return strings.Split(text, "\r\n"), encodings, nil
-	} else {
+	if len(text) == 0 {
 		return nil, encodings, nil
 	}
+	return strings.Split(text, "\r\n"), encodings, nil
 }
 
 // Build a HTTP request from various bits and pieces
@@ -121,7 +120,7 @@ func buildRequest(base, endpoint, method, encoding string, query *url.Values, bo
 }
 
 // Build TLS config based on client configuration
-func makeTlsConfig() (*tls.Config, error) {
+func makeTLSConfig() (*tls.Config, error) {
 	err := shared.InitConfig()
 	if err != nil {
 		return nil, err
@@ -129,8 +128,8 @@ func makeTlsConfig() (*tls.Config, error) {
 	config := shared.CurrentConfig
 	if config.Remote == nil {
 		return nil, errors.New("Missing remote section in config file")
-	} else if config.Remote.Url == "" && config.Remote.DirectoryUrl == "" {
-		return nil, errors.New("url or DirectoryUrl must be set in 'remote' section of configuration")
+	} else if config.Remote.URL == "" && config.Remote.DirectoryURL == "" {
+		return nil, errors.New("url or directoryUrl must be set in 'remote' section of configuration")
 	} else if config.Remote.CertFile == "" || config.Remote.KeyFile == "" {
 		return nil, errors.New("certfile and keyfile are required settings in 'remote' section of configuration")
 	}
@@ -148,7 +147,7 @@ func makeTlsConfig() (*tls.Config, error) {
 
 // Transact one request, trying multiple servers if necessary. Internal use only.
 func doRequest(bases []string, endpoint, method, encodings string, query *url.Values, bodyFile ReaderGetter) (response *http.Response, err error) {
-	tconf, err := makeTlsConfig()
+	tconf, err := makeTLSConfig()
 	if err != nil {
 		return nil, err
 	}
@@ -238,14 +237,14 @@ type temporary interface {
 
 type ResponseError struct {
 	Method     string
-	Url        string
+	URL        string
 	Status     string
 	StatusCode int
 	BodyText   string
 }
 
 func (e ResponseError) Error() string {
-	return fmt.Sprintf("HTTP error:\n%s %s\n%s\n%s", e.Method, e.Url, e.Status, e.BodyText)
+	return fmt.Sprintf("HTTP error:\n%s %s\n%s\n%s", e.Method, e.URL, e.Status, e.BodyText)
 }
 
 func (e ResponseError) Temporary() bool {

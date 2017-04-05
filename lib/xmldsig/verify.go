@@ -34,7 +34,7 @@ import (
 	"github.com/beevik/etree"
 )
 
-type XmlSignature struct {
+type Signature struct {
 	PublicKey       crypto.PublicKey
 	Certificates    []*x509.Certificate
 	Hash            crypto.Hash
@@ -42,7 +42,7 @@ type XmlSignature struct {
 }
 
 // Extract and verify an enveloped signature at the given root
-func Verify(root *etree.Element, sigpath string) (*XmlSignature, error) {
+func Verify(root *etree.Element, sigpath string) (*Signature, error) {
 	root = root.Copy()
 	sigs := root.FindElements(sigpath)
 	if len(sigs) == 0 {
@@ -61,12 +61,12 @@ func Verify(root *etree.Element, sigpath string) (*XmlSignature, error) {
 		return nil, fmt.Errorf("xmldsig: %s", err)
 	}
 	// parse algorithms
-	if sig.CanonicalizationMethod.Algorithm != AlgXmlExcC14n {
+	if sig.CanonicalizationMethod.Algorithm != AlgXMLExcC14n {
 		return nil, errors.New("xmldsig: unsupported canonicalization method")
 	}
 	if len(sig.ReferenceTransforms) != 2 ||
 		sig.ReferenceTransforms[0].Algorithm != AlgDsigEnvelopedSignature ||
-		sig.ReferenceTransforms[1].Algorithm != AlgXmlExcC14n {
+		sig.ReferenceTransforms[1].Algorithm != AlgXMLExcC14n {
 		return nil, errors.New("xmldsig: unsupported reference transform")
 	}
 	hash, pubtype, err := parseAlgs(sig.DigestMethod.Algorithm, sig.SignatureMethod.Algorithm)
@@ -119,14 +119,14 @@ func Verify(root *etree.Element, sigpath string) (*XmlSignature, error) {
 		}
 		certs = append(certs, cert)
 	}
-	return &XmlSignature{pubkey, certs, hash, sigv}, nil
+	return &Signature{pubkey, certs, hash, sigv}, nil
 }
 
 func parseAlgs(hashAlg, sigAlg string) (crypto.Hash, string, error) {
-	if strings.HasPrefix(hashAlg, NsXmlDsig) {
-		hashAlg = hashAlg[len(NsXmlDsig):]
-	} else if strings.HasPrefix(hashAlg, NsXmlDsigMore) {
-		hashAlg = hashAlg[len(NsXmlDsigMore):]
+	if strings.HasPrefix(hashAlg, NsXMLDsig) {
+		hashAlg = hashAlg[len(NsXMLDsig):]
+	} else if strings.HasPrefix(hashAlg, NsXMLDsigMore) {
+		hashAlg = hashAlg[len(NsXMLDsigMore):]
 	} else {
 		return 0, "", errors.New("xmldsig: unsupported digest algorithm")
 	}
@@ -141,10 +141,10 @@ func parseAlgs(hashAlg, sigAlg string) (crypto.Hash, string, error) {
 		return 0, "", errors.New("xmldsig: unsupported digest algorithm")
 	}
 
-	if strings.HasPrefix(sigAlg, NsXmlDsig) {
-		sigAlg = sigAlg[len(NsXmlDsig):]
-	} else if strings.HasPrefix(sigAlg, NsXmlDsigMore) {
-		sigAlg = sigAlg[len(NsXmlDsigMore):]
+	if strings.HasPrefix(sigAlg, NsXMLDsig) {
+		sigAlg = sigAlg[len(NsXMLDsig):]
+	} else if strings.HasPrefix(sigAlg, NsXMLDsigMore) {
+		sigAlg = sigAlg[len(NsXMLDsigMore):]
 	} else {
 		return 0, "", errors.New("xmldsig: unsupported signature algorithm")
 	}

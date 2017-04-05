@@ -32,7 +32,7 @@ import (
 )
 
 type bundleManifest struct {
-	XmlName       xml.Name `xml:"http://schemas.microsoft.com/appx/2013/bundle Bundle"`
+	XMLName       xml.Name `xml:"http://schemas.microsoft.com/appx/2013/bundle Bundle"`
 	SchemaVersion string   `xml:",attr"`
 
 	Identity appxIdentity

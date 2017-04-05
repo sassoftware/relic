@@ -75,14 +75,14 @@ func makeKey(key *p11token.Key, uids []*packet.UserId) (*openpgp.Entity, error) 
 		},
 		Identities: make(map[string]*openpgp.Identity),
 	}
-	isPrimaryId := true
+	isPrimaryID := true
 	for _, uid := range uids {
 		sig := &packet.Signature{
 			SigType:      packet.SigTypePositiveCert,
 			CreationTime: creationTime,
 			PubKeyAlgo:   pubKey.PubKeyAlgo,
 			Hash:         crypto.SHA512,
-			IsPrimaryId:  &isPrimaryId,
+			IsPrimaryId:  &isPrimaryID,
 			FlagsValid:   true,
 			FlagSign:     true,
 			FlagCertify:  true,
@@ -118,7 +118,7 @@ func newPgpKeyCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	fingerprint := hex.EncodeToString(entity.PrimaryKey.Fingerprint[:])
-	fmt.Fprintln(os.Stderr, "Token CKA_ID: ", formatKeyId(key.GetId()))
+	fmt.Fprintln(os.Stderr, "Token CKA_ID: ", formatKeyID(key.GetID()))
 	fmt.Fprintln(os.Stderr, "PGP ID:       ", strings.ToUpper(fingerprint))
 	writer, err := armor.Encode(os.Stdout, openpgp.PublicKeyType, nil)
 	if err != nil {

@@ -16,6 +16,6 @@
 
 package audit
 
-func (info *AuditInfo) WriteFd() error {
+func (info *Info) WriteFd() error {
 	return nil
 }

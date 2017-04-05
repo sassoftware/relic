@@ -113,7 +113,7 @@ func ReadWithDirectory(r io.ReaderAt, size int64, cd []byte) (*Directory, error)
 			if int(size) > len(extra)-4 {
 				break
 			}
-			if tag == zip64ExtraId {
+			if tag == zip64ExtraID {
 				e := extra[4 : 4+size]
 				if needUSize && size >= 8 {
 					f.UncompressedSize = binary.LittleEndian.Uint64(e)

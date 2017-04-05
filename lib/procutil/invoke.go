@@ -74,11 +74,11 @@ func (c *Command) Run() error {
 	}
 	c.Pipes = make(map[int][]byte)
 	for _, p := range c.pipes {
-		if blob, err := p.get(); err != nil {
+		blob, err := p.get()
+		if err != nil {
 			return err
-		} else {
-			c.Pipes[p.fd] = blob
 		}
+		c.Pipes[p.fd] = blob
 	}
 	return nil
 }

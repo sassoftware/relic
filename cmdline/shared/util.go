@@ -50,9 +50,8 @@ func InitConfig() error {
 func OpenFile(path string) (*os.File, error) {
 	if path == "-" {
 		return os.Stdin, nil
-	} else {
-		return os.Open(path)
 	}
+	return os.Open(path)
 }
 
 func Fail(err error) error {

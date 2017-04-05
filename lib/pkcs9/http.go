@@ -34,7 +34,7 @@ import (
 
 // RFC 3161 HTTP client
 type TimestampClient struct {
-	Url       string
+	URL       string
 	Timeout   time.Duration
 	UserAgent string
 	CaFile    string
@@ -62,14 +62,14 @@ func (t TimestampClient) do(req *http.Request) ([]byte, error) {
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("%s: HTTP %s\n%s", t.Url, resp.Status, body)
+		return nil, fmt.Errorf("%s: HTTP %s\n%s", t.URL, resp.Status, body)
 	}
 	return body, nil
 }
 
 // Request a RFC 3161 timestamp token from the server and return the sanity-checked token
 func (t TimestampClient) Request(hash crypto.Hash, hashValue []byte) (*pkcs7.ContentInfoSignedData, error) {
-	msg, req, err := MakeHttpRequest(t.Url, hash, hashValue)
+	msg, req, err := MakeHTTPRequest(t.URL, hash, hashValue)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +77,7 @@ func (t TimestampClient) Request(hash crypto.Hash, hashValue []byte) (*pkcs7.Con
 	if err != nil {
 		return nil, err
 	}
-	return ParseHttpResponse(msg, body)
+	return ParseHTTPResponse(msg, body)
 }
 
 // Create a timestamp request using the given digest
@@ -98,7 +98,7 @@ func NewRequest(hash crypto.Hash, hashValue []byte) (*TimeStampReq, error) {
 }
 
 // Create a HTTP request to request a token from the given URL
-func MakeHttpRequest(url string, hash crypto.Hash, hashValue []byte) (msg *TimeStampReq, req *http.Request, err error) {
+func MakeHTTPRequest(url string, hash crypto.Hash, hashValue []byte) (msg *TimeStampReq, req *http.Request, err error) {
 	msg, err = NewRequest(hash, hashValue)
 	if err != nil {
 		return
@@ -116,7 +116,7 @@ func MakeHttpRequest(url string, hash crypto.Hash, hashValue []byte) (msg *TimeS
 }
 
 // Parse a timestamp token from a HTTP response, sanity checking it against the original request nonce
-func ParseHttpResponse(msg *TimeStampReq, body []byte) (*pkcs7.ContentInfoSignedData, error) {
+func ParseHTTPResponse(msg *TimeStampReq, body []byte) (*pkcs7.ContentInfoSignedData, error) {
 	respmsg := new(TimeStampResp)
 	if rest, err := asn1.Unmarshal(body, respmsg); err != nil {
 		return nil, fmt.Errorf("pkcs9: unmarshalling response: %s", err)

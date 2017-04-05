@@ -22,11 +22,11 @@ import (
 )
 
 type ErrNoAttribute struct {
-	Id asn1.ObjectIdentifier
+	ID asn1.ObjectIdentifier
 }
 
 func (e ErrNoAttribute) Error() string {
-	return fmt.Sprintf("attribute not found: %s", e.Id)
+	return fmt.Sprintf("attribute not found: %s", e.ID)
 }
 
 // marshal authenticated attributes for digesting

@@ -30,7 +30,7 @@ const (
 	directory64EndLen        = 56
 	dataDescriptorLen        = 16
 	dataDescriptor64Len      = 24
-	zip64ExtraId             = 0x0001
+	zip64ExtraID             = 0x0001
 	zip64ExtraLen            = 24
 
 	zip20 = 20

@@ -117,7 +117,6 @@ func verify(r io.Reader, opts signers.VerifyOpts) ([]*signers.Signature, error) 
 		return nil, fmt.Errorf("bad signature from %s(%x) [%s]: %s", pgptools.EntityName(sig.Key.Entity), sig.Key.PublicKey.KeyId, sig.CreationTime, err)
 	} else if _, ok := err.(pgptools.ErrNoKey); ok {
 		return nil, fmt.Errorf("%s; use --cert to specify known keys", err)
-	} else {
-		return nil, err
 	}
+	return nil, err
 }

@@ -80,7 +80,7 @@ func auditCmd(cmd *cobra.Command, args []string) error {
 }
 
 func openDb() (*sql.DB, error) {
-	return sql.Open("postgres", auditConfig.DatabaseUri)
+	return sql.Open("postgres", auditConfig.DatabaseURI)
 }
 
 func startListener(conf *config.Config, db *sql.DB) error {
@@ -186,7 +186,7 @@ func (l *Listener) Loop(db *sql.DB) error {
 	return <-errch
 }
 
-func logToAll(db *sql.DB, info *audit.AuditInfo) (err error) {
+func logToAll(db *sql.DB, info *audit.Info) (err error) {
 	tx, err := db.Begin()
 	if err != nil {
 		return err
@@ -205,7 +205,7 @@ func logToAll(db *sql.DB, info *audit.AuditInfo) (err error) {
 	return tx.Commit()
 }
 
-func insertRow(db *sql.DB, info *audit.AuditInfo) (int64, error) {
+func insertRow(db *sql.DB, info *audit.Info) (int64, error) {
 	sealed, seal := info.GetSealed()
 	if len(seal) == 0 {
 		seal = nil
@@ -234,7 +234,7 @@ func insertRow(db *sql.DB, info *audit.AuditInfo) (int64, error) {
 	return rowid, nil
 }
 
-func logToFile(info *audit.AuditInfo, rowid int64) error {
+func logToFile(info *audit.Info, rowid int64) error {
 	formatted := fmtRow(info, rowid)
 	if auditConfig.LogFile != "" {
 		f, err := os.OpenFile(auditConfig.LogFile, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
@@ -251,7 +251,7 @@ func logToFile(info *audit.AuditInfo, rowid int64) error {
 	return nil
 }
 
-func fmtRow(info *audit.AuditInfo, rowid int64) string {
+func fmtRow(info *audit.Info, rowid int64) string {
 	return fmt.Sprintf("[%s] client=%s ip=%s server=%s sigtype=%s filename=%s key=%s rowid=%d",
 		info.Attributes["sig.timestamp"],
 		info.Attributes["client.name"],

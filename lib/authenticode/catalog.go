@@ -42,9 +42,8 @@ type Catalog struct {
 func NewCatalog(hash crypto.Hash) *Catalog {
 	if hash == crypto.SHA1 {
 		return &Catalog{Version: 1, Hash: hash}
-	} else {
-		return &Catalog{Version: 2, Hash: hash}
 	}
+	return &Catalog{Version: 2, Hash: hash}
 }
 
 func (cat *Catalog) makeCatalog() CertTrustList {
@@ -93,7 +92,7 @@ func (cat *Catalog) Add(indirect SpcIndirectDataContentPe) error {
 	value := indirect.MessageDigest.Digest
 	if cat.Version == 1 {
 		memberInfo := CertTrustMemberInfoV1{
-			ClassId:  x509tools.ToBMPString(CryptSipCreateIndirectData),
+			ClassID:  x509tools.ToBMPString(CryptSipCreateIndirectData),
 			Unknown1: 512,
 		}
 		memberInfoEnc, err := asn1.Marshal(memberInfo)

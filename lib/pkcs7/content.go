@@ -76,7 +76,6 @@ func (ci ContentInfo) Bytes() ([]byte, error) {
 			return nil, nil
 		}
 		return nil, err
-	} else {
-		return value.Bytes, nil
 	}
+	return value.Bytes, nil
 }

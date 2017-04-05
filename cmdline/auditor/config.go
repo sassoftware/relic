@@ -31,9 +31,9 @@ import (
 
 type AuditConfig struct {
 	ConfigDir   string
-	DatabaseUri string
+	DatabaseURI string
 	LogFile     string
-	GraylogUrl  string
+	GraylogURL  string
 }
 
 var auditConfig AuditConfig
@@ -74,7 +74,7 @@ func getServerConfs() ([]*config.Config, error) {
 			if err != nil {
 				return nil, fmt.Errorf("%s: %s", cpath, err)
 			}
-			if cfg.Amqp == nil || cfg.Amqp.Url == "" {
+			if cfg.Amqp == nil || cfg.Amqp.URL == "" {
 				return nil, fmt.Errorf("%s has no amqp server", cpath)
 			}
 			confs = append(confs, cfg)

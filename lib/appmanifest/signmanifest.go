@@ -60,7 +60,7 @@ func Sign(manifest []byte, cert *certloader.Certificate, opts crypto.SignerOpts)
 		return nil, err
 	}
 	// Primary signature
-	sigopts := xmldsig.XmlSignOptions{MsCompatHashNames: true}
+	sigopts := xmldsig.SignOptions{MsCompatHashNames: true}
 	if err := xmldsig.Sign(root, root, opts.HashFunc(), cert.Signer(), cert.Chain(), sigopts); err != nil {
 		return nil, err
 	}
@@ -146,7 +146,7 @@ func makeLicense(asi *etree.Element, subjectName, manifestHash string) (*etree.E
 	massy.Space = "as"
 	minfo.AddChild(massy)
 	grant.CreateElement("as:SignedBy")
-	grant.CreateElement("as:AuthenticodePublisher").CreateElement("as:X509SubjectName").SetText(subjectName) // TODO check this
+	grant.CreateElement("as:AuthenticodePublisher").CreateElement("as:X509SubjectName").SetText(subjectName)
 
 	issuer := license.CreateElement("r:issuer")
 	return license, issuer

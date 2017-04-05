@@ -69,16 +69,16 @@ func newContentTypes() *contentTypes {
 	}
 }
 
-func (ct *contentTypes) Parse(blob []byte) error {
+func (c *contentTypes) Parse(blob []byte) error {
 	var xct xmlContentTypes
 	if err := xml.Unmarshal(blob, &xct); err != nil {
 		return err
 	}
 	for _, def := range xct.Default {
-		ct.ByExt[def.Extension] = def.ContentType
+		c.ByExt[def.Extension] = def.ContentType
 	}
 	for _, ovr := range xct.Override {
-		ct.ByOverride[ovr.PartName] = ovr.ContentType
+		c.ByOverride[ovr.PartName] = ovr.ContentType
 	}
 	return nil
 }
@@ -134,5 +134,5 @@ func (c *contentTypes) Marshal() ([]byte, error) {
 			ContentType: c.ByOverride[name],
 		})
 	}
-	return marshalXml(xct, true)
+	return marshalXML(xct, true)
 }

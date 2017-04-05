@@ -49,27 +49,27 @@ func VerifyDetached(signature, signed io.Reader, keyring openpgp.EntityList) (*P
 	}
 	// parse
 	var hash crypto.Hash
-	var keyId uint64
+	var keyID uint64
 	var creationTime time.Time
 	switch pkt := genpkt.(type) {
 	case *packet.SignatureV3:
 		hash = pkt.Hash
-		keyId = pkt.IssuerKeyId
+		keyID = pkt.IssuerKeyId
 		creationTime = pkt.CreationTime
 	case *packet.Signature:
 		if pkt.IssuerKeyId == nil {
 			return nil, errors.New("Missing keyId in signature")
 		}
 		hash = pkt.Hash
-		keyId = *pkt.IssuerKeyId
+		keyID = *pkt.IssuerKeyId
 		creationTime = pkt.CreationTime
 	default:
 		return nil, errors.New("not a PGP signature")
 	}
 	// find key
-	keys := keyring.KeysById(keyId)
+	keys := keyring.KeysById(keyID)
 	if len(keys) == 0 {
-		return nil, ErrNoKey(keyId)
+		return nil, ErrNoKey(keyID)
 	}
 	// calculate hash
 	if !hash.Available() {
@@ -134,7 +134,7 @@ func VerifyInline(signature io.Reader, keyring openpgp.EntityList) (*PgpSignatur
 }
 
 // Returned by Verify* functions when the key used for signing is not in the
-// keyring. The value is the KeyId of the missing key.
+// keyring. The value is the KeyID of the missing key.
 type ErrNoKey uint64
 
 func (e ErrNoKey) Error() string {

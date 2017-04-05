@@ -23,7 +23,7 @@ import (
 
 const xmlHdr = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"%s\"?>\r\n"
 
-func marshalXml(v interface{}, standalone bool) ([]byte, error) {
+func marshalXML(v interface{}, standalone bool) ([]byte, error) {
 	x, err := xml.Marshal(v)
 	if err != nil {
 		return nil, err

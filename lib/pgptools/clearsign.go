@@ -132,9 +132,8 @@ func headClearSign(r io.Reader, w io.Writer) error {
 	}
 	if s.Err() != nil {
 		return s.Err()
-	} else {
-		return errors.New("Signature block not found")
 	}
+	return errors.New("Signature block not found")
 }
 
 // Set up a pgp signature config based on the hash algorithm in an existing

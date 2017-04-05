@@ -35,7 +35,7 @@ import (
 
 const EnvAuditFd = "RELIC_AUDIT_FD"
 
-type AuditInfo struct {
+type Info struct {
 	Attributes   map[string]interface{}
 	sealed, seal []byte
 }
@@ -47,7 +47,7 @@ type sealedDoc struct {
 
 // Create a new audit record, starting with the given key name, signature type,
 // and digest
-func New(keyName, sigType string, hash crypto.Hash) *AuditInfo {
+func New(keyName, sigType string, hash crypto.Hash) *Info {
 	a := make(map[string]interface{})
 	a["sig.type"] = sigType
 	a["sig.keyname"] = keyName
@@ -68,17 +68,17 @@ func New(keyName, sigType string, hash crypto.Hash) *AuditInfo {
 		k, v := env[:i], env[i+1:]
 		a[k] = v
 	}
-	return &AuditInfo{a, nil, nil}
+	return &Info{a, nil, nil}
 }
 
 // Set a PGP certificate for this audit record
-func (info *AuditInfo) SetPgpCert(entity *openpgp.Entity) {
+func (info *Info) SetPgpCert(entity *openpgp.Entity) {
 	info.Attributes["sig.pgp.fingerprint"] = fmt.Sprintf("%x", entity.PrimaryKey.Fingerprint[:])
 	info.Attributes["sig.pgp.entity"] = pgptools.EntityName(entity)
 }
 
 // Set a X509 certificate for this audit record
-func (info *AuditInfo) SetX509Cert(cert *x509.Certificate) {
+func (info *Info) SetX509Cert(cert *x509.Certificate) {
 	info.Attributes["sig.x509.subject"] = x509tools.FormatSubject(cert)
 	info.Attributes["sig.x509.issuer"] = x509tools.FormatIssuer(cert)
 	d := crypto.SHA1.New()
@@ -87,12 +87,12 @@ func (info *AuditInfo) SetX509Cert(cert *x509.Certificate) {
 }
 
 // Override the default timestamp for this audit record
-func (info *AuditInfo) SetTimestamp(t time.Time) {
+func (info *Info) SetTimestamp(t time.Time) {
 	info.Attributes["sig.timestamp"] = t.UTC()
 }
 
 // Add a PKCS#9 timestamp (counter-signature) to this audit record
-func (info *AuditInfo) SetCounterSignature(cs *pkcs9.CounterSignature) {
+func (info *Info) SetCounterSignature(cs *pkcs9.CounterSignature) {
 	if cs == nil {
 		return
 	}
@@ -103,23 +103,22 @@ func (info *AuditInfo) SetCounterSignature(cs *pkcs9.CounterSignature) {
 
 // Set the MIME type (Content-Type) that the server will use when returning a
 // result to the client. This is not the MIME type of the package being signed.
-func (info *AuditInfo) SetMimeType(mimeType string) {
+func (info *Info) SetMimeType(mimeType string) {
 	info.Attributes["content-type"] = mimeType
 }
 
 // Get the MIME type that the server will use when returning a result to the
 // client. This is not the MIME type of the package being signed.
-func (info *AuditInfo) GetMimeType() string {
+func (info *Info) GetMimeType() string {
 	v := info.Attributes["content-type"]
 	if v != nil {
 		return v.(string)
-	} else {
-		return "application/octet-stream"
 	}
+	return "application/octet-stream"
 }
 
 // Seal the audit record by signing it with a key
-func (info *AuditInfo) Seal(key crypto.Signer, certs []*x509.Certificate, hash crypto.Hash) error {
+func (info *Info) Seal(key crypto.Signer, certs []*x509.Certificate, hash crypto.Hash) error {
 	blob, err := json.Marshal(info.Attributes)
 	if err != nil {
 		return err
@@ -146,7 +145,7 @@ func (info *AuditInfo) Seal(key crypto.Signer, certs []*x509.Certificate, hash c
 }
 
 // Marshal the possibly-sealed audit record to JSON
-func (info *AuditInfo) Marshal() ([]byte, error) {
+func (info *Info) Marshal() ([]byte, error) {
 	if info.sealed != nil {
 		return info.sealed, nil
 	}
@@ -158,12 +157,12 @@ func (info *AuditInfo) Marshal() ([]byte, error) {
 }
 
 // Get previously parsed, marshalled JSON data
-func (info *AuditInfo) GetSealed() ([]byte, []byte) {
+func (info *Info) GetSealed() ([]byte, []byte) {
 	return info.sealed, info.seal
 }
 
 // Parse audit data from a JSON blob
-func Parse(blob []byte) (*AuditInfo, error) {
+func Parse(blob []byte) (*Info, error) {
 	if len(blob) == 0 {
 		return nil, errors.New("missing attributes")
 	}
@@ -174,7 +173,7 @@ func Parse(blob []byte) (*AuditInfo, error) {
 	if len(doc.Attributes) == 0 {
 		return nil, errors.New("missing attributes")
 	}
-	info := new(AuditInfo)
+	info := new(Info)
 	info.sealed = doc.Attributes
 	info.seal = doc.Seal
 	err := json.Unmarshal(doc.Attributes, &info.Attributes)

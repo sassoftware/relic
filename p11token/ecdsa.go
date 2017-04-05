@@ -63,16 +63,16 @@ func (key *Key) signECDSA(digest []byte) (der []byte, err error) {
 }
 
 // Generate ECDSA-specific public and private key attributes from a PrivateKey
-func ecdsaImportAttrs(priv *ecdsa.PrivateKey) (pub_attrs, priv_attrs []*pkcs11.Attribute, err error) {
+func ecdsaImportAttrs(priv *ecdsa.PrivateKey) (pubAttrs, privAttrs []*pkcs11.Attribute, err error) {
 	curve, err := x509tools.CurveByCurve(priv.Curve)
 	if err != nil {
 		return nil, nil, err
 	}
-	pub_attrs = []*pkcs11.Attribute{
+	pubAttrs = []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_EC_PARAMS, curve.ToDer()),
 		pkcs11.NewAttribute(pkcs11.CKA_EC_POINT, x509tools.PointToDer(&priv.PublicKey)),
 	}
-	priv_attrs = []*pkcs11.Attribute{
+	privAttrs = []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_EC_PARAMS, curve.ToDer()),
 		pkcs11.NewAttribute(pkcs11.CKA_VALUE, priv.D.Bytes()),
 	}

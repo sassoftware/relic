@@ -47,9 +47,8 @@ func Verify(r io.ReaderAt, size int64, skipDigests bool) (*XapSignature, error) 
 		}
 		if zipMagic == 0x06054b50 {
 			return nil, errors.New("xap is not signed")
-		} else {
-			return nil, errors.New("invalid xap file")
 		}
+		return nil, errors.New("invalid xap file")
 	}
 	size -= int64(tr.TrailerSize) + 10
 	var hdr xapHeader

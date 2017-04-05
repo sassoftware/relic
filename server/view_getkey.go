@@ -88,5 +88,5 @@ func (s *Server) serveGetKey(request *http.Request) (res Response, err error) {
 		}
 		info.X509Certificate = buf.String()
 	}
-	return JsonResponse(info)
+	return JSONResponse(info)
 }

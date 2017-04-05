@@ -172,7 +172,7 @@ func checkSignature(der []byte) (*PESignature, error) {
 
 func readPageHashes(sig *PESignature) error {
 	serObj := sig.Indirect.Data.Value.File.Moniker
-	if !bytes.Equal(serObj.ClassId, SpcUuidPageHashes) {
+	if !bytes.Equal(serObj.ClassID, SpcUUIDPageHashes) {
 		// not present
 		return nil
 	}

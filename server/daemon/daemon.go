@@ -41,7 +41,7 @@ type Daemon struct {
 	listener net.Listener
 }
 
-func makeTlsConfig(config *config.Config) (*tls.Config, error) {
+func makeTLSConfig(config *config.Config) (*tls.Config, error) {
 	cert, err := certloader.LoadX509KeyPair(config.Server.CertFile, config.Server.KeyFile)
 	if err != nil {
 		return nil, err
@@ -83,7 +83,7 @@ func New(config *config.Config, force bool) (*Daemon, error) {
 	if err != nil {
 		return nil, err
 	}
-	tconf, err := makeTlsConfig(config)
+	tconf, err := makeTLSConfig(config)
 	if err != nil {
 		return nil, err
 	}

@@ -22,10 +22,10 @@ import (
 )
 
 const (
-	NsXmlDsig     = "http://www.w3.org/2000/09/xmldsig#"
-	NsXmlDsigMore = "http://www.w3.org/2001/04/xmldsig-more#"
+	NsXMLDsig     = "http://www.w3.org/2000/09/xmldsig#"
+	NsXMLDsigMore = "http://www.w3.org/2001/04/xmldsig-more#"
 	NsXsi         = "http://www.w3.org/2001/XMLSchema-instance"
-	AlgXmlExcC14n = "http://www.w3.org/2001/10/xml-exc-c14n#"
+	AlgXMLExcC14n = "http://www.w3.org/2001/10/xml-exc-c14n#"
 
 	AlgDsigEnvelopedSignature = "http://www.w3.org/2000/09/xmldsig#enveloped-signature"
 )

@@ -242,7 +242,7 @@ func (b *blockMap) Marshal() ([]byte, error) {
 	if b.unverifiedSizes {
 		return nil, errors.New("found compressed files not already in blockmap")
 	}
-	return marshalXml(b, false)
+	return marshalXML(b, false)
 }
 
 func zipToDos(name string) string {

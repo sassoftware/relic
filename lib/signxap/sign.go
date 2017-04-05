@@ -84,9 +84,8 @@ func removeSignature(cd []byte) []byte {
 	if tr.Magic == trailerMagic {
 		size -= int(tr.TrailerSize) + 10
 		return cd[:size]
-	} else {
-		return cd
 	}
+	return cd
 }
 
 func (d *XapDigest) Sign(cert *certloader.Certificate) (*binpatch.PatchSet, *pkcs9.TimestampedSignature, error) {

@@ -177,11 +177,10 @@ func verify(r io.Reader, opts signers.VerifyOpts) ([]*signers.Signature, error) 
 		defer fc.Close()
 		sig, err := pgptools.VerifyDetached(reader, fc, opts.TrustedPgp)
 		return verifyPgp(sig, opts.FileName, err)
-	} else {
-		// inline signature
-		sig, _, err := pgptools.VerifyInline(reader, opts.TrustedPgp)
-		return verifyPgp(sig, opts.FileName, err)
 	}
+	// inline signature
+	sig, _, err := pgptools.VerifyInline(reader, opts.TrustedPgp)
+	return verifyPgp(sig, opts.FileName, err)
 }
 
 func verifyPgp(sig *pgptools.PgpSignature, name string, err error) ([]*signers.Signature, error) {
@@ -195,7 +194,6 @@ func verifyPgp(sig *pgptools.PgpSignature, name string, err error) ([]*signers.S
 		return nil, fmt.Errorf("bad signature from %s(%x) [%s]: %s", pgptools.EntityName(sig.Key.Entity), sig.Key.PublicKey.KeyId, sig.CreationTime, err)
 	} else if _, ok := err.(pgptools.ErrNoKey); ok {
 		return nil, fmt.Errorf("%s; use --cert to specify known keys", err)
-	} else {
-		return nil, err
 	}
+	return nil, err
 }

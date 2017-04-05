@@ -170,7 +170,7 @@ func hashMsiDir(cdf *comdoc.ComDoc, parent *comdoc.DirEnt, d io.Writer) error {
 			}
 		}
 	}
-	d.Write(parent.Uid[:])
+	d.Write(parent.UID[:])
 	return nil
 }
 
@@ -210,7 +210,7 @@ func prehashMsiDirent(item *comdoc.DirEnt, d io.Writer) {
 	}
 	// UID
 	if item.Type == comdoc.DirRoot || item.Type == comdoc.DirStorage {
-		d.Write(item.Uid[:])
+		d.Write(item.UID[:])
 	}
 	// Size
 	if item.Type == comdoc.DirStream {

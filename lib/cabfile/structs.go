@@ -59,9 +59,8 @@ type SignatureHeader struct {
 func (sh *SignatureHeader) Size() uint32 {
 	if sh == nil {
 		return 0
-	} else {
-		return sh.SignatureSize
 	}
+	return sh.SignatureSize
 }
 
 type FolderHeader struct {

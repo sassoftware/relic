@@ -34,7 +34,7 @@ type CurveDefinition struct {
 	Oid   asn1.ObjectIdentifier
 }
 
-var DefinedCurves []CurveDefinition = []CurveDefinition{
+var DefinedCurves = []CurveDefinition{
 	{256, elliptic.P256(), asn1.ObjectIdentifier{1, 2, 840, 10045, 3, 1, 7}},
 	{384, elliptic.P384(), asn1.ObjectIdentifier{1, 3, 132, 0, 34}},
 	{521, elliptic.P521(), asn1.ObjectIdentifier{1, 3, 132, 0, 35}},

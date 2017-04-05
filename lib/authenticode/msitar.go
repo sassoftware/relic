@@ -28,7 +28,7 @@ import (
 
 const (
 	msiTarExMeta     = "__exmeta"
-	msiTarStorageUid = "__storage_uid"
+	msiTarStorageUID = "__storage_uid"
 )
 
 // Convert MSI to a tar archive in a form that can be digested and signed as a
@@ -125,6 +125,6 @@ func msiToTarDir(cdf *comdoc.ComDoc, tw *tar.Writer, parent *comdoc.DirEnt, path
 			}
 		}
 	}
-	// The Uid of each storage gets hashed after its contents so include that, too
-	return tarAddFile(tw, path+msiTarStorageUid, parent.Uid[:])
+	// The UID of each storage gets hashed after its contents so include that, too
+	return tarAddFile(tw, path+msiTarStorageUID, parent.UID[:])
 }
