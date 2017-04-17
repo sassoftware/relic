@@ -230,6 +230,21 @@ func (token *Token) getAttribute(handle pkcs11.ObjectHandle, attr uint) []byte {
 	return attrs[0].Value
 }
 
+func (token *Token) findObject(attrs []*pkcs11.Attribute) ([]pkcs11.ObjectHandle, error) {
+	if err := token.ctx.FindObjectsInit(token.sh, attrs); err != nil {
+		return nil, err
+	}
+	objects, _, err := token.ctx.FindObjects(token.sh, 10)
+	if err != nil {
+		token.ctx.FindObjectsFinal(token.sh)
+		return nil, err
+	}
+	if err := token.ctx.FindObjectsFinal(token.sh); err != nil {
+		return nil, err
+	}
+	return objects, nil
+}
+
 func attrToInt(value []byte) uint {
 	var n uint
 	for i := len(value) - 1; i >= 0; i-- {

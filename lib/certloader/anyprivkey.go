@@ -72,7 +72,7 @@ func parsePemPrivateKey(block *pem.Block, prompt passprompt.PasswordGetter) (cry
 		if err != nil {
 			return nil, err
 		} else if password == "" {
-			return nil, errors.New("Aborted")
+			return nil, errors.New("aborted")
 		}
 		keyblob, err := x509.DecryptPEMBlock(block, []byte(password))
 		if err == x509.IncorrectPasswordError {

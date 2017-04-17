@@ -25,6 +25,8 @@ import (
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/passprompt"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/p11token"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/signers/sigerrors"
 	"github.com/spf13/cobra"
 )
@@ -35,12 +37,15 @@ var ImportKeyCmd = &cobra.Command{
 	RunE:  importKeyCmd,
 }
 
+var argPkcs12 bool
+
 func init() {
 	shared.RootCmd.AddCommand(ImportKeyCmd)
 	ImportKeyCmd.Flags().StringVarP(&argKeyName, "key", "k", "", "Name of key section in config file to use")
 	ImportKeyCmd.Flags().StringVarP(&argToken, "token", "t", "", "Name of token to import key to")
 	ImportKeyCmd.Flags().StringVarP(&argLabel, "label", "l", "", "Label to attach to imported key")
 	ImportKeyCmd.Flags().StringVarP(&argFile, "file", "f", "", "Private key file to import: PEM, DER, or PGP")
+	ImportKeyCmd.Flags().BoolVar(&argPkcs12, "pkcs12", false, "Import a PKCS12 key and certificate chain")
 }
 
 func importKeyCmd(cmd *cobra.Command, args []string) error {
@@ -51,9 +56,20 @@ func importKeyCmd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return shared.Fail(err)
 	}
-	privKey, err := certloader.ParseAnyPrivateKey(blob, &passprompt.PasswordPrompt{})
-	if err != nil {
-		return shared.Fail(err)
+	prompt := new(passprompt.PasswordPrompt)
+	var cert *certloader.Certificate
+	if argPkcs12 {
+		var err error
+		cert, err = certloader.ParsePKCS12(blob, prompt)
+		if err != nil {
+			return shared.Fail(err)
+		}
+	} else {
+		privKey, err := certloader.ParseAnyPrivateKey(blob, prompt)
+		if err != nil {
+			return shared.Fail(err)
+		}
+		cert = &certloader.Certificate{PrivateKey: privKey}
 	}
 	keyConf, err := newKeyConfig()
 	if err != nil {
@@ -63,15 +79,51 @@ func importKeyCmd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return shared.Fail(err)
 	}
-	_, err = token.GetKey(argKeyName)
+	var didSomething bool
+	key, err := token.GetKey(argKeyName)
 	if err == nil {
-		return errors.New("An object with that label already exists in the token")
+		if cert.Leaf == nil {
+			return errors.New("An object with that label already exists in the token")
+		}
+		fmt.Fprintln(os.Stderr, "Private key already exists. Attempting to import certificates.")
 	} else if _, ok := err.(sigerrors.KeyNotFoundError); !ok {
 		return err
+	} else {
+		key, err = token.Import(argKeyName, cert.PrivateKey)
+		if err != nil {
+			return err
+		}
+		didSomething = true
 	}
-	key, err := token.Import(argKeyName, privKey)
-	if err != nil {
-		return err
+	if cert.Leaf != nil {
+		name := x509tools.FormatSubject(cert.Leaf)
+		err := key.ImportCertificate(cert.Leaf)
+		if err == p11token.ErrExist {
+			fmt.Fprintln(os.Stderr, "Certificate already exists:", name)
+		} else if err != nil {
+			return shared.Fail(fmt.Errorf("failed to import %s: %s", name, err))
+		} else {
+			fmt.Fprintln(os.Stderr, "Imported", name)
+			didSomething = true
+		}
+		for _, chain := range cert.Chain() {
+			if chain == cert.Leaf {
+				continue
+			}
+			name = x509tools.FormatSubject(chain)
+			err = token.ImportCertificate(chain, keyConf.Label)
+			if err == p11token.ErrExist {
+				fmt.Fprintln(os.Stderr, "Certificate already exists:", name)
+			} else if err != nil {
+				return shared.Fail(fmt.Errorf("failed to import %s: %s", name, err))
+			} else {
+				fmt.Fprintln(os.Stderr, "Imported", name)
+				didSomething = true
+			}
+		}
+	}
+	if !didSomething {
+		return shared.Fail(errors.New("nothing imported"))
 	}
 	fmt.Fprintln(os.Stderr, "Token CKA_ID: ", formatKeyID(key.GetID()))
 	return nil

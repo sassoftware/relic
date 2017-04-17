@@ -96,19 +96,10 @@ func (token *Token) findKey(keyConf *config.KeyConfig, class uint) (pkcs11.Objec
 		}
 		attrs = append(attrs, pkcs11.NewAttribute(pkcs11.CKA_ID, keyID))
 	}
-	err := token.ctx.FindObjectsInit(token.sh, attrs)
+	objects, err := token.findObject(attrs)
 	if err != nil {
 		return 0, err
-	}
-	objects, _, err := token.ctx.FindObjects(token.sh, 2)
-	if err != nil {
-		return 0, err
-	}
-	err = token.ctx.FindObjectsFinal(token.sh)
-	if err != nil {
-		return 0, err
-	}
-	if len(objects) > 1 {
+	} else if len(objects) > 1 {
 		return 0, errors.New("Multiple token objects with the specified attributes")
 	} else if len(objects) == 0 {
 		return 0, sigerrors.KeyNotFoundError{}
@@ -118,6 +109,12 @@ func (token *Token) findKey(keyConf *config.KeyConfig, class uint) (pkcs11.Objec
 
 func (key *Key) Public() crypto.PublicKey {
 	return key.pubParsed
+}
+
+func (key *Key) GetLabel() string {
+	key.token.mutex.Lock()
+	defer key.token.mutex.Unlock()
+	return string(key.token.getAttribute(key.priv, pkcs11.CKA_LABEL))
 }
 
 func (key *Key) GetID() []byte {

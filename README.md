@@ -21,6 +21,7 @@ with a TLS certificate and sign packages remotely.
 Other features include:
 
 * Generating and importing keys in the token
+* Importing certificate chains from a PKCS#12 file
 * Creating X509 certificate signing requests (CSR) and self-signed certificates
 * Creating simple PGP public keys
 * RSA and ECDSA supported for all signature types

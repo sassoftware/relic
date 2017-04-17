@@ -52,9 +52,16 @@ type Certificate struct {
 // Return the X509 certificates in the chain up to, but not including, the root CA certificate
 func (s *Certificate) Chain() []*x509.Certificate {
 	var chain []*x509.Certificate
+	if s.Leaf != nil {
+		// ensure leaf comes first
+		chain = append(chain, s.Leaf)
+	}
 	for i, cert := range s.Certificates {
 		if i > 0 && bytes.Equal(cert.RawIssuer, cert.RawSubject) {
 			// omit root CA
+			continue
+		} else if cert == s.Leaf {
+			// already in list
 			continue
 		}
 		chain = append(chain, cert)
@@ -64,6 +71,9 @@ func (s *Certificate) Chain() []*x509.Certificate {
 
 // Return the certificate that issued the leaf certificate
 func (s *Certificate) Issuer() *x509.Certificate {
+	if s.Leaf == nil {
+		return nil
+	}
 	for _, cert := range s.Certificates {
 		if bytes.Equal(cert.RawSubject, s.Leaf.RawIssuer) {
 			return cert
