@@ -75,6 +75,7 @@ func Sign(r io.Reader, signer *openpgp.Entity, opts crypto.SignerOpts, role stri
 			continue
 		}
 		save := io.Writer(ioutil.Discard)
+		var closer io.Closer
 		var infoch chan *PackageInfo
 		var errch chan error
 		if strings.HasPrefix(name, "control.tar") {
@@ -82,10 +83,13 @@ func Sign(r io.Reader, signer *openpgp.Entity, opts crypto.SignerOpts, role stri
 			ext := name[11:]
 			r, w := io.Pipe()
 			save = w
+			closer = w
 			infoch = make(chan *PackageInfo, 1)
 			errch = make(chan error, 1)
 			go func() {
 				info, err := parseControl(r, ext)
+				// ensure whole file is read, otherwise pipe will stall
+				_, _ = io.Copy(ioutil.Discard, r)
 				infoch <- info
 				errch <- err
 			}()
@@ -94,6 +98,9 @@ func Sign(r io.Reader, signer *openpgp.Entity, opts crypto.SignerOpts, role stri
 		sha1 := crypto.SHA1.New()
 		if _, err := io.Copy(io.MultiWriter(md5, sha1, save), reader); err != nil {
 			return nil, err
+		}
+		if closer != nil {
+			closer.Close()
 		}
 		fmt.Fprintf(msg, "\t%x %x %d %s\n", md5.Sum(nil), sha1.Sum(nil), hdr.Size, hdr.Name)
 		if errch != nil {
