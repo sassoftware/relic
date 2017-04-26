@@ -25,6 +25,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"sync"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
@@ -36,9 +37,9 @@ import (
 )
 
 type Daemon struct {
-	server   *server.Server
-	graceful *manners.GracefulServer
-	listener net.Listener
+	server    *server.Server
+	gracefuls []*manners.GracefulServer
+	listeners []net.Listener
 }
 
 func makeTLSConfig(config *config.Config) (*tls.Config, error) {
@@ -91,6 +92,14 @@ func New(config *config.Config, force bool) (*Daemon, error) {
 	if err != nil {
 		return nil, err
 	}
+	listeners := []net.Listener{listener}
+	if config.Server.ListenHTTP != "" {
+		httpListener, err := activation.GetListener(1, config.Server.ListenHTTP)
+		if err != nil {
+			return nil, err
+		}
+		listeners = append(listeners, httpListener)
+	}
 	httpServer := &http.Server{
 		Handler:   srv,
 		ErrorLog:  srv.ErrorLog,
@@ -99,26 +108,50 @@ func New(config *config.Config, force bool) (*Daemon, error) {
 	if err := http2.ConfigureServer(httpServer, nil); err != nil {
 		return nil, err
 	}
-	graceful := manners.NewWithServer(httpServer)
+	gracefuls := make([]*manners.GracefulServer, len(listeners))
+	for i := range listeners {
+		gracefuls[i] = manners.NewWithServer(httpServer)
+	}
 	return &Daemon{
-		server:   srv,
-		graceful: graceful,
-		listener: listener,
+		server:    srv,
+		gracefuls: gracefuls,
+		listeners: listeners,
 	}, nil
 }
 
 func (d *Daemon) SetOutput(w io.Writer) {
 	logger := log.New(w, "", 0)
 	d.server.SetLogger(logger)
-	d.graceful.ErrorLog = logger
+	for _, graceful := range d.gracefuls {
+		graceful.ErrorLog = logger
+	}
 }
 
 func (d *Daemon) Serve() error {
 	activation.DaemonReady()
-	return d.graceful.Serve(d.listener)
+	var wg sync.WaitGroup
+	errch := make(chan error, len(d.listeners))
+	srv := func(l net.Listener, g *manners.GracefulServer) {
+		errch <- g.Serve(l)
+		wg.Done()
+	}
+	for i, listener := range d.listeners {
+		wg.Add(1)
+		go srv(listener, d.gracefuls[i])
+	}
+	wg.Wait()
+	for _ = range d.listeners {
+		err := <-errch
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (d *Daemon) Close() {
-	d.graceful.Close()
+	for _, graceful := range d.gracefuls {
+		graceful.Close()
+	}
 	d.server.Close()
 }

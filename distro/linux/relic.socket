@@ -3,6 +3,7 @@ Description=Relic package signing service
 
 [Socket]
 ListenStream=6300
+ListenStream=6301
 
 [Install]
 WantedBy=sockets.target

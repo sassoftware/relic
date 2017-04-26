@@ -62,10 +62,11 @@ type KeyConfig struct {
 }
 
 type ServerConfig struct {
-	Listen   string // Port to listen for TLS connections
-	KeyFile  string // Path to TLS key file
-	CertFile string // Path to TLS certificate chain
-	LogFile  string // Optional error log
+	Listen     string // Port to listen for TLS connections
+	ListenHTTP string // Port to listen for plaintext connections
+	KeyFile    string // Path to TLS key file
+	CertFile   string // Path to TLS certificate chain
+	LogFile    string // Optional error log
 
 	Disabled bool // Always return 503 Service Unavailable
 

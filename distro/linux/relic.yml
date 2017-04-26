@@ -38,6 +38,9 @@ server:
   # What port to listen on. Defaults to :6300.
   # Socket activation via systemd is also supported, in which case this is ignored.
   listen: ":6300"
+  # Listen for non-secure connections. This is only useful for health checks,
+  # since every other endpoint requires a client certificate. Defaults to none.
+  listenhttp: ":6301"
   # Private key for server TLS. PEM format, RSA or ECDSA
   keyfile: /etc/relic/server/server.key
   # X.509 certificate for server TLS. PEM format. If a cert chain is needed it
