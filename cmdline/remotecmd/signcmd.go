@@ -76,7 +76,11 @@ func signCmd(cmd *cobra.Command, args []string) (err error) {
 		infile = os.Stdin
 	} else {
 		// open for writing so in-place patch works
-		infile, err = os.OpenFile(argFile, os.O_RDWR, 0)
+		if argOutput == argFile {
+			infile, err = os.OpenFile(argFile, os.O_RDWR, 0)
+		} else {
+			infile, err = os.Open(argFile)
+		}
 		if err != nil {
 			return shared.Fail(err)
 		}
