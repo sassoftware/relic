@@ -22,7 +22,7 @@ import (
 	"errors"
 	"fmt"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/token"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/signers/sigerrors"
 	"github.com/miekg/pkcs11"
 )
 
@@ -70,7 +70,7 @@ func (tk *Token) certExists(label string) error {
 	if err != nil {
 		return err
 	} else if len(objects) != 0 {
-		return token.ErrExist
+		return sigerrors.ErrExist
 	} else {
 		return nil
 	}
@@ -81,7 +81,7 @@ func (key *Key) ImportCertificate(cert *x509.Certificate) error {
 	if err != nil {
 		return err
 	} else if handle != 0 {
-		return token.ErrExist
+		return sigerrors.ErrExist
 	}
 	label := key.getLabel()
 	if label == "" {

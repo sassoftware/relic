@@ -16,6 +16,14 @@
 
 package sigerrors
 
+import (
+	"errors"
+)
+
+var (
+	ErrExist = errors.New("object already exists in token")
+)
+
 type KeyNotFoundError struct{}
 
 func (KeyNotFoundError) Error() string {

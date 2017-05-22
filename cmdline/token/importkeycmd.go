@@ -27,7 +27,6 @@ import (
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/passprompt"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/signers/sigerrors"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/token"
 	"github.com/spf13/cobra"
 )
 
@@ -98,7 +97,7 @@ func importKeyCmd(cmd *cobra.Command, args []string) error {
 	if cert.Leaf != nil {
 		name := x509tools.FormatSubject(cert.Leaf)
 		err := key.ImportCertificate(cert.Leaf)
-		if err == token.ErrExist {
+		if err == sigerrors.ErrExist {
 			fmt.Fprintln(os.Stderr, "Certificate already exists:", name)
 		} else if err != nil {
 			return shared.Fail(fmt.Errorf("failed to import %s: %s", name, err))
@@ -112,7 +111,7 @@ func importKeyCmd(cmd *cobra.Command, args []string) error {
 			}
 			name = x509tools.FormatSubject(chain)
 			err = tok.ImportCertificate(chain, keyConf.Label)
-			if err == token.ErrExist {
+			if err == sigerrors.ErrExist {
 				fmt.Fprintln(os.Stderr, "Certificate already exists:", name)
 			} else if err != nil {
 				return shared.Fail(fmt.Errorf("failed to import %s: %s", name, err))

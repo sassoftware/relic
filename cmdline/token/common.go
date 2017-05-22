@@ -28,6 +28,7 @@ import (
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/passprompt"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/signers/sigerrors"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/token"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/token/filetoken"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/token/p11token"
 	"github.com/spf13/cobra"
 )
@@ -132,8 +133,8 @@ func openToken(tokenName string) (token.Token, error) {
 	switch tcfg.Type {
 	case "pkcs11", "":
 		tok, err = p11token.Open(cfg, tokenName, prompt)
-	//case "file":
-	//	tok, err = filetoken.Open(tcfg, prompt)
+	case "file":
+		tok, err = filetoken.Open(cfg, tokenName, prompt)
 	default:
 		return nil, fmt.Errorf("unknown token type %s", tcfg.Type)
 	}

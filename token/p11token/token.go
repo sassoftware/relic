@@ -19,13 +19,13 @@ package p11token
 import (
 	"errors"
 	"fmt"
-	"io"
 	"runtime"
 	"sync"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/passprompt"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/signers/sigerrors"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/token"
 	"github.com/miekg/pkcs11"
 )
 
@@ -65,30 +65,30 @@ func Open(config *config.Config, tokenName string, pinProvider passprompt.Passwo
 	if err != nil {
 		return nil, err
 	}
-	token := &Token{
+	tok := &Token{
 		ctx:       ctx,
 		config:    config,
 		tokenConf: tokenConf,
 	}
-	runtime.SetFinalizer(token, (*Token).Close)
-	slot, err := token.findSlot()
+	runtime.SetFinalizer(tok, (*Token).Close)
+	slot, err := tok.findSlot()
 	if err != nil {
-		token.Close()
+		tok.Close()
 		return nil, err
 	}
 	mode := uint(pkcs11.CKF_SERIAL_SESSION | pkcs11.CKF_RW_SESSION)
-	sh, err := token.ctx.OpenSession(slot, mode)
+	sh, err := tok.ctx.OpenSession(slot, mode)
 	if err != nil {
-		token.Close()
+		tok.Close()
 		return nil, err
 	}
-	token.sh = sh
-	err = token.autoLogIn(pinProvider)
+	tok.sh = sh
+	err = tok.autoLogIn(pinProvider)
 	if err != nil {
-		token.Close()
+		tok.Close()
 		return nil, err
 	}
-	return token, nil
+	return tok, nil
 }
 
 func openLib(tokenConf *config.TokenConfig, write bool) (*pkcs11.Ctx, error) {
@@ -118,30 +118,30 @@ func openLib(tokenConf *config.TokenConfig, write bool) (*pkcs11.Ctx, error) {
 }
 
 // Close the token session
-func (token *Token) Close() error {
-	token.mutex.Lock()
-	defer token.mutex.Unlock()
-	if token.ctx != nil {
-		token.ctx.CloseSession(token.sh)
-		token.ctx = nil
-		runtime.SetFinalizer(token, nil)
+func (tok *Token) Close() error {
+	tok.mutex.Lock()
+	defer tok.mutex.Unlock()
+	if tok.ctx != nil {
+		tok.ctx.CloseSession(tok.sh)
+		tok.ctx = nil
+		runtime.SetFinalizer(tok, nil)
 	}
 	return nil
 }
 
-func (token *Token) Config() *config.TokenConfig {
-	return token.tokenConf
+func (tok *Token) Config() *config.TokenConfig {
+	return tok.tokenConf
 }
 
-func (token *Token) findSlot() (uint, error) {
-	tokenConf := token.tokenConf
-	slots, err := token.ctx.GetSlotList(false)
+func (tok *Token) findSlot() (uint, error) {
+	tokenConf := tok.tokenConf
+	slots, err := tok.ctx.GetSlotList(false)
 	if err != nil {
 		return 0, nil
 	}
 	candidates := make([]uint, 0, len(slots))
 	for _, slot := range slots {
-		info, err := token.ctx.GetTokenInfo(slot)
+		info, err := tok.ctx.GetTokenInfo(slot)
 		if err != nil {
 			if rv, ok := err.(pkcs11.Error); ok && rv == pkcs11.CKR_TOKEN_NOT_PRESENT {
 				continue
@@ -165,18 +165,18 @@ func (token *Token) findSlot() (uint, error) {
 }
 
 // Test that the token is responding and the user is (still) logged in
-func (token *Token) isLoggedIn() (bool, error) {
-	token.mutex.Lock()
-	defer token.mutex.Unlock()
-	info, err := token.ctx.GetSessionInfo(token.sh)
+func (tok *Token) isLoggedIn() (bool, error) {
+	tok.mutex.Lock()
+	defer tok.mutex.Unlock()
+	info, err := tok.ctx.GetSessionInfo(tok.sh)
 	if err != nil {
 		return false, err
 	}
 	return (info.State == CKS_RO_USER_FUNCTIONS || info.State == CKS_RW_USER_FUNCTIONS || info.State == CKS_RW_SO_FUNCTIONS), nil
 }
 
-func (token *Token) Ping() error {
-	loggedIn, err := token.isLoggedIn()
+func (tok *Token) Ping() error {
+	loggedIn, err := tok.isLoggedIn()
 	if err != nil {
 		return err
 	} else if !loggedIn {
@@ -185,10 +185,10 @@ func (token *Token) Ping() error {
 	return nil
 }
 
-func (token *Token) login(user uint, pin string) error {
-	token.mutex.Lock()
-	defer token.mutex.Unlock()
-	err := token.ctx.Login(token.sh, user, pin)
+func (tok *Token) login(user uint, pin string) error {
+	tok.mutex.Lock()
+	defer tok.mutex.Unlock()
+	err := tok.ctx.Login(tok.sh, user, pin)
 	if err != nil {
 		if rv, ok := err.(pkcs11.Error); ok && rv == pkcs11.CKR_PIN_INCORRECT {
 			return sigerrors.PinIncorrectError{}
@@ -197,9 +197,9 @@ func (token *Token) login(user uint, pin string) error {
 	return err
 }
 
-func (token *Token) autoLogIn(pinProvider passprompt.PasswordGetter) error {
-	tokenConf := token.tokenConf
-	loggedIn, err := token.isLoggedIn()
+func (tok *Token) autoLogIn(pinProvider passprompt.PasswordGetter) error {
+	tokenConf := tok.tokenConf
+	loggedIn, err := tok.isLoggedIn()
 	if err != nil {
 		return err
 	}
@@ -210,18 +210,8 @@ func (token *Token) autoLogIn(pinProvider passprompt.PasswordGetter) error {
 	if tokenConf.User != nil {
 		user = *tokenConf.User
 	}
-	if tokenConf.Pin != nil {
-		return token.login(user, *tokenConf.Pin)
-	}
-	initialPrompt := fmt.Sprintf("PIN for token %s user %08x: ", tokenConf.Name(), user)
-	failPrefix := "Incorrect PIN\r\n"
-	var keyringService, keyringUser string
-	if tokenConf.UseKeyring {
-		keyringService = "relic"
-		keyringUser = fmt.Sprintf("%s.%08x", tokenConf.Name(), user)
-	}
 	loginFunc := func(pin string) (bool, error) {
-		if err := token.login(user, pin); err == nil {
+		if err := tok.login(user, pin); err == nil {
 			return true, nil
 		} else if _, ok := err.(sigerrors.PinIncorrectError); ok {
 			return false, nil
@@ -229,38 +219,29 @@ func (token *Token) autoLogIn(pinProvider passprompt.PasswordGetter) error {
 			return false, err
 		}
 	}
-	err = passprompt.Login(loginFunc, pinProvider, keyringService, keyringUser, initialPrompt, failPrefix)
-	if err == io.EOF {
-		if pinProvider == nil {
-			msg := "PIN required but none was provided"
-			if tokenConf.UseKeyring {
-				msg += "; use 'relic ping' to save password in keyring"
-			}
-			return errors.New(msg)
-		}
-		return errors.New("Aborted")
-	}
-	return err
+	initialPrompt := fmt.Sprintf("PIN for token %s user %08x: ", tokenConf.Name(), user)
+	keyringUser := fmt.Sprintf("%s.%08x", tokenConf.Name(), user)
+	return token.Login(tokenConf, pinProvider, loginFunc, keyringUser, initialPrompt)
 }
 
-func (token *Token) getAttribute(handle pkcs11.ObjectHandle, attr uint) []byte {
-	attrs, err := token.ctx.GetAttributeValue(token.sh, handle, []*pkcs11.Attribute{pkcs11.NewAttribute(attr, nil)})
+func (tok *Token) getAttribute(handle pkcs11.ObjectHandle, attr uint) []byte {
+	attrs, err := tok.ctx.GetAttributeValue(tok.sh, handle, []*pkcs11.Attribute{pkcs11.NewAttribute(attr, nil)})
 	if err != nil {
 		return nil
 	}
 	return attrs[0].Value
 }
 
-func (token *Token) findObject(attrs []*pkcs11.Attribute) ([]pkcs11.ObjectHandle, error) {
-	if err := token.ctx.FindObjectsInit(token.sh, attrs); err != nil {
+func (tok *Token) findObject(attrs []*pkcs11.Attribute) ([]pkcs11.ObjectHandle, error) {
+	if err := tok.ctx.FindObjectsInit(tok.sh, attrs); err != nil {
 		return nil, err
 	}
-	objects, _, err := token.ctx.FindObjects(token.sh, 10)
+	objects, _, err := tok.ctx.FindObjects(tok.sh, 10)
 	if err != nil {
-		token.ctx.FindObjectsFinal(token.sh)
+		tok.ctx.FindObjectsFinal(tok.sh)
 		return nil, err
 	}
-	if err := token.ctx.FindObjectsFinal(token.sh); err != nil {
+	if err := tok.ctx.FindObjectsFinal(tok.sh); err != nil {
 		return nil, err
 	}
 	return objects, nil
