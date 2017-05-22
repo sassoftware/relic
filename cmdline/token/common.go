@@ -26,8 +26,9 @@ import (
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/passprompt"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/p11token"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/signers/sigerrors"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/token"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/token/p11token"
 	"github.com/spf13/cobra"
 )
 
@@ -41,7 +42,7 @@ var (
 	argEcdsaBits uint
 )
 
-var tokenMap map[string]*p11token.Token
+var tokenMap map[string]token.Token
 
 func addSelectOrGenerateFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&argKeyName, "key", "k", "", "Name of key section in config file to use")
@@ -84,16 +85,16 @@ func newKeyConfig() (*config.KeyConfig, error) {
 	return keyConf, nil
 }
 
-func selectOrGenerate() (key *p11token.Key, err error) {
+func selectOrGenerate() (key token.Key, err error) {
 	keyConf, err := newKeyConfig()
 	if err != nil {
 		return nil, err
 	}
-	token, err := openToken(keyConf.Token)
+	tok, err := openToken(keyConf.Token)
 	if err != nil {
 		return nil, err
 	}
-	key, err = token.GetKey(argKeyName)
+	key, err = tok.GetKey(argKeyName)
 	if err == nil {
 		fmt.Fprintln(os.Stderr, "Using existing key in token")
 		return key, nil
@@ -102,18 +103,18 @@ func selectOrGenerate() (key *p11token.Key, err error) {
 	}
 	fmt.Fprintln(os.Stderr, "Generating a new key in token")
 	if argRsaBits != 0 {
-		return token.Generate(argKeyName, p11token.CKK_RSA, argRsaBits)
+		return tok.Generate(argKeyName, token.KeyTypeRsa, argRsaBits)
 	} else if argEcdsaBits != 0 {
-		return token.Generate(argKeyName, p11token.CKK_ECDSA, argEcdsaBits)
+		return tok.Generate(argKeyName, token.KeyTypeEcdsa, argEcdsaBits)
 	} else {
 		return nil, errors.New("No matching key exists, specify --generate-rsa or --generate-ecdsa to generate one")
 	}
 }
 
-func openToken(tokenName string) (*p11token.Token, error) {
-	token, ok := tokenMap[tokenName]
+func openToken(tokenName string) (token.Token, error) {
+	tok, ok := tokenMap[tokenName]
 	if ok {
-		return token, nil
+		return tok, nil
 	}
 	err := shared.InitConfig()
 	if err != nil {
@@ -123,18 +124,30 @@ func openToken(tokenName string) (*p11token.Token, error) {
 	if !argServer {
 		prompt = new(passprompt.PasswordPrompt)
 	}
-	token, err = p11token.Open(shared.CurrentConfig, tokenName, prompt)
+	cfg := shared.CurrentConfig
+	tcfg, err := cfg.GetToken(tokenName)
+	if err != nil {
+		return nil, err
+	}
+	switch tcfg.Type {
+	case "pkcs11", "":
+		tok, err = p11token.Open(cfg, tokenName, prompt)
+	//case "file":
+	//	tok, err = filetoken.Open(tcfg, prompt)
+	default:
+		return nil, fmt.Errorf("unknown token type %s", tcfg.Type)
+	}
 	if err != nil {
 		return nil, err
 	}
 	if tokenMap == nil {
-		tokenMap = make(map[string]*p11token.Token)
+		tokenMap = make(map[string]token.Token)
 	}
-	tokenMap[tokenName] = token
-	return token, nil
+	tokenMap[tokenName] = tok
+	return tok, nil
 }
 
-func openTokenByKey(keyName string) (*p11token.Token, error) {
+func openTokenByKey(keyName string) (token.Token, error) {
 	if keyName == "" {
 		return nil, errors.New("--key is a required parameter")
 	}
@@ -146,21 +159,21 @@ func openTokenByKey(keyName string) (*p11token.Token, error) {
 	if err != nil {
 		return nil, err
 	}
-	token, err := openToken(keyConf.Token)
+	tok, err := openToken(keyConf.Token)
 	if err != nil {
 		return nil, err
 	}
-	return token, nil
+	return tok, nil
 }
 
-func openKey(keyName string) (*p11token.Key, error) {
-	token, err := openTokenByKey(keyName)
+func openKey(keyName string) (token.Key, error) {
+	tok, err := openTokenByKey(keyName)
 	if err != nil {
 		return nil, err
 	}
-	key, err := token.GetKey(keyName)
+	key, err := tok.GetKey(keyName)
 	if err != nil {
-		token.Close()
+		tok.Close()
 		return nil, err
 	}
 	return key, err

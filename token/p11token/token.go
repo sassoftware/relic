@@ -48,11 +48,11 @@ var providerMap map[string]*pkcs11.Ctx
 var providerMutex sync.Mutex
 
 type Token struct {
-	config *config.Config
-	Name   string
-	ctx    *pkcs11.Ctx
-	sh     pkcs11.SessionHandle
-	mutex  sync.Mutex
+	config    *config.Config
+	tokenConf *config.TokenConfig
+	ctx       *pkcs11.Ctx
+	sh        pkcs11.SessionHandle
+	mutex     sync.Mutex
 }
 
 // Load a PKCS#11 provider, open a session, and login
@@ -65,9 +65,13 @@ func Open(config *config.Config, tokenName string, pinProvider passprompt.Passwo
 	if err != nil {
 		return nil, err
 	}
-	token := &Token{ctx: ctx, config: config, Name: tokenName}
+	token := &Token{
+		ctx:       ctx,
+		config:    config,
+		tokenConf: tokenConf,
+	}
 	runtime.SetFinalizer(token, (*Token).Close)
-	slot, err := token.findSlot(tokenConf)
+	slot, err := token.findSlot()
 	if err != nil {
 		token.Close()
 		return nil, err
@@ -79,7 +83,7 @@ func Open(config *config.Config, tokenName string, pinProvider passprompt.Passwo
 		return nil, err
 	}
 	token.sh = sh
-	err = token.autoLogIn(tokenConf, pinProvider)
+	err = token.autoLogIn(pinProvider)
 	if err != nil {
 		token.Close()
 		return nil, err
@@ -114,7 +118,7 @@ func openLib(tokenConf *config.TokenConfig, write bool) (*pkcs11.Ctx, error) {
 }
 
 // Close the token session
-func (token *Token) Close() {
+func (token *Token) Close() error {
 	token.mutex.Lock()
 	defer token.mutex.Unlock()
 	if token.ctx != nil {
@@ -122,9 +126,15 @@ func (token *Token) Close() {
 		token.ctx = nil
 		runtime.SetFinalizer(token, nil)
 	}
+	return nil
 }
 
-func (token *Token) findSlot(tokenConf *config.TokenConfig) (uint, error) {
+func (token *Token) Config() *config.TokenConfig {
+	return token.tokenConf
+}
+
+func (token *Token) findSlot() (uint, error) {
+	tokenConf := token.tokenConf
 	slots, err := token.ctx.GetSlotList(false)
 	if err != nil {
 		return 0, nil
@@ -155,7 +165,7 @@ func (token *Token) findSlot(tokenConf *config.TokenConfig) (uint, error) {
 }
 
 // Test that the token is responding and the user is (still) logged in
-func (token *Token) IsLoggedIn() (bool, error) {
+func (token *Token) isLoggedIn() (bool, error) {
 	token.mutex.Lock()
 	defer token.mutex.Unlock()
 	info, err := token.ctx.GetSessionInfo(token.sh)
@@ -163,6 +173,16 @@ func (token *Token) IsLoggedIn() (bool, error) {
 		return false, err
 	}
 	return (info.State == CKS_RO_USER_FUNCTIONS || info.State == CKS_RW_USER_FUNCTIONS || info.State == CKS_RW_SO_FUNCTIONS), nil
+}
+
+func (token *Token) Ping() error {
+	loggedIn, err := token.isLoggedIn()
+	if err != nil {
+		return err
+	} else if !loggedIn {
+		return errors.New("token not logged in")
+	}
+	return nil
 }
 
 func (token *Token) login(user uint, pin string) error {
@@ -177,8 +197,9 @@ func (token *Token) login(user uint, pin string) error {
 	return err
 }
 
-func (token *Token) autoLogIn(tokenConf *config.TokenConfig, pinProvider passprompt.PasswordGetter) error {
-	loggedIn, err := token.IsLoggedIn()
+func (token *Token) autoLogIn(pinProvider passprompt.PasswordGetter) error {
+	tokenConf := token.tokenConf
+	loggedIn, err := token.isLoggedIn()
 	if err != nil {
 		return err
 	}
@@ -192,12 +213,12 @@ func (token *Token) autoLogIn(tokenConf *config.TokenConfig, pinProvider passpro
 	if tokenConf.Pin != nil {
 		return token.login(user, *tokenConf.Pin)
 	}
-	initialPrompt := fmt.Sprintf("PIN for token %s user %08x: ", token.Name, user)
+	initialPrompt := fmt.Sprintf("PIN for token %s user %08x: ", tokenConf.Name(), user)
 	failPrefix := "Incorrect PIN\r\n"
 	var keyringService, keyringUser string
 	if tokenConf.UseKeyring {
 		keyringService = "relic"
-		keyringUser = fmt.Sprintf("%s.%08x", token.Name, user)
+		keyringUser = fmt.Sprintf("%s.%08x", tokenConf.Name(), user)
 	}
 	loginFunc := func(pin string) (bool, error) {
 		if err := token.login(user, pin); err == nil {

@@ -25,11 +25,11 @@ import (
 	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/audit"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/p11token"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/token"
 )
 
-func NewAudit(key *p11token.Key, sigType string, hash crypto.Hash) *audit.Info {
-	info := audit.New(key.Name, sigType, hash)
+func NewAudit(key token.Key, sigType string, hash crypto.Hash) *audit.Info {
+	info := audit.New(key.Config().Name(), sigType, hash)
 	if argFile != "" && argFile != "-" && info.Attributes["client.filename"] == nil {
 		info.Attributes["client.filename"] = filepath.Base(argFile)
 	}
@@ -62,7 +62,7 @@ func sealAudit(info *audit.Info, aconf *config.AmqpConfig) error {
 	if err != nil {
 		return err
 	}
-	cert, err := certloader.LoadTokenCertificates(key, key.X509Certificate, "")
+	cert, err := certloader.LoadTokenCertificates(key, key.Config().X509Certificate, "")
 	if err != nil {
 		return err
 	}

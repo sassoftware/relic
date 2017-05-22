@@ -26,8 +26,8 @@ import (
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/passprompt"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/p11token"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/signers/sigerrors"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/token"
 	"github.com/spf13/cobra"
 )
 
@@ -75,12 +75,12 @@ func importKeyCmd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	token, err := openToken(keyConf.Token)
+	tok, err := openToken(keyConf.Token)
 	if err != nil {
 		return shared.Fail(err)
 	}
 	var didSomething bool
-	key, err := token.GetKey(argKeyName)
+	key, err := tok.GetKey(argKeyName)
 	if err == nil {
 		if cert.Leaf == nil {
 			return errors.New("An object with that label already exists in the token")
@@ -89,7 +89,7 @@ func importKeyCmd(cmd *cobra.Command, args []string) error {
 	} else if _, ok := err.(sigerrors.KeyNotFoundError); !ok {
 		return err
 	} else {
-		key, err = token.Import(argKeyName, cert.PrivateKey)
+		key, err = tok.Import(argKeyName, cert.PrivateKey)
 		if err != nil {
 			return err
 		}
@@ -98,7 +98,7 @@ func importKeyCmd(cmd *cobra.Command, args []string) error {
 	if cert.Leaf != nil {
 		name := x509tools.FormatSubject(cert.Leaf)
 		err := key.ImportCertificate(cert.Leaf)
-		if err == p11token.ErrExist {
+		if err == token.ErrExist {
 			fmt.Fprintln(os.Stderr, "Certificate already exists:", name)
 		} else if err != nil {
 			return shared.Fail(fmt.Errorf("failed to import %s: %s", name, err))
@@ -111,8 +111,8 @@ func importKeyCmd(cmd *cobra.Command, args []string) error {
 				continue
 			}
 			name = x509tools.FormatSubject(chain)
-			err = token.ImportCertificate(chain, keyConf.Label)
-			if err == p11token.ErrExist {
+			err = tok.ImportCertificate(chain, keyConf.Label)
+			if err == token.ErrExist {
 				fmt.Fprintln(os.Stderr, "Certificate already exists:", name)
 			} else if err != nil {
 				return shared.Fail(fmt.Errorf("failed to import %s: %s", name, err))

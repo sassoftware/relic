@@ -148,23 +148,23 @@ func openCert(mod *signers.Signer, hash crypto.Hash) (*certloader.Certificate, *
 	}
 	var x509cert, pgpcert string
 	if mod.CertTypes&signers.CertTypeX509 != 0 {
-		if key.X509Certificate == "" {
+		if key.Config().X509Certificate == "" {
 			return nil, nil, sigerrors.ErrNoCertificate{"x509"}
 		}
-		x509cert = key.X509Certificate
+		x509cert = key.Config().X509Certificate
 	}
 	if mod.CertTypes&signers.CertTypePgp != 0 {
-		if key.PgpCertificate == "" {
+		if key.Config().PgpCertificate == "" {
 			return nil, nil, sigerrors.ErrNoCertificate{"pgp"}
 		}
-		pgpcert = key.PgpCertificate
+		pgpcert = key.Config().PgpCertificate
 	}
 	cert, err := certloader.LoadTokenCertificates(key, x509cert, pgpcert)
 	if err != nil {
 		return nil, nil, err
 	}
-	cert.KeyName = key.Name
-	ai := audit.New(key.Name, mod.Name, hash)
+	cert.KeyName = key.Config().Name()
+	ai := audit.New(key.Config().Name(), mod.Name, hash)
 	if cert.Leaf != nil {
 		ai.SetX509Cert(cert.Leaf)
 	}

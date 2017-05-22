@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 
+	"gerrit-pdt.unx.sas.com/tools/relic.git/token"
 	"github.com/miekg/pkcs11"
 )
 
@@ -32,16 +33,16 @@ var newCertAttrs = []*pkcs11.Attribute{
 	pkcs11.NewAttribute(pkcs11.CKA_CERTIFICATE_TYPE, pkcs11.CKC_X_509),
 }
 
-func (token *Token) ImportCertificate(cert *x509.Certificate, labelBase string) error {
+func (tk *Token) ImportCertificate(cert *x509.Certificate, labelBase string) error {
 	fingerprint := sha1.Sum(cert.Raw)
 	if labelBase == "" {
 		return errors.New("label is required")
 	}
 	// make a label from the private key label plus the certificate fingerprint
 	label := fmt.Sprintf("%s_chain_%x", labelBase, fingerprint[:8])
-	token.mutex.Lock()
-	defer token.mutex.Unlock()
-	if err := token.certExists(label); err != nil {
+	tk.mutex.Lock()
+	defer tk.mutex.Unlock()
+	if err := tk.certExists(label); err != nil {
 		return err
 	}
 	keyID := makeKeyID()
@@ -56,20 +57,20 @@ func (token *Token) ImportCertificate(cert *x509.Certificate, labelBase string) 
 		pkcs11.NewAttribute(pkcs11.CKA_VALUE, cert.Raw),
 	}
 	attrs = append(attrs, newCertAttrs...)
-	_, err := token.ctx.CreateObject(token.sh, attrs)
+	_, err := tk.ctx.CreateObject(tk.sh, attrs)
 	return err
 }
 
-func (token *Token) certExists(label string) error {
+func (tk *Token) certExists(label string) error {
 	attrs := []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_CERTIFICATE),
 		pkcs11.NewAttribute(pkcs11.CKA_LABEL, label),
 	}
-	objects, err := token.findObject(attrs)
+	objects, err := tk.findObject(attrs)
 	if err != nil {
 		return err
 	} else if len(objects) != 0 {
-		return ErrExist
+		return token.ErrExist
 	} else {
 		return nil
 	}
@@ -80,9 +81,9 @@ func (key *Key) ImportCertificate(cert *x509.Certificate) error {
 	if err != nil {
 		return err
 	} else if handle != 0 {
-		return ErrExist
+		return token.ErrExist
 	}
-	label := key.GetLabel()
+	label := key.getLabel()
 	if label == "" {
 		return errors.New("label is required")
 	}

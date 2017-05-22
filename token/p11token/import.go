@@ -25,6 +25,7 @@ import (
 	"errors"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs8"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/token"
 	"github.com/miekg/pkcs11"
 )
 
@@ -48,10 +49,10 @@ var newPrivateKeyAttrs = []*pkcs11.Attribute{
 
 // Import a PKCS#8 encoded key using a random 3DES key and the Unwrap function.
 // For some HSMs this is the only way to import keys.
-func (token *Token) importPkcs8(pk8 []byte, attrs []*pkcs11.Attribute) error {
+func (tok *Token) importPkcs8(pk8 []byte, attrs []*pkcs11.Attribute) error {
 	// Generate a temporary 3DES key
 	genMech := []*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_DES3_KEY_GEN, nil)}
-	wrapKey, err := token.ctx.GenerateKey(token.sh, genMech, []*pkcs11.Attribute{
+	wrapKey, err := tok.ctx.GenerateKey(tok.sh, genMech, []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, false),
 		pkcs11.NewAttribute(pkcs11.CKA_ENCRYPT, true),
 		pkcs11.NewAttribute(pkcs11.CKA_UNWRAP, true),
@@ -59,30 +60,30 @@ func (token *Token) importPkcs8(pk8 []byte, attrs []*pkcs11.Attribute) error {
 	if err != nil {
 		return err
 	}
-	defer token.ctx.DestroyObject(token.sh, wrapKey)
+	defer tok.ctx.DestroyObject(tok.sh, wrapKey)
 	// Encrypt key
 	iv := make([]byte, 8)
 	if _, err := rand.Reader.Read(iv); err != nil {
 		return err
 	}
 	encMech := []*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_DES3_CBC_PAD, iv)}
-	if err := token.ctx.EncryptInit(token.sh, encMech, wrapKey); err != nil {
+	if err := tok.ctx.EncryptInit(tok.sh, encMech, wrapKey); err != nil {
 		return err
 	}
-	wrapped, err := token.ctx.Encrypt(token.sh, pk8)
+	wrapped, err := tok.ctx.Encrypt(tok.sh, pk8)
 	if err != nil {
 		return err
 	}
 	// Unwrap key into token
-	if _, err := token.ctx.UnwrapKey(token.sh, encMech, wrapKey, wrapped, attrs); err != nil {
+	if _, err := tok.ctx.UnwrapKey(tok.sh, encMech, wrapKey, wrapped, attrs); err != nil {
 		return err
 	}
 	return nil
 }
 
 // Import an RSA or ECDSA private key into the token
-func (token *Token) Import(keyName string, privKey crypto.PrivateKey) (*Key, error) {
-	keyConf, err := token.config.GetKey(keyName)
+func (tok *Token) Import(keyName string, privKey crypto.PrivateKey) (token.Key, error) {
+	keyConf, err := tok.config.GetKey(keyName)
 	if err != nil {
 		return nil, err
 	}
@@ -115,11 +116,11 @@ func (token *Token) Import(keyName string, privKey crypto.PrivateKey) (*Key, err
 	}
 	pubAttrs := attrConcat(commonAttrs, newPublicKeyAttrs, pubTypeAttrs)
 	privAttrsSensitive := attrConcat(commonAttrs, newPrivateKeyAttrs, privTypeAttrs)
-	pubHandle, err := token.ctx.CreateObject(token.sh, pubAttrs)
+	pubHandle, err := tok.ctx.CreateObject(tok.sh, pubAttrs)
 	if err != nil {
 		return nil, err
 	}
-	_, err = token.ctx.CreateObject(token.sh, privAttrsSensitive)
+	_, err = tok.ctx.CreateObject(tok.sh, privAttrsSensitive)
 	if err2, ok := err.(pkcs11.Error); ok && err2 == pkcs11.CKR_TEMPLATE_INCONSISTENT {
 		// Some HSMs don't seem to allow importing private keys directly so use
 		// key wrapping to sneak it in. Exclude the "sensitive" attrs since
@@ -128,22 +129,22 @@ func (token *Token) Import(keyName string, privKey crypto.PrivateKey) (*Key, err
 		var pk8 []byte
 		pk8, err = pkcs8.MarshalPKCS8PrivateKey(privKey)
 		if err == nil {
-			err = token.importPkcs8(pk8, privAttrsUnwrap)
+			err = tok.importPkcs8(pk8, privAttrsUnwrap)
 		}
 	}
 	if err != nil {
-		token.ctx.DestroyObject(token.sh, pubHandle)
+		tok.ctx.DestroyObject(tok.sh, pubHandle)
 		return nil, err
 	}
 	keyConf.ID = hex.EncodeToString(keyID)
-	return token.getKey(keyConf, keyName)
+	return tok.getKey(keyConf, keyName)
 }
 
 // Generate an RSA or ECDSA key in the token
-func (token *Token) Generate(keyName string, keyType uint, bits uint) (*Key, error) {
-	token.mutex.Lock()
-	defer token.mutex.Unlock()
-	keyConf, err := token.config.GetKey(keyName)
+func (tok *Token) Generate(keyName string, keyType token.KeyType, bits uint) (token.Key, error) {
+	tok.mutex.Lock()
+	defer tok.mutex.Unlock()
+	keyConf, err := tok.config.GetKey(keyName)
 	if err != nil {
 		return nil, err
 	}
@@ -157,9 +158,9 @@ func (token *Token) Generate(keyName string, keyType uint, bits uint) (*Key, err
 	var pubTypeAttrs []*pkcs11.Attribute
 	var mech *pkcs11.Mechanism
 	switch keyType {
-	case CKK_RSA:
+	case token.KeyTypeRsa:
 		pubTypeAttrs, mech, err = rsaGenerateAttrs(bits)
-	case CKK_ECDSA:
+	case token.KeyTypeEcdsa:
 		pubTypeAttrs, mech, err = ecdsaGenerateAttrs(bits)
 	default:
 		return nil, errors.New("Unsupported key type")
@@ -173,11 +174,11 @@ func (token *Token) Generate(keyName string, keyType uint, bits uint) (*Key, err
 	}
 	pubAttrs := attrConcat(commonAttrs, newPublicKeyAttrs, pubTypeAttrs)
 	privAttrs := attrConcat(commonAttrs, newPrivateKeyAttrs)
-	if _, _, err := token.ctx.GenerateKeyPair(token.sh, []*pkcs11.Mechanism{mech}, pubAttrs, privAttrs); err != nil {
+	if _, _, err := tok.ctx.GenerateKeyPair(tok.sh, []*pkcs11.Mechanism{mech}, pubAttrs, privAttrs); err != nil {
 		return nil, err
 	}
 	keyConf.ID = hex.EncodeToString(keyID)
-	return token.getKey(keyConf, keyName)
+	return tok.getKey(keyConf, keyName)
 }
 
 func attrConcat(attrSets ...[]*pkcs11.Attribute) []*pkcs11.Attribute {

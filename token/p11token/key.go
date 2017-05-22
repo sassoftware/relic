@@ -23,21 +23,22 @@ import (
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/signers/sigerrors"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/token"
 	"github.com/miekg/pkcs11"
 )
 
 type Key struct {
-	Name            string
 	PgpCertificate  string
 	X509Certificate string
 	token           *Token
+	keyConf         *config.KeyConfig
 	keyType         uint
 	pub             pkcs11.ObjectHandle
 	priv            pkcs11.ObjectHandle
 	pubParsed       crypto.PublicKey
 }
 
-func (token *Token) GetKey(keyName string) (*Key, error) {
+func (token *Token) GetKey(keyName string) (token.Key, error) {
 	token.mutex.Lock()
 	defer token.mutex.Unlock()
 	keyConf, err := token.config.GetKey(keyName)
@@ -50,8 +51,8 @@ func (token *Token) GetKey(keyName string) (*Key, error) {
 func (token *Token) getKey(keyConf *config.KeyConfig, keyName string) (*Key, error) {
 	var err error
 	key := &Key{
-		Name:            keyName,
 		token:           token,
+		keyConf:         keyConf,
 		PgpCertificate:  keyConf.PgpCertificate,
 		X509Certificate: keyConf.X509Certificate,
 	}
@@ -107,11 +108,15 @@ func (token *Token) findKey(keyConf *config.KeyConfig, class uint) (pkcs11.Objec
 	return objects[0], nil
 }
 
+func (key *Key) Config() *config.KeyConfig {
+	return key.keyConf
+}
+
 func (key *Key) Public() crypto.PublicKey {
 	return key.pubParsed
 }
 
-func (key *Key) GetLabel() string {
+func (key *Key) getLabel() string {
 	key.token.mutex.Lock()
 	defer key.token.mutex.Unlock()
 	return string(key.token.getAttribute(key.priv, pkcs11.CKA_LABEL))

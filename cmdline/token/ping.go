@@ -18,7 +18,6 @@ package token
 
 import (
 	"fmt"
-	"os"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
 	"github.com/spf13/cobra"
@@ -40,11 +39,8 @@ func pingCmd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return shared.Fail(err)
 	}
-	if ok, err := token.IsLoggedIn(); err != nil {
+	if err := token.Ping(); err != nil {
 		return shared.Fail(err)
-	} else if !ok {
-		fmt.Println("ERROR: not logged in")
-		os.Exit(1)
 	} else {
 		fmt.Println("OK")
 	}

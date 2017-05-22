@@ -28,7 +28,7 @@ import (
 	"time"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/p11token"
+	"gerrit-pdt.unx.sas.com/tools/relic.git/token"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/armor"
@@ -55,7 +55,7 @@ func init() {
 	addSelectOrGenerateFlags(NewPgpKeyCmd)
 }
 
-func makeKey(key *p11token.Key, uids []*packet.UserId) (*openpgp.Entity, error) {
+func makeKey(key token.Key, uids []*packet.UserId) (*openpgp.Entity, error) {
 	creationTime := time.Now()
 	var pubKey *packet.PublicKey
 	switch pub := key.Public().(type) {

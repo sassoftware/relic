@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package p11token
+package token
 
 import "errors"
 

@@ -35,6 +35,7 @@ var UserAgent = "relic/" + Version
 var Author = "SAS Institute Inc."
 
 type TokenConfig struct {
+	Type       string  // Provider type: file or pkcs11 (default)
 	Provider   string  // Path to PKCS#11 provider module (required)
 	Label      string  // Select a token by label
 	Serial     string  // Select a token by serial number
@@ -219,6 +220,10 @@ func (config *Config) GetTimestampConfig() (*TimestampConfig, error) {
 		return nil, errors.New("No timestamp urls are defined in the configuration")
 	}
 	return tconf, nil
+}
+
+func (tconf *TokenConfig) Name() string {
+	return tconf.name
 }
 
 func (aconf *AmqpConfig) ExchangeName() string {
