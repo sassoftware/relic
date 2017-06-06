@@ -25,7 +25,7 @@ import (
 	"errors"
 	"strings"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
+	"github.com/sassoftware/relic/cmdline/shared"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"

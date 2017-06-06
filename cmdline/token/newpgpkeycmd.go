@@ -27,8 +27,8 @@ import (
 	"strings"
 	"time"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/token"
+	"github.com/sassoftware/relic/cmdline/shared"
+	"github.com/sassoftware/relic/token"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/armor"

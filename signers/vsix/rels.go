@@ -23,7 +23,7 @@ import (
 	"io/ioutil"
 	"path"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
+	"github.com/sassoftware/relic/lib/certloader"
 )
 
 type oxfRelationships struct {

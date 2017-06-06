@@ -22,7 +22,7 @@ import (
 	"encoding/base64"
 	"net/http"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs7"
+	"github.com/sassoftware/relic/lib/pkcs7"
 )
 
 // Microsoft non-RFC-3161 timestamping

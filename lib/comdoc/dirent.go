@@ -22,7 +22,7 @@ import (
 	"errors"
 	"unicode/utf16"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/redblack"
+	"github.com/sassoftware/relic/lib/redblack"
 )
 
 // Parse the directory stream

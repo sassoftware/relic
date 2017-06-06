@@ -19,5 +19,5 @@
 package main
 
 import (
-	_ "gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/token"
+	_ "github.com/sassoftware/relic/cmdline/token"
 )

@@ -21,10 +21,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/signxap"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/signers"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/signers/zipbased"
+	"github.com/sassoftware/relic/lib/certloader"
+	"github.com/sassoftware/relic/lib/signxap"
+	"github.com/sassoftware/relic/signers"
+	"github.com/sassoftware/relic/signers/zipbased"
 )
 
 // Sign Silverlight / legacy Windows Phone apps

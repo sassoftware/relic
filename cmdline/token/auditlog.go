@@ -21,11 +21,11 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/audit"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/token"
+	"github.com/sassoftware/relic/cmdline/shared"
+	"github.com/sassoftware/relic/config"
+	"github.com/sassoftware/relic/lib/audit"
+	"github.com/sassoftware/relic/lib/certloader"
+	"github.com/sassoftware/relic/token"
 )
 
 func NewAudit(key token.Key, sigType string, hash crypto.Hash) *audit.Info {

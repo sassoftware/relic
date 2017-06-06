@@ -27,8 +27,8 @@ import (
 	"errors"
 	"math/big"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
+	"github.com/sassoftware/relic/lib/certloader"
+	"github.com/sassoftware/relic/lib/x509tools"
 )
 
 func PublisherIdentity(cert *certloader.Certificate) (string, string, error) {

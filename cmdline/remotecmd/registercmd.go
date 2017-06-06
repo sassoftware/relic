@@ -32,9 +32,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
+	"github.com/sassoftware/relic/cmdline/shared"
+	"github.com/sassoftware/relic/config"
+	"github.com/sassoftware/relic/lib/certloader"
 	"gopkg.in/yaml.v2"
 
 	"github.com/spf13/cobra"

@@ -28,8 +28,8 @@ import (
 	"net/http"
 	"time"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs7"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
+	"github.com/sassoftware/relic/lib/pkcs7"
+	"github.com/sassoftware/relic/lib/x509tools"
 )
 
 // RFC 3161 HTTP client

@@ -27,12 +27,12 @@ import (
 	"strings"
 	"time"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/audit"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/binpatch"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/magic"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/signers"
 	rpmutils "github.com/sassoftware/go-rpmutils"
+	"github.com/sassoftware/relic/lib/audit"
+	"github.com/sassoftware/relic/lib/binpatch"
+	"github.com/sassoftware/relic/lib/certloader"
+	"github.com/sassoftware/relic/lib/magic"
+	"github.com/sassoftware/relic/signers"
 )
 
 var RpmSigner = &signers.Signer{

@@ -17,8 +17,8 @@
 package token
 
 import (
-	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/signers/pgp"
+	"github.com/sassoftware/relic/cmdline/shared"
+	"github.com/sassoftware/relic/signers/pgp"
 	"github.com/spf13/cobra"
 )
 

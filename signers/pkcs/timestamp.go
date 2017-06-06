@@ -26,12 +26,12 @@ import (
 	"os"
 	"time"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/magic"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs7"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs9"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/signers"
+	"github.com/sassoftware/relic/config"
+	"github.com/sassoftware/relic/lib/magic"
+	"github.com/sassoftware/relic/lib/pkcs7"
+	"github.com/sassoftware/relic/lib/pkcs9"
+	"github.com/sassoftware/relic/lib/x509tools"
+	"github.com/sassoftware/relic/signers"
 )
 
 var PkcsSigner = &signers.Signer{

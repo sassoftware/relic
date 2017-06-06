@@ -30,7 +30,7 @@ import (
 	"encoding/asn1"
 	"errors"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
+	"github.com/sassoftware/relic/lib/x509tools"
 )
 
 type privateKeyInfo struct {

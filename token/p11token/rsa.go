@@ -22,8 +22,8 @@ import (
 	"errors"
 	"math/big"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
 	"github.com/miekg/pkcs11"
+	"github.com/sassoftware/relic/lib/x509tools"
 )
 
 // Convert token RSA public key to *rsa.PublicKey

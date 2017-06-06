@@ -1,5 +1,5 @@
-hash: 16d2f17a225cd0ec1b5685b41edaea051df496fba24d4b1b2d59b3a595fe8516
-updated: 2017-04-17T17:19:25.177333739Z
+hash: 1fcf7f6f7cd873f0c05611597e9333f0776b278812990f7b252f1bbe31179687
+updated: 2017-06-06T20:52:27.800277194Z
 imports:
 - name: github.com/beevik/etree
   version: 1095c300fba68cb7f7895c0f96b2d34927f8115b
@@ -22,7 +22,7 @@ imports:
 - name: github.com/mattn/go-shellwords
   version: 02e3cf038dcea8290e44424da473dd12be796a8a
 - name: github.com/miekg/pkcs11
-  version: 877dc7e79bbbb5e789535cc3abea8f5db62f81a9
+  version: 636cb96609ab6584717cdcee8ae9f65f1c79d21e
   repo: https://github.com/mtharp/pkcs11
 - name: github.com/op/go-logging
   version: 970db520ece77730c7e4724c61121037378659d9
@@ -84,7 +84,7 @@ imports:
   - unicode/bidi
   - unicode/norm
 - name: gopkg.in/yaml.v2
-  version: cd8b52f8269e0feb286dfeef29f8fe4d5b397e0b
+  version: a3f3340b5840cee44f372bddb5880fcbc419b46a
 - name: xi2.org/x/xz
   version: 19aeb13c4e7cb6bd3188dfede73840f33455425a
 testImports: []

@@ -22,10 +22,10 @@ import (
 	"io"
 	"os"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/authenticode"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/magic"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/signers"
+	"github.com/sassoftware/relic/lib/authenticode"
+	"github.com/sassoftware/relic/lib/certloader"
+	"github.com/sassoftware/relic/lib/magic"
+	"github.com/sassoftware/relic/signers"
 )
 
 var PeSigner = &signers.Signer{

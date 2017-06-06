@@ -19,7 +19,7 @@ package token
 import (
 	"fmt"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
+	"github.com/sassoftware/relic/cmdline/shared"
 	"github.com/spf13/cobra"
 )
 

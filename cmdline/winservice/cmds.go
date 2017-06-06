@@ -17,8 +17,8 @@
 package winservice
 
 import (
-	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/servecmd"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
+	"github.com/sassoftware/relic/cmdline/servecmd"
+	"github.com/sassoftware/relic/cmdline/shared"
 	"github.com/spf13/cobra"
 )
 

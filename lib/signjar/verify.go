@@ -30,8 +30,8 @@ import (
 	"path"
 	"strings"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs7"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs9"
+	"github.com/sassoftware/relic/lib/pkcs7"
+	"github.com/sassoftware/relic/lib/pkcs9"
 )
 
 func Verify(inz *zip.Reader, skipDigests bool) ([]*pkcs9.TimestampedSignature, error) {

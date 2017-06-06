@@ -27,7 +27,7 @@ import (
 	"io"
 	"os"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/atomicfile"
+	"github.com/sassoftware/relic/lib/atomicfile"
 )
 
 const (

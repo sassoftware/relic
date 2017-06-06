@@ -17,7 +17,7 @@
 package remotecmd
 
 import (
-	"gerrit-pdt.unx.sas.com/tools/relic.git/signers/pgp"
+	"github.com/sassoftware/relic/signers/pgp"
 	"github.com/spf13/cobra"
 )
 

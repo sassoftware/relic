@@ -26,8 +26,8 @@ import (
 	"io/ioutil"
 	"strings"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pgptools"
 	"github.com/qur/ar"
+	"github.com/sassoftware/relic/lib/pgptools"
 	"golang.org/x/crypto/openpgp"
 )
 

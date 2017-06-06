@@ -24,10 +24,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/signappx"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/signers"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/signers/zipbased"
+	"github.com/sassoftware/relic/lib/certloader"
+	"github.com/sassoftware/relic/lib/signappx"
+	"github.com/sassoftware/relic/signers"
+	"github.com/sassoftware/relic/signers/zipbased"
 )
 
 var AppxSigner = &signers.Signer{

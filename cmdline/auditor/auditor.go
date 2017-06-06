@@ -23,9 +23,9 @@ import (
 	"os"
 	"time"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/audit"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/server/activation"
+	"github.com/sassoftware/relic/config"
+	"github.com/sassoftware/relic/lib/audit"
+	"github.com/sassoftware/relic/server/activation"
 	"github.com/spf13/cobra"
 	"github.com/streadway/amqp"
 

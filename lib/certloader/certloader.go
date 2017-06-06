@@ -31,9 +31,9 @@ import (
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/packet"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs7"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs9"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
+	"github.com/sassoftware/relic/lib/pkcs7"
+	"github.com/sassoftware/relic/lib/pkcs9"
+	"github.com/sassoftware/relic/lib/x509tools"
 )
 
 const asn1Magic = 0x30 // weak but good enough?

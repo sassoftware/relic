@@ -21,8 +21,8 @@ import (
 	"crypto/ecdsa"
 	"errors"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
 	"github.com/miekg/pkcs11"
+	"github.com/sassoftware/relic/lib/x509tools"
 )
 
 // Convert token ECDSA public key to *ecdsa.PublicKey

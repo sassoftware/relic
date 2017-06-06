@@ -25,7 +25,7 @@ import (
 	"sort"
 	"strings"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
+	"github.com/sassoftware/relic/config"
 	"gopkg.in/yaml.v2"
 )
 

@@ -39,7 +39,7 @@ relic is tested using libsofthsm2 and Gemalto SafeNet "Luna SA" HSMs. Every vend
 1. Install ltdl development headers, i.e.
     a. `dnf install libtool-ltdl-devel` or
     b. `apt-get install libltdl-dev`
-2. `go get gerrit-pdt.unx.sas.com/tools/relic.git/relic`
+2. `go get github.com/sassoftware/relic`
 
 relic can also be built as a client-only tool, removing the dependency on ltdl, by building with `-tags pure` or by disabling cgo.
 

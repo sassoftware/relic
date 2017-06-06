@@ -22,8 +22,8 @@ import (
 	"encoding/pem"
 	"errors"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/passprompt"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
+	"github.com/sassoftware/relic/lib/passprompt"
+	"github.com/sassoftware/relic/lib/x509tools"
 	"golang.org/x/crypto/pkcs12"
 )
 

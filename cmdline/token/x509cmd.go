@@ -22,8 +22,8 @@ import (
 	"fmt"
 	"os"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
+	"github.com/sassoftware/relic/cmdline/shared"
+	"github.com/sassoftware/relic/lib/x509tools"
 	"github.com/spf13/cobra"
 )
 

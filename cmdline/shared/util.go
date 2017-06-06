@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"os"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
+	"github.com/sassoftware/relic/config"
 )
 
 func InitConfig() error {

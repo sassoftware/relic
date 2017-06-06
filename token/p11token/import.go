@@ -24,9 +24,9 @@ import (
 	"encoding/hex"
 	"errors"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs8"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/token"
 	"github.com/miekg/pkcs11"
+	"github.com/sassoftware/relic/lib/pkcs8"
+	"github.com/sassoftware/relic/token"
 )
 
 // Common attributes for new public keys

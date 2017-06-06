@@ -24,11 +24,11 @@ import (
 	"errors"
 	"fmt"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs7"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs9"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/xmldsig"
 	"github.com/beevik/etree"
+	"github.com/sassoftware/relic/lib/certloader"
+	"github.com/sassoftware/relic/lib/pkcs7"
+	"github.com/sassoftware/relic/lib/pkcs9"
+	"github.com/sassoftware/relic/lib/xmldsig"
 )
 
 const (

@@ -23,9 +23,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/servecmd"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
 	"github.com/howeyc/gopass"
+	"github.com/sassoftware/relic/cmdline/servecmd"
+	"github.com/sassoftware/relic/cmdline/shared"
 	"github.com/spf13/cobra"
 	"golang.org/x/sys/windows"
 	"golang.org/x/sys/windows/svc/eventlog"

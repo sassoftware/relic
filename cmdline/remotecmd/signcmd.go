@@ -23,8 +23,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/signers"
+	"github.com/sassoftware/relic/cmdline/shared"
+	"github.com/sassoftware/relic/signers"
 	"github.com/spf13/cobra"
 )
 

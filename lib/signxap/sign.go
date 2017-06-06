@@ -26,11 +26,11 @@ import (
 	"io"
 	"io/ioutil"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/authenticode"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/binpatch"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs9"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/zipslicer"
+	"github.com/sassoftware/relic/lib/authenticode"
+	"github.com/sassoftware/relic/lib/binpatch"
+	"github.com/sassoftware/relic/lib/certloader"
+	"github.com/sassoftware/relic/lib/pkcs9"
+	"github.com/sassoftware/relic/lib/zipslicer"
 )
 
 type XapDigest struct {

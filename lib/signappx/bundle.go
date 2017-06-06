@@ -28,7 +28,7 @@ import (
 
 	"github.com/beevik/etree"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
+	"github.com/sassoftware/relic/lib/x509tools"
 )
 
 type bundleManifest struct {

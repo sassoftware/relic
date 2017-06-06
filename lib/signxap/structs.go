@@ -16,7 +16,7 @@
 
 package signxap
 
-import "gerrit-pdt.unx.sas.com/tools/relic.git/lib/authenticode"
+import "github.com/sassoftware/relic/lib/authenticode"
 
 const (
 	trailerMagic = 0x53706158 // XapS

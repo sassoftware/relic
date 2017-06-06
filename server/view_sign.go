@@ -25,9 +25,9 @@ import (
 	"strings"
 	"time"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/audit"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/procutil"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/signers"
+	"github.com/sassoftware/relic/lib/audit"
+	"github.com/sassoftware/relic/lib/procutil"
+	"github.com/sassoftware/relic/signers"
 )
 
 func (s *Server) serveSign(request *http.Request, writer http.ResponseWriter) (res Response, err error) {

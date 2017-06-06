@@ -26,7 +26,7 @@ import (
 	"net/http"
 	"strings"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
+	"github.com/sassoftware/relic/config"
 )
 
 // See https://docs.oracle.com/javase/8/docs/technotes/guides/jar/jar.html#JAR_Manifest

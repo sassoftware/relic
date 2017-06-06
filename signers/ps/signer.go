@@ -25,10 +25,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/authenticode"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/signers"
+	"github.com/sassoftware/relic/lib/authenticode"
+	"github.com/sassoftware/relic/lib/certloader"
+	"github.com/sassoftware/relic/lib/x509tools"
+	"github.com/sassoftware/relic/signers"
 )
 
 var PsSigner = &signers.Signer{

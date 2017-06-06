@@ -24,9 +24,9 @@ import (
 	"encoding/binary"
 	"errors"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/binpatch"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs9"
+	"github.com/sassoftware/relic/lib/binpatch"
+	"github.com/sassoftware/relic/lib/certloader"
+	"github.com/sassoftware/relic/lib/pkcs9"
 )
 
 // Sign the digest and return an Authenticode structure

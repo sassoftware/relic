@@ -1,4 +1,4 @@
-package: gerrit-pdt.unx.sas.com/tools/relic.git
+package: github.com/sassoftware/relic
 import:
 - package: github.com/braintree/manners
 - package: github.com/howeyc/gopass

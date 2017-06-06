@@ -17,5 +17,5 @@
 package main
 
 import (
-	_ "gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/winservice"
+	_ "github.com/sassoftware/relic/cmdline/winservice"
 )

@@ -20,8 +20,8 @@ import (
 	"io"
 	"os"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/zipslicer"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/signers"
+	"github.com/sassoftware/relic/lib/zipslicer"
+	"github.com/sassoftware/relic/signers"
 )
 
 type zipTransformer struct {

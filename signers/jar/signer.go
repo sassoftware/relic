@@ -23,12 +23,12 @@ import (
 	"io"
 	"os"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/magic"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/signjar"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/signers"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/signers/zipbased"
+	"github.com/sassoftware/relic/lib/certloader"
+	"github.com/sassoftware/relic/lib/magic"
+	"github.com/sassoftware/relic/lib/signjar"
+	"github.com/sassoftware/relic/lib/x509tools"
+	"github.com/sassoftware/relic/signers"
+	"github.com/sassoftware/relic/signers/zipbased"
 )
 
 var JarSigner = &signers.Signer{

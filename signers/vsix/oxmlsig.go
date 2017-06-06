@@ -30,12 +30,12 @@ import (
 	"sort"
 	"strings"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs7"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs9"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/xmldsig"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/signers"
 	"github.com/beevik/etree"
+	"github.com/sassoftware/relic/lib/certloader"
+	"github.com/sassoftware/relic/lib/pkcs7"
+	"github.com/sassoftware/relic/lib/pkcs9"
+	"github.com/sassoftware/relic/lib/xmldsig"
+	"github.com/sassoftware/relic/signers"
 )
 
 type oxmlManifest struct {

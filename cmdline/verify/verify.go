@@ -22,11 +22,11 @@ import (
 	"fmt"
 	"os"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/magic"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/signers"
+	"github.com/sassoftware/relic/cmdline/shared"
+	"github.com/sassoftware/relic/lib/certloader"
+	"github.com/sassoftware/relic/lib/magic"
+	"github.com/sassoftware/relic/lib/x509tools"
+	"github.com/sassoftware/relic/signers"
 	"github.com/spf13/cobra"
 )
 

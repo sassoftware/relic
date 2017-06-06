@@ -20,7 +20,7 @@ import (
 	"archive/zip"
 	"crypto"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs9"
+	"github.com/sassoftware/relic/lib/pkcs9"
 )
 
 const (

@@ -25,7 +25,7 @@ import (
 	"io"
 	"io/ioutil"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/binpatch"
+	"github.com/sassoftware/relic/lib/binpatch"
 )
 
 // Calculate the digest (imprint) of a CAB file for signing purposes

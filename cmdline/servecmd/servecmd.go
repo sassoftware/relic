@@ -19,8 +19,8 @@ package servecmd
 import (
 	"errors"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/server/daemon"
+	"github.com/sassoftware/relic/cmdline/shared"
+	"github.com/sassoftware/relic/server/daemon"
 	"github.com/spf13/cobra"
 )
 

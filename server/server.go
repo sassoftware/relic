@@ -28,8 +28,8 @@ import (
 	"runtime"
 	"strings"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/compresshttp"
+	"github.com/sassoftware/relic/config"
+	"github.com/sassoftware/relic/lib/compresshttp"
 )
 
 type Server struct {

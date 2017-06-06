@@ -29,10 +29,10 @@ import (
 	"strings"
 	"time"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/shared"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/compresshttp"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
+	"github.com/sassoftware/relic/cmdline/shared"
+	"github.com/sassoftware/relic/config"
+	"github.com/sassoftware/relic/lib/compresshttp"
+	"github.com/sassoftware/relic/lib/x509tools"
 	"golang.org/x/net/http2"
 )
 

@@ -27,9 +27,9 @@ import (
 	"strings"
 	"time"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/binpatch"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pgptools"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/readercounter"
+	"github.com/sassoftware/relic/lib/binpatch"
+	"github.com/sassoftware/relic/lib/pgptools"
+	"github.com/sassoftware/relic/lib/readercounter"
 
 	"github.com/qur/ar"
 	"golang.org/x/crypto/openpgp"

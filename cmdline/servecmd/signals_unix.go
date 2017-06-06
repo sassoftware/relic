@@ -24,7 +24,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/server/daemon"
+	"github.com/sassoftware/relic/server/daemon"
 )
 
 func watchSignals(srv *daemon.Daemon) {

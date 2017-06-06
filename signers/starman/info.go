@@ -23,7 +23,7 @@ import (
 	"io/ioutil"
 	"strings"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/readercounter"
+	"github.com/sassoftware/relic/lib/readercounter"
 )
 
 const (

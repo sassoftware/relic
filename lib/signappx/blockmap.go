@@ -27,7 +27,7 @@ import (
 	"io"
 	"strings"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/zipslicer"
+	"github.com/sassoftware/relic/lib/zipslicer"
 )
 
 const blockMapSize = 64 * 1024

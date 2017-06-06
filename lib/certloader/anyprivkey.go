@@ -27,7 +27,7 @@ import (
 	"os"
 	"strings"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/passprompt"
+	"github.com/sassoftware/relic/lib/passprompt"
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/armor"
 	"golang.org/x/crypto/openpgp/packet"

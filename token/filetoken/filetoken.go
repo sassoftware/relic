@@ -25,10 +25,10 @@ import (
 	"io/ioutil"
 	"sync"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/passprompt"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/token"
+	"github.com/sassoftware/relic/config"
+	"github.com/sassoftware/relic/lib/certloader"
+	"github.com/sassoftware/relic/lib/passprompt"
+	"github.com/sassoftware/relic/token"
 )
 
 type fileToken struct {

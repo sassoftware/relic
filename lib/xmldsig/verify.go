@@ -29,7 +29,7 @@ import (
 	"math/big"
 	"strings"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
+	"github.com/sassoftware/relic/lib/x509tools"
 
 	"github.com/beevik/etree"
 )

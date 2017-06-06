@@ -21,7 +21,7 @@ import (
 	"os"
 	"time"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/servecmd"
+	"github.com/sassoftware/relic/cmdline/servecmd"
 	"github.com/spf13/cobra"
 	"golang.org/x/sys/windows/svc"
 	"golang.org/x/sys/windows/svc/eventlog"

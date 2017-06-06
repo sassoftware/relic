@@ -26,7 +26,7 @@ import (
 	"net/http"
 	"strings"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/zipslicer"
+	"github.com/sassoftware/relic/lib/zipslicer"
 )
 
 // found in the "extra" field of JAR files, not strictly required but it makes

@@ -22,11 +22,11 @@ import (
 	"runtime"
 	"sync"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/passprompt"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/signers/sigerrors"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/token"
 	"github.com/miekg/pkcs11"
+	"github.com/sassoftware/relic/config"
+	"github.com/sassoftware/relic/lib/passprompt"
+	"github.com/sassoftware/relic/signers/sigerrors"
+	"github.com/sassoftware/relic/token"
 )
 
 const (

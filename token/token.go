@@ -21,7 +21,7 @@ import (
 	"crypto/x509"
 	"io"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
+	"github.com/sassoftware/relic/config"
 )
 
 type KeyType uint

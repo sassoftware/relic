@@ -27,12 +27,12 @@ import (
 	"os"
 	"sync"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/config"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/server"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/server/activation"
 	"github.com/braintree/manners"
+	"github.com/sassoftware/relic/config"
+	"github.com/sassoftware/relic/lib/certloader"
+	"github.com/sassoftware/relic/lib/x509tools"
+	"github.com/sassoftware/relic/server"
+	"github.com/sassoftware/relic/server/activation"
 	"golang.org/x/net/http2"
 )
 

@@ -23,7 +23,7 @@ import (
 	"net/url"
 	"strings"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/certloader"
+	"github.com/sassoftware/relic/lib/certloader"
 	"golang.org/x/crypto/openpgp/armor"
 )
 

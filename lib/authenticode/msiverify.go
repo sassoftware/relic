@@ -27,10 +27,10 @@ import (
 	"io/ioutil"
 	"sort"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/comdoc"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs7"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs9"
-	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
+	"github.com/sassoftware/relic/lib/comdoc"
+	"github.com/sassoftware/relic/lib/pkcs7"
+	"github.com/sassoftware/relic/lib/pkcs9"
+	"github.com/sassoftware/relic/lib/x509tools"
 )
 
 type MSISignature struct {

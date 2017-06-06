@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"os"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/cmdline/auditor"
+	"github.com/sassoftware/relic/cmdline/auditor"
 )
 
 func main() {

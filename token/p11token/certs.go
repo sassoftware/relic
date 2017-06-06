@@ -22,8 +22,8 @@ import (
 	"errors"
 	"fmt"
 
-	"gerrit-pdt.unx.sas.com/tools/relic.git/signers/sigerrors"
 	"github.com/miekg/pkcs11"
+	"github.com/sassoftware/relic/signers/sigerrors"
 )
 
 var newCertAttrs = []*pkcs11.Attribute{
