@@ -106,9 +106,6 @@ func VerifyPkcs7(sig pkcs7.Signature) (*CounterSignature, error) {
 	if _, ok := err.(pkcs7.ErrNoAttribute); ok {
 		err = sig.SignerInfo.UnauthenticatedAttributes.GetOne(OidSpcTimeStampToken, &tst)
 	}
-	if _, ok := err.(pkcs7.ErrNoAttribute); ok {
-		return nil, nil
-	}
 	var imprintHash crypto.Hash
 	if err == nil {
 		// timestamptoken is a fully nested signedData containing a TSTInfo
@@ -117,6 +114,9 @@ func VerifyPkcs7(sig pkcs7.Signature) (*CounterSignature, error) {
 	} else if _, ok := err.(pkcs7.ErrNoAttribute); ok {
 		var tsi pkcs7.SignerInfo
 		if err := sig.SignerInfo.UnauthenticatedAttributes.GetOne(OidAttributeCounterSign, &tsi); err != nil {
+			if _, ok := err.(pkcs7.ErrNoAttribute); ok {
+				return nil, nil
+			}
 			return nil, err
 		}
 		// counterSignature is simply a signerinfo. The certificate chain is
