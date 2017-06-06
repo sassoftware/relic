@@ -22,13 +22,18 @@ import (
 )
 
 const (
-	NsXMLDsig     = "http://www.w3.org/2000/09/xmldsig#"
-	NsXMLDsigMore = "http://www.w3.org/2001/04/xmldsig-more#"
-	NsXsi         = "http://www.w3.org/2001/XMLSchema-instance"
-	AlgXMLExcC14n = "http://www.w3.org/2001/10/xml-exc-c14n#"
+	NsXMLDsig        = "http://www.w3.org/2000/09/xmldsig#"
+	NsXMLDsigMore    = "http://www.w3.org/2001/04/xmldsig-more#"
+	NsXMLEnc         = "http://www.w3.org/2001/04/xmlenc#"
+	NsXsi            = "http://www.w3.org/2001/XMLSchema-instance"
+	AlgXMLExcC14n    = "http://www.w3.org/2001/10/xml-exc-c14n#"
+	AlgXMLExcC14nRec = "http://www.w3.org/TR/2001/REC-xml-c14n-20010315" // draft version
 
 	AlgDsigEnvelopedSignature = "http://www.w3.org/2000/09/xmldsig#enveloped-signature"
 )
+
+// the best thing about namespaces is there are so many to choose from
+var nsPrefixes = []string{NsXMLDsig, NsXMLDsigMore, NsXMLEnc}
 
 var hashNames = map[crypto.Hash]string{
 	crypto.SHA1:   "sha1",
@@ -38,18 +43,31 @@ var hashNames = map[crypto.Hash]string{
 	crypto.SHA512: "sha512",
 }
 
+var HashUris = map[crypto.Hash]string{
+	crypto.SHA1:   NsXMLDsig + "sha1",
+	crypto.SHA224: NsXMLDsigMore + "sha224",
+	crypto.SHA256: NsXMLEnc + "sha256",
+	crypto.SHA384: NsXMLDsigMore + "sha384",
+	crypto.SHA512: NsXMLEnc + "sha512",
+}
+
 type signature struct {
 	XMLName xml.Name `xml:"http://www.w3.org/2000/09/xmldsig# Signature"`
 
-	CanonicalizationMethod method   `xml:"SignedInfo>CanonicalizationMethod"`
-	SignatureMethod        method   `xml:"SignedInfo>SignatureMethod"`
-	ReferenceTransforms    []method `xml:"SignedInfo>Reference>Transforms>Transform"`
-	DigestMethod           method   `xml:"SignedInfo>Reference>DigestMethod"`
-	DigestValue            string   `xml:"SignedInfo>Reference>DigestValue"`
-	SignatureValue         string   `xml:"SignatureValue"`
-	KeyName                string   `xml:"KeyInfo>KeyName,omitempty"`
-	KeyValue               keyValue `xml:"KeyInfo>KeyValue,omitempty"`
-	X509Certificates       []string `xml:"KeyInfo>X509Data>X509Certificate,omitempty"`
+	CanonicalizationMethod method    `xml:"SignedInfo>CanonicalizationMethod"`
+	SignatureMethod        method    `xml:"SignedInfo>SignatureMethod"`
+	Reference              reference `xml:"SignedInfo>Reference"`
+	SignatureValue         string    `xml:"SignatureValue"`
+	KeyName                string    `xml:"KeyInfo>KeyName,omitempty"`
+	KeyValue               *keyValue `xml:"KeyInfo>KeyValue,omitempty"`
+	X509Certificates       []string  `xml:"KeyInfo>X509Data>X509Certificate,omitempty"`
+}
+
+type reference struct {
+	URI          string   `xml:",attr"`
+	Transforms   []method `xml:"Transforms>Transform"`
+	DigestMethod method
+	DigestValue  string
 }
 
 type method struct {

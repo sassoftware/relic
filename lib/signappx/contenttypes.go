@@ -41,7 +41,7 @@ const (
 	bundleManifestType = "application/vnd.ms-appx.bundlemanifest+xml"
 )
 
-type contentTypes struct {
+type ContentTypes struct {
 	ByExt      map[string]string
 	ByOverride map[string]string
 }
@@ -62,14 +62,14 @@ type contentTypeOverride struct {
 	ContentType string `xml:",attr"`
 }
 
-func newContentTypes() *contentTypes {
-	return &contentTypes{
+func NewContentTypes() *ContentTypes {
+	return &ContentTypes{
 		ByExt:      make(map[string]string),
 		ByOverride: make(map[string]string),
 	}
 }
 
-func (c *contentTypes) Parse(blob []byte) error {
+func (c *ContentTypes) Parse(blob []byte) error {
 	var xct xmlContentTypes
 	if err := xml.Unmarshal(blob, &xct); err != nil {
 		return err
@@ -83,7 +83,7 @@ func (c *contentTypes) Parse(blob []byte) error {
 	return nil
 }
 
-func (c *contentTypes) Add(name string) {
+func (c *ContentTypes) Add(name string) {
 	if name == bundleManifestFile {
 		c.ByExt["xml"] = bundleManifestType
 		return
@@ -110,7 +110,21 @@ func (c *contentTypes) Add(name string) {
 	}
 }
 
-func (c *contentTypes) Marshal() ([]byte, error) {
+func (c *ContentTypes) Find(name string) string {
+	oname := "/" + name
+	if ctype := c.ByOverride[oname]; ctype != "" {
+		return ctype
+	}
+	ext := path.Ext(path.Base(name))
+	if ext[0] == '.' {
+		if ctype := c.ByExt[ext[1:]]; ctype != "" {
+			return ctype
+		}
+	}
+	return ""
+}
+
+func (c *ContentTypes) Marshal() ([]byte, error) {
 	var xct xmlContentTypes
 	extnames := make([]string, 0, len(c.ByExt))
 	for name := range c.ByExt {

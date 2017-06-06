@@ -21,6 +21,7 @@ import (
 	"bufio"
 	"bytes"
 	"compress/flate"
+	"crypto"
 	"encoding/binary"
 	"errors"
 	"hash"
@@ -370,4 +371,16 @@ func (r *Reader) Read(d []byte) (int, error) {
 
 func (r *Reader) Close() error {
 	return r.rc.Close()
+}
+
+func (f *File) Digest(hash crypto.Hash) ([]byte, error) {
+	fc, err := f.Open()
+	if err != nil {
+		return nil, err
+	}
+	d := hash.New()
+	if _, err := io.Copy(d, fc); err != nil {
+		return nil, err
+	}
+	return d.Sum(nil), fc.Close()
 }

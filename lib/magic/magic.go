@@ -118,8 +118,8 @@ func Detect(r io.Reader) FileType {
 		return FileTypeMSI
 	case hasPrefix(br, []byte("MSCF")):
 		return FileTypeCAB
-	case contains(br, []byte("<assembly "), 256),
-		contains(br, []byte(":assembly "), 256):
+	case contains(br, []byte("<assembly"), 256),
+		contains(br, []byte(":assembly"), 256):
 		return FileTypeAppManifest
 	case hasPrefix(br, []byte{0x89}), hasPrefix(br, []byte{0xc2}):
 		return FileTypePGP

@@ -21,6 +21,7 @@ work/
 *.pgp
 *.ps1
 *.ps1xml
+*.vsix
 *.rpm
 *.RSA
 *.SF

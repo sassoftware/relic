@@ -36,7 +36,7 @@ type AppxDigest struct {
 	blockMap         blockMap
 	manifest         *appxPackage
 	bundle           *bundleManifest
-	contentTypes     *contentTypes
+	contentTypes     *ContentTypes
 	peDigests        []*authenticode.PEDigest
 	outz             *zipslicer.Directory
 	patchStart       int64
@@ -51,7 +51,7 @@ func DigestAppxTar(r io.Reader, hash crypto.Hash, doPageHash bool) (*AppxDigest,
 	info := &AppxDigest{
 		Hash:         hash,
 		axpc:         hash.New(),
-		contentTypes: newContentTypes(),
+		contentTypes: NewContentTypes(),
 		outz:         &zipslicer.Directory{},
 	}
 	if err := info.blockMap.SetHash(hash); err != nil {

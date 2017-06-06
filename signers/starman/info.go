@@ -18,7 +18,6 @@ package starman
 
 import (
 	"archive/tar"
-	"crypto"
 	"errors"
 	"io"
 	"io/ioutil"
@@ -40,9 +39,6 @@ type starmanInfo struct {
 	mdname           string
 	md               TarMD
 	hasSig           bool
-
-	hash    crypto.Hash
-	digests map[string][]byte
 }
 
 func verifyMeta(r io.Reader) (*starmanInfo, error) {

@@ -44,7 +44,7 @@ func Verify(manifest []byte) (*ManifestSignature, error) {
 		return nil, err
 	}
 	root := doc.Root()
-	primary, err := xmldsig.Verify(root, "Signature")
+	primary, err := xmldsig.Verify(root, "Signature", nil)
 	if err != nil {
 		return nil, fmt.Errorf("invalid primary signature: %s", err)
 	}
@@ -52,7 +52,7 @@ func Verify(manifest []byte) (*ManifestSignature, error) {
 	if license == nil {
 		return nil, fmt.Errorf("invalid authenticode signature: %s", "signature is missing")
 	}
-	secondary, err := xmldsig.Verify(license, "issuer/Signature")
+	secondary, err := xmldsig.Verify(license, "issuer/Signature", nil)
 	if err != nil {
 		return nil, fmt.Errorf("invalid authenticode signature: %s", err)
 	}
@@ -70,13 +70,7 @@ func Verify(manifest []byte) (*ManifestSignature, error) {
 	if token2 := asi.SelectAttrValue("publicKeyToken", ""); token2 != token {
 		return nil, fmt.Errorf("publicKeyToken mismatch: expected %s, got %s", token, token2)
 	}
-	sig := pkcs7.Signature{Intermediates: secondary.Certificates}
-	for _, cert := range secondary.Certificates {
-		if x509tools.SameKey(cert.PublicKey, primary.PublicKey) {
-			sig.Certificate = cert
-			break
-		}
-	}
+	sig := pkcs7.Signature{Intermediates: secondary.Certificates, Certificate: secondary.Leaf()}
 	if sig.Certificate == nil {
 		return nil, errors.New("leaf x509 certificate not found")
 	}

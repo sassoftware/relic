@@ -17,9 +17,14 @@
 package pkcs9
 
 import (
+	"crypto"
 	"crypto/hmac"
+	"crypto/x509"
 	"errors"
+	"fmt"
+	"time"
 
+	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/pkcs7"
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
 )
 
@@ -36,4 +41,54 @@ func (i MessageImprint) Verify(data []byte) error {
 		return errors.New("pkcs9: digest check failed")
 	}
 	return nil
+}
+
+// Verify a timestamp token using external data
+func Verify(tst *pkcs7.ContentInfoSignedData, data []byte, certs []*x509.Certificate) (*CounterSignature, error) {
+	if len(tst.Content.SignerInfos) != 1 {
+		return nil, errors.New("timestamp should have exactly one SignerInfo")
+	}
+	tsi := tst.Content.SignerInfos[0]
+	tsicerts, err := tst.Content.Certificates.Parse()
+	if err != nil {
+		return nil, err
+	} else if len(tsicerts) != 0 {
+		// keep both sets of certs just in case
+		certs = append(certs, tsicerts...)
+	}
+	// verify the imprint in the TSTInfo
+	tstinfo, err := UnpackTokenInfo(tst)
+	if err != nil {
+		return nil, err
+	}
+	if err := tstinfo.MessageImprint.Verify(data); err != nil {
+		return nil, fmt.Errorf("failed to verify timestamp imprint: %s", err)
+	}
+	imprintHash, _ := x509tools.PkixDigestToHash(tstinfo.MessageImprint.HashAlgorithm)
+	// now the signature is over the TSTInfo blob
+	verifyBlob, err := tst.Content.ContentInfo.Bytes()
+	if err != nil {
+		return nil, err
+	}
+	return finishVerify(&tsi, verifyBlob, certs, imprintHash)
+}
+
+func finishVerify(tsi *pkcs7.SignerInfo, blob []byte, certs []*x509.Certificate, hash crypto.Hash) (*CounterSignature, error) {
+	cert, err := tsi.Verify(blob, false, certs)
+	if err != nil {
+		return nil, err
+	}
+	var signingTime time.Time
+	if err := tsi.AuthenticatedAttributes.GetOne(pkcs7.OidAttributeSigningTime, &signingTime); err != nil {
+		return nil, err
+	}
+	return &CounterSignature{
+		Signature: pkcs7.Signature{
+			SignerInfo:    tsi,
+			Certificate:   cert,
+			Intermediates: certs,
+		},
+		Hash:        hash,
+		SigningTime: signingTime,
+	}, nil
 }

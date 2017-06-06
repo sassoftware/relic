@@ -20,7 +20,7 @@ package pkcs
 // serializing other signature types that use PKCS#7.
 
 import (
-	"errors"
+	"crypto"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -51,17 +51,12 @@ type Timestamper struct {
 	Config *config.TimestampConfig
 }
 
-func (t Timestamper) Timestamp(psd *pkcs7.ContentInfoSignedData) (*pkcs7.ContentInfoSignedData, error) {
+func (t Timestamper) Timestamp(data []byte, hash crypto.Hash) (*pkcs7.ContentInfoSignedData, error) {
 	if t.Config == nil {
 		return nil, nil
 	}
-	signerInfo := &psd.Content.SignerInfos[0]
-	hash, ok := x509tools.PkixDigestToHash(signerInfo.DigestAlgorithm)
-	if !ok {
-		return nil, errors.New("unknown digest algorithm")
-	}
 	d := hash.New()
-	d.Write(signerInfo.EncryptedDigest)
+	d.Write(data)
 	imprint := d.Sum(nil)
 
 	cl := pkcs9.TimestampClient{

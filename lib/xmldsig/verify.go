@@ -39,10 +39,20 @@ type Signature struct {
 	Certificates    []*x509.Certificate
 	Hash            crypto.Hash
 	EncryptedDigest []byte
+	Reference       *etree.Element
+}
+
+func (s Signature) Leaf() *x509.Certificate {
+	for _, cert := range s.Certificates {
+		if x509tools.SameKey(cert.PublicKey, s.PublicKey) {
+			return cert
+		}
+	}
+	return nil
 }
 
 // Extract and verify an enveloped signature at the given root
-func Verify(root *etree.Element, sigpath string) (*Signature, error) {
+func Verify(root *etree.Element, sigpath string, extraCerts []*x509.Certificate) (*Signature, error) {
 	root = root.Copy()
 	sigs := root.FindElements(sigpath)
 	if len(sigs) == 0 {
@@ -61,23 +71,36 @@ func Verify(root *etree.Element, sigpath string) (*Signature, error) {
 		return nil, fmt.Errorf("xmldsig: %s", err)
 	}
 	// parse algorithms
-	if sig.CanonicalizationMethod.Algorithm != AlgXMLExcC14n {
+	if sig.CanonicalizationMethod.Algorithm != AlgXMLExcC14n && sig.CanonicalizationMethod.Algorithm != AlgXMLExcC14nRec {
 		return nil, errors.New("xmldsig: unsupported canonicalization method")
 	}
-	if len(sig.ReferenceTransforms) != 2 ||
-		sig.ReferenceTransforms[0].Algorithm != AlgDsigEnvelopedSignature ||
-		sig.ReferenceTransforms[1].Algorithm != AlgXMLExcC14n {
-		return nil, errors.New("xmldsig: unsupported reference transform")
-	}
-	hash, pubtype, err := parseAlgs(sig.DigestMethod.Algorithm, sig.SignatureMethod.Algorithm)
+	hash, pubtype, err := parseAlgs(sig.Reference.DigestMethod.Algorithm, sig.SignatureMethod.Algorithm)
 	if err != nil {
 		return nil, err
+	}
+	// parse public key
+	var pubkey crypto.PublicKey
+	if sig.KeyValue != nil {
+		pubkey, err = parseKey(sig.KeyValue, pubtype)
+		if err != nil {
+			return nil, err
+		}
+	}
+	// parse x509 certs
+	certs := make([]*x509.Certificate, len(extraCerts))
+	copy(certs, extraCerts)
+	for _, b64 := range sig.X509Certificates {
+		der, err := base64.StdEncoding.DecodeString(b64)
+		if err != nil {
+			return nil, fmt.Errorf("xmldsig: invalid X509 certificate")
+		}
+		cert, err := x509.ParseCertificate(der)
+		if err != nil {
+			return nil, fmt.Errorf("xmldsig: invalid X509 certificate: %s", err)
+		}
+		certs = append(certs, cert)
 	}
 	// check signature
-	pubkey, err := parseKey(sig.KeyValue, pubtype)
-	if err != nil {
-		return nil, err
-	}
 	signedinfo := sigEl.SelectElement("SignedInfo")
 	if signedinfo == nil {
 		return nil, errors.New("xmldsig: invalid signature")
@@ -90,63 +113,96 @@ func Verify(root *etree.Element, sigpath string) (*Signature, error) {
 	if err != nil {
 		return nil, errors.New("xmldsig: invalid signature")
 	}
-	if err := x509tools.Verify(pubkey, hash, siCalc, sigv); err != nil {
+	if pubkey == nil {
+		// if no KeyValue is present then use the X509 certificate
+		if len(certs) == 0 {
+			return nil, errors.New("xmldsig: missing public key")
+		}
+		// no guarantee is made about the order in which certs appear, so try all of them
+		for _, cert := range certs {
+			err = x509tools.Verify(cert.PublicKey, hash, siCalc, sigv)
+			if err == nil {
+				pubkey = cert.PublicKey
+				break
+			}
+		}
+	} else {
+		err = x509tools.Verify(pubkey, hash, siCalc, sigv)
+	}
+	if err != nil {
 		return nil, fmt.Errorf("xmldsig: %s", err)
 	}
 	// check reference digest
-	sigEl.Parent().RemoveChild(sigEl)
-	refCalc, err := hashCanon(root, hash)
+	var reference *etree.Element
+	if sig.Reference.URI == "" {
+		// enveloped signature
+		if len(sig.Reference.Transforms) != 2 ||
+			sig.Reference.Transforms[0].Algorithm != AlgDsigEnvelopedSignature ||
+			(sig.Reference.Transforms[1].Algorithm != AlgXMLExcC14n && sig.Reference.Transforms[1].Algorithm != AlgXMLExcC14nRec) {
+			return nil, errors.New("xmldsig: unsupported reference transform")
+		}
+		sigEl.Parent().RemoveChild(sigEl)
+		reference = root
+	} else {
+		// enveloping signature
+		if len(sig.Reference.Transforms) != 1 ||
+			(sig.Reference.Transforms[0].Algorithm != AlgXMLExcC14n && sig.Reference.Transforms[0].Algorithm != AlgXMLExcC14nRec) {
+			return nil, errors.New("xmldsig: unsupported reference transform")
+		}
+		if sig.Reference.URI[0] != '#' {
+			return nil, errors.New("xmldsig: unsupported reference URI")
+		}
+		reference = root.FindElement(fmt.Sprintf("[@Id='%s']", sig.Reference.URI[1:]))
+	}
+	if reference == nil {
+		return nil, errors.New("xmldsig: unable to locate reference")
+	}
+	refCalc, err := hashCanon(reference, hash)
 	if err != nil {
 		return nil, err
 	}
-	refGiven, err := base64.StdEncoding.DecodeString(sig.DigestValue)
+	refGiven, err := base64.StdEncoding.DecodeString(sig.Reference.DigestValue)
 	if len(refGiven) != len(refCalc) || err != nil {
 		return nil, errors.New("xmldsig: invalid signature")
 	}
 	if !hmac.Equal(refGiven, refCalc) {
 		return nil, fmt.Errorf("xmldsig: digest mismatch: calculated %x, found %x", refCalc, refGiven)
 	}
-	// parse x509 certs if present
-	var certs []*x509.Certificate
-	for _, b64 := range sig.X509Certificates {
-		der, err := base64.StdEncoding.DecodeString(b64)
-		if err != nil {
-			return nil, fmt.Errorf("xmldsig: invalid X509 certificate")
-		}
-		cert, err := x509.ParseCertificate(der)
-		if err != nil {
-			return nil, fmt.Errorf("xmldsig: invalid X509 certificate: %s", err)
-		}
-		certs = append(certs, cert)
-	}
-	return &Signature{pubkey, certs, hash, sigv}, nil
+	return &Signature{
+		PublicKey:       pubkey,
+		Certificates:    certs,
+		Hash:            hash,
+		EncryptedDigest: sigv,
+		Reference:       reference,
+	}, nil
 }
 
-func parseAlgs(hashAlg, sigAlg string) (crypto.Hash, string, error) {
-	if strings.HasPrefix(hashAlg, NsXMLDsig) {
-		hashAlg = hashAlg[len(NsXMLDsig):]
-	} else if strings.HasPrefix(hashAlg, NsXMLDsigMore) {
-		hashAlg = hashAlg[len(NsXMLDsigMore):]
-	} else {
-		return 0, "", errors.New("xmldsig: unsupported digest algorithm")
-	}
-	var hash crypto.Hash
-	for h2, name := range hashNames {
-		if hashAlg == name {
-			hash = h2
+func HashAlgorithm(hashAlg string) (string, crypto.Hash) {
+	for _, prefix := range nsPrefixes {
+		if strings.HasPrefix(hashAlg, prefix) {
+			hashAlg = hashAlg[len(prefix):]
 			break
 		}
 	}
-	if hash == 0 {
+	for hash, name := range hashNames {
+		if hashAlg == name {
+			return hashAlg, hash
+		}
+	}
+	return hashAlg, 0
+}
+
+func parseAlgs(hashAlg, sigAlg string) (crypto.Hash, string, error) {
+	hashAlg, hash := HashAlgorithm(hashAlg)
+	if !hash.Available() {
 		return 0, "", errors.New("xmldsig: unsupported digest algorithm")
 	}
 
-	if strings.HasPrefix(sigAlg, NsXMLDsig) {
-		sigAlg = sigAlg[len(NsXMLDsig):]
-	} else if strings.HasPrefix(sigAlg, NsXMLDsigMore) {
-		sigAlg = sigAlg[len(NsXMLDsigMore):]
-	} else {
-		return 0, "", errors.New("xmldsig: unsupported signature algorithm")
+	for _, prefix := range nsPrefixes {
+		if strings.HasPrefix(sigAlg, prefix) {
+			sigAlg = sigAlg[len(prefix):]
+			break
+		}
 	}
 	if !strings.HasSuffix(sigAlg, "-"+hashAlg) {
 		return 0, "", errors.New("xmldsig: unsupported signature algorithm")
@@ -158,7 +214,7 @@ func parseAlgs(hashAlg, sigAlg string) (crypto.Hash, string, error) {
 	return hash, sigAlg, nil
 }
 
-func parseKey(kv keyValue, pubtype string) (crypto.PublicKey, error) {
+func parseKey(kv *keyValue, pubtype string) (crypto.PublicKey, error) {
 	switch pubtype {
 	case "rsa":
 		nbytes, err := base64.StdEncoding.DecodeString(kv.Modulus)

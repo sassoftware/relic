@@ -37,13 +37,25 @@ import (
 type SignOptions struct {
 	// Use non-standard namespace for SHA-256 found in Microsoft ClickOnce manifests
 	MsCompatHashNames bool
+	// Use REC namespace for c14n method instead of the finalized one
+	UseRecC14n bool
 	// Add the X509 certificate chain to the KeyInfo
 	IncludeX509 bool
+	// Add a KeyValue element with the public key
+	IncludeKeyValue bool
+}
+
+func (s SignOptions) c14nNamespace() string {
+	if s.UseRecC14n {
+		return AlgXMLExcC14nRec
+	} else {
+		return AlgXMLExcC14n
+	}
 }
 
 // Create an enveloped signature from the document rooted at "root", replacing
 // any existing signature and adding it as a last child of "parent".
-func Sign(root *etree.Element, parent *etree.Element, hash crypto.Hash, privKey crypto.Signer, certs []*x509.Certificate, opts SignOptions) error {
+func Sign(root, parent *etree.Element, hash crypto.Hash, privKey crypto.Signer, certs []*x509.Certificate, opts SignOptions) error {
 	pubKey := privKey.Public()
 	if len(certs) < 1 || !x509tools.SameKey(pubKey, certs[0].PublicKey) {
 		return errors.New("xmldsig: first certificate must match private key")
@@ -58,17 +70,66 @@ func Sign(root *etree.Element, parent *etree.Element, hash crypto.Hash, privKey 
 	// build a signedinfo that references the enveloping document
 	signature := parent.CreateElement("Signature")
 	signature.CreateAttr("xmlns", NsXMLDsig)
+	signedinfo := buildSignedInfo(signature, "", hashAlg, sigAlg, refDigest, opts)
+	return finishSignature(signature, signedinfo, hash, privKey, certs, opts)
+}
+
+// Build an enveloping Signature document around the given Object element
+func SignEnveloping(object *etree.Element, hash crypto.Hash, privKey crypto.Signer, certs []*x509.Certificate, opts SignOptions) (*etree.Element, error) {
+	pubKey := privKey.Public()
+	if len(certs) < 1 || !x509tools.SameKey(pubKey, certs[0].PublicKey) {
+		return nil, errors.New("xmldsig: first certificate must match private key")
+	}
+	// insert the object into the signature element before canonicalizing so
+	// that the namespace gets pushed down properly
+	signature := etree.NewElement("Signature")
+	signature.CreateAttr("xmlns", NsXMLDsig)
+	signature.AddChild(object)
+	refDigest, err := hashCanon(object, hash)
+	hashAlg, sigAlg, err := hashAlgs(hash, pubKey, opts)
+	if err != nil {
+		return nil, err
+	}
+	if object.Tag != "Object" {
+		return nil, errors.New("object must have tag \"Object\"")
+	}
+	refId := object.SelectAttrValue("Id", "")
+	if refId == "" {
+		return nil, errors.New("object lacks an Id attribute")
+	}
+	// build a signedinfo that references the enveloping document
+	signedinfo := buildSignedInfo(signature, refId, hashAlg, sigAlg, refDigest, opts)
+	// canonicalize the signedinfo section and sign it
+	if err := finishSignature(signature, signedinfo, hash, privKey, certs, opts); err != nil {
+		return nil, err
+	}
+	signature.RemoveChild(object)
+	signature.AddChild(object)
+	return signature, nil
+}
+
+func buildSignedInfo(signature *etree.Element, refId, hashAlg, sigAlg string, refDigest []byte, opts SignOptions) *etree.Element {
 	signedinfo := signature.CreateElement("SignedInfo")
-	signedinfo.CreateElement("CanonicalizationMethod").CreateAttr("Algorithm", AlgXMLExcC14n)
+	signedinfo.CreateElement("CanonicalizationMethod").CreateAttr("Algorithm", opts.c14nNamespace())
 	signedinfo.CreateElement("SignatureMethod").CreateAttr("Algorithm", sigAlg)
 	reference := signedinfo.CreateElement("Reference")
-	reference.CreateAttr("URI", "")
+	if refId == "" {
+		reference.CreateAttr("URI", "")
+	} else {
+		reference.CreateAttr("URI", "#"+refId)
+		reference.CreateAttr("Type", NsXMLDsig+"Object")
+	}
 	transforms := reference.CreateElement("Transforms")
-	transforms.CreateElement("Transform").CreateAttr("Algorithm", AlgDsigEnvelopedSignature)
-	transforms.CreateElement("Transform").CreateAttr("Algorithm", AlgXMLExcC14n)
+	if refId == "" {
+		transforms.CreateElement("Transform").CreateAttr("Algorithm", AlgDsigEnvelopedSignature)
+	}
+	transforms.CreateElement("Transform").CreateAttr("Algorithm", opts.c14nNamespace())
 	reference.CreateElement("DigestMethod").CreateAttr("Algorithm", hashAlg)
 	reference.CreateElement("DigestValue").SetText(base64.StdEncoding.EncodeToString(refDigest))
-	// canonicalize the signedinfo section and sign it
+	return signedinfo
+}
+
+func finishSignature(signature, signedinfo *etree.Element, hash crypto.Hash, privKey crypto.Signer, certs []*x509.Certificate, opts SignOptions) error {
 	siDigest, err := hashCanon(signedinfo, hash)
 	sig, err := privKey.Sign(rand.Reader, siDigest, hash)
 	if err != nil {
@@ -76,13 +137,17 @@ func Sign(root *etree.Element, parent *etree.Element, hash crypto.Hash, privKey 
 	}
 	// build the rest of the signature element
 	signature.CreateElement("SignatureValue").SetText(base64.StdEncoding.EncodeToString(sig))
-	keyinfo := signature.CreateElement("KeyInfo")
-	addcerts := certs
-	if !opts.IncludeX509 {
-		addcerts = nil
+	keyinfo := etree.NewElement("KeyInfo")
+	if opts.IncludeKeyValue {
+		if err := addKeyInfo(keyinfo, privKey.Public()); err != nil {
+			return err
+		}
 	}
-	if err := addKeyInfo(keyinfo, pubKey, addcerts); err != nil {
-		return err
+	if opts.IncludeX509 && len(certs) > 0 {
+		addCerts(keyinfo, certs)
+	}
+	if len(keyinfo.Child) > 0 {
+		signature.AddChild(keyinfo)
 	}
 	return nil
 }
@@ -125,10 +190,10 @@ func hashAlgs(hash crypto.Hash, pubKey crypto.PublicKey, opts SignOptions) (stri
 		return "", "", errors.New("unsupported key type")
 	}
 	var hashAlg, sigAlg string
-	if hashName == "sha1" || opts.MsCompatHashNames {
+	if opts.MsCompatHashNames {
 		hashAlg = NsXMLDsig + hashName
 	} else {
-		hashAlg = NsXMLDsigMore + hashName
+		hashAlg = HashUris[hash]
 	}
 	if pubName == "rsa" && (hashName == "sha1" || opts.MsCompatHashNames) {
 		sigAlg = NsXMLDsig + pubName + "-" + hashName
@@ -139,7 +204,7 @@ func hashAlgs(hash crypto.Hash, pubKey crypto.PublicKey, opts SignOptions) (stri
 }
 
 // Add public key and optional X509 certificate chain to KeyInfo
-func addKeyInfo(keyinfo *etree.Element, pubKey crypto.PublicKey, certs []*x509.Certificate) error {
+func addKeyInfo(keyinfo *etree.Element, pubKey crypto.PublicKey) error {
 	keyvalue := keyinfo.CreateElement("KeyValue")
 	switch k := pubKey.(type) {
 	case *rsa.PublicKey:
@@ -167,11 +232,12 @@ func addKeyInfo(keyinfo *etree.Element, pubKey crypto.PublicKey, certs []*x509.C
 	default:
 		return errors.New("unsupported key type")
 	}
-	if len(certs) > 0 {
-		x509data := keyinfo.CreateElement("X509Data")
-		for _, cert := range certs {
-			x509data.CreateElement("X509Certificate").SetText(base64.StdEncoding.EncodeToString(cert.Raw))
-		}
-	}
 	return nil
+}
+
+func addCerts(keyinfo *etree.Element, certs []*x509.Certificate) {
+	x509data := keyinfo.CreateElement("X509Data")
+	for _, cert := range certs {
+		x509data.CreateElement("X509Certificate").SetText(base64.StdEncoding.EncodeToString(cert.Raw))
+	}
 }

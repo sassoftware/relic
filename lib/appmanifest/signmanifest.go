@@ -60,7 +60,7 @@ func Sign(manifest []byte, cert *certloader.Certificate, opts crypto.SignerOpts)
 		return nil, err
 	}
 	// Primary signature
-	sigopts := xmldsig.SignOptions{MsCompatHashNames: true}
+	sigopts := xmldsig.SignOptions{MsCompatHashNames: true, IncludeKeyValue: true}
 	if err := xmldsig.Sign(root, root, opts.HashFunc(), cert.Signer(), cert.Chain(), sigopts); err != nil {
 		return nil, err
 	}
