@@ -93,20 +93,15 @@ func SameKey(pub1, pub2 interface{}) bool {
 	}
 }
 
-// ASN.1 structure used to encode an ECDSA signature
-type EcdsaSignature struct {
-	R, S *big.Int
-}
-
 // Verify an RSA or ECDSA signature
 func Verify(pub interface{}, hash crypto.Hash, hashed []byte, sig []byte) error {
 	switch pubk := pub.(type) {
 	case *rsa.PublicKey:
 		return rsa.VerifyPKCS1v15(pubk, hash, hashed, sig)
 	case *ecdsa.PublicKey:
-		var esig EcdsaSignature
-		if rest, err := asn1.Unmarshal(sig, &esig); err != nil || len(rest) != 0 {
-			return errors.New("invalid ECDSA signature")
+		esig, err := UnmarshalEcdsaSignature(sig)
+		if err != nil {
+			return err
 		}
 		if !ecdsa.Verify(pubk, hashed, esig.R, esig.S) {
 			return errors.New("ECDSA verification failed")

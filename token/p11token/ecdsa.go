@@ -19,7 +19,6 @@ package p11token
 import (
 	"crypto"
 	"crypto/ecdsa"
-	"encoding/asn1"
 	"errors"
 
 	"gerrit-pdt.unx.sas.com/tools/relic.git/lib/x509tools"
@@ -56,10 +55,11 @@ func (key *Key) signECDSA(digest []byte) (der []byte, err error) {
 	if err != nil {
 		return nil, err
 	}
-	sigBytes := len(sig) / 2
-	r := bytesToBig(sig[:sigBytes])
-	s := bytesToBig(sig[sigBytes:])
-	return asn1.Marshal(x509tools.EcdsaSignature{r, s})
+	parsed, err := x509tools.UnpackEcdsaSignature(sig)
+	if err != nil {
+		return nil, err
+	}
+	return parsed.Marshal(), nil
 }
 
 // Generate ECDSA-specific public and private key attributes from a PrivateKey

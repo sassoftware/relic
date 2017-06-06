@@ -113,6 +113,14 @@ func Verify(root *etree.Element, sigpath string, extraCerts []*x509.Certificate)
 	if err != nil {
 		return nil, errors.New("xmldsig: invalid signature")
 	}
+	if pubtype == "ecdsa" {
+		// reformat with ASN.1 structure
+		sig, err := x509tools.UnpackEcdsaSignature(sigv)
+		if err != nil {
+			return nil, err
+		}
+		sigv = sig.Marshal()
+	}
 	if pubkey == nil {
 		// if no KeyValue is present then use the X509 certificate
 		if len(certs) == 0 {

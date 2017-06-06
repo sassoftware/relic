@@ -136,6 +136,14 @@ func finishSignature(signature, signedinfo *etree.Element, hash crypto.Hash, pri
 		return err
 	}
 	// build the rest of the signature element
+	if _, ok := privKey.Public().(*ecdsa.PublicKey); ok {
+		// reformat the signature without ASN.1 structure
+		esig, err := x509tools.UnmarshalEcdsaSignature(sig)
+		if err != nil {
+			return err
+		}
+		sig = esig.Pack()
+	}
 	signature.CreateElement("SignatureValue").SetText(base64.StdEncoding.EncodeToString(sig))
 	keyinfo := etree.NewElement("KeyInfo")
 	if opts.IncludeKeyValue {

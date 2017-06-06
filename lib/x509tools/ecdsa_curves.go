@@ -143,3 +143,49 @@ func PointToDer(pub *ecdsa.PublicKey) []byte {
 	}
 	return der
 }
+
+// ASN.1 structure used to encode an ECDSA signature
+type EcdsaSignature struct {
+	R, S *big.Int
+}
+
+// Unpack an ECDSA signature from an ASN.1 DER sequence
+func UnmarshalEcdsaSignature(der []byte) (sig EcdsaSignature, err error) {
+	der, err = asn1.Unmarshal(der, &sig)
+	if err != nil || len(der) != 0 {
+		err = errors.New("invalid ECDSA signature")
+	}
+	return
+}
+
+// Unpack an ECDSA signature consisting of two numbers concatenated per IEEE 1363
+func UnpackEcdsaSignature(packed []byte) (sig EcdsaSignature, err error) {
+	byteLen := len(packed) / 2
+	if len(packed) != byteLen*2 {
+		err = errors.New("ecdsa signature is incorrect size")
+	} else {
+		sig.R = new(big.Int).SetBytes(packed[:byteLen])
+		sig.S = new(big.Int).SetBytes(packed[byteLen:])
+	}
+	return
+}
+
+// Marshal an ECDSA signature as an ASN.1 structure
+func (sig EcdsaSignature) Marshal() []byte {
+	ret, _ := asn1.Marshal(sig)
+	return ret
+}
+
+// Pack an ECDSA signature by concatenating the two numbers per IEEE 1363
+func (sig EcdsaSignature) Pack() []byte {
+	rbytes := sig.R.Bytes()
+	sbytes := sig.S.Bytes()
+	byteLen := len(rbytes)
+	if len(sbytes) > byteLen {
+		byteLen = len(sbytes)
+	}
+	ret := make([]byte, byteLen*2)
+	copy(ret[byteLen-len(rbytes):], rbytes)
+	copy(ret[2*byteLen-len(sbytes):], sbytes)
+	return ret
+}
