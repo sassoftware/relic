@@ -23,9 +23,9 @@ glide i
 export GIT_ALLOW_PROTOCOL=none
 # Make sure version gets updated
 touch $GOPATH/src/$module/config/config.go
-GOOS=linux go build -v -ldflags "$ldflags" -o $WORKDIR/build/relic $module/relic
-GOOS=linux go build -v -ldflags "$ldflags" -o $WORKDIR/build/relic-audit $module/relic/relic-audit
-GOOS=windows go build -v -ldflags "$ldflags" -o $WORKDIR/build/relic.exe $module/relic
+GOOS=linux go build -v -ldflags "$ldflags" -o $WORKDIR/build/relic $module
+GOOS=linux go build -v -ldflags "$ldflags" -o $WORKDIR/build/relic-audit $module/relic-audit
+GOOS=windows go build -v -ldflags "$ldflags" -o $WORKDIR/build/relic.exe $module
 
 cd $WORKDIR/build
 rhname=relic-redhat-$version
