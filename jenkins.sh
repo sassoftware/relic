@@ -41,14 +41,13 @@ export GIT_ALLOW_PROTOCOL=none
 # Make sure version gets updated
 touch $GOPATH/src/$module/config/config.go
 GOOS=linux go build -v -ldflags "$ldflags" -o $WORKDIR/build/relic $module
-GOOS=linux go build -v -ldflags "$ldflags" -o $WORKDIR/build/relic-audit $module/relic-audit
 GOOS=windows go build -v -ldflags "$ldflags" -o $WORKDIR/build/relic.exe $module
 
 cd $WORKDIR/build
 rhname=relic-redhat-$version
 mkdir relic-redhat-$version
-cp -a $WORKDIR/checkout/distro/linux/* relic relic-audit $rhname/
+cp -a $WORKDIR/checkout/distro/linux/* relic $rhname/
 sed -i -e "s/^Version:.*/Version: $version/" $rhname/relic.spec
 tar -czf ${rhname}.tar.gz $rhname
 
-rm -rf $rhname relic-audit
+rm -rf $rhname
