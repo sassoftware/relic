@@ -4,7 +4,7 @@ Release: 1%{?dist}
 Summary: Secure package signing service
 License: Apache 2.0
 URL: http://github.com/sassoftware/relic
-Source0: https://jenkins2.unx.sas.com/view/Licensing/job/licensing-relic/lastSuccessfulBuild/artifact/build/relic-redhat-%{version}.tar.gz
+Source0: relic.tar
 Group: Utilities/File
 BuildArch: x86_64
 
@@ -18,14 +18,13 @@ creating keys, manipulating tokens, and a client for accessing a remote signing
 server.
 
 %prep
-%autosetup -n relic-redhat-%{version}
+%autosetup
 
 %install
 mkdir -p %{buildroot}%{systemddir}
 mkdir -p %{buildroot}%{confdir}/{certs,server,audit.d}
 mkdir -p %{buildroot}%{_localstatedir}/log/relic{,-audit}
 install -D relic %{buildroot}%{_bindir}/relic
-install -D relic-audit %{buildroot}%{_bindir}/relic-audit
 install -D relic.yml %{buildroot}%{confdir}/relic.yml
 install -D audit.yml %{buildroot}%{confdir}/audit.yml
 install relic.service relic.socket relic-audit.service %{buildroot}%{systemddir}/
@@ -35,7 +34,6 @@ rm -rf %{buildroot}
 
 %files
 %attr(0755,root,root)           %{_bindir}/relic
-%attr(0755,root,root)           %{_bindir}/relic-audit
 %attr(0644,root,root)           %{systemddir}/relic.service
 %attr(0644,root,root)           %{systemddir}/relic-audit.service
 %attr(0644,root,root)           %{systemddir}/relic.socket

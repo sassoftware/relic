@@ -8,7 +8,7 @@ User=relic-audit
 Group=relic-audit
 Type=notify
 WorkingDirectory=/
-ExecStart=/usr/bin/relic-audit -c /etc/relic/audit.yml
+ExecStart=/usr/bin/relic audit -c /etc/relic/audit.yml
 
 [Install]
 WantedBy=multi-user.target

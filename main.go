@@ -19,6 +19,7 @@ package main
 import (
 	"github.com/sassoftware/relic/cmdline/shared"
 
+	_ "github.com/sassoftware/relic/cmdline/auditor"
 	_ "github.com/sassoftware/relic/cmdline/remotecmd"
 	_ "github.com/sassoftware/relic/cmdline/servecmd"
 	_ "github.com/sassoftware/relic/cmdline/verify"

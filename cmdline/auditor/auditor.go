@@ -23,6 +23,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/sassoftware/relic/cmdline/shared"
 	"github.com/sassoftware/relic/config"
 	"github.com/sassoftware/relic/lib/audit"
 	"github.com/sassoftware/relic/server/activation"
@@ -33,6 +34,7 @@ import (
 )
 
 var AuditCmd = &cobra.Command{
+	Use:   "audit",
 	Short: "Receive audit data from relic servers",
 	RunE:  auditCmd,
 }
@@ -40,6 +42,7 @@ var AuditCmd = &cobra.Command{
 var argConfigFile string
 
 func init() {
+	shared.RootCmd.AddCommand(AuditCmd)
 	AuditCmd.Flags().StringVarP(&argConfigFile, "config", "c", "", "Name of relic-audit configuration file")
 }
 
