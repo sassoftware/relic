@@ -1,0 +1,15 @@
+[Unit]
+Description=Relic package signing service
+Requires=relic.socket
+
+[Service]
+User=relic
+Group=relic
+Type=notify
+WorkingDirectory=/
+ExecStart=/usr/bin/relic -c /etc/relic/relic.yml serve
+KillSignal=QUIT
+
+[Install]
+Also=relic.socket
+WantedBy=multi-user.target

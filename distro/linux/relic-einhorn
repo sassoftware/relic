@@ -1,0 +1,51 @@
+#!/bin/bash
+#
+# Copyright (c) SAS Institute Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+PATH=/usr/local/bin:$PATH
+cfg=/etc/relic/relic.yml
+sock=/run/relic/einhorn.sock
+check() {
+    /usr/bin/relic -c $cfg serve --test || exit $?
+}
+case "$1" in
+    start)
+        check
+        exec einhorn \
+            -c relic \
+            -d $sock \
+            -e /run/relic/einhorn.pid \
+            -f /run/relic/einhorn.lock \
+            -n $(nproc) \
+            -m manual \
+            -q \
+            -b 0.0.0.0:6300,r \
+            -b 0.0.0.0:6301,r \
+            -- \
+            /usr/bin/relic -c $cfg serve
+        ;;
+    stop)
+        [ -e $sock ] || exit 0
+        exec einhornsh -d $sock -e die
+        ;;
+    reload)
+        check
+        exec einhornsh -d $sock -e upgrade
+        ;;
+    *)
+        echo invalid command
+        exit 1
+esac

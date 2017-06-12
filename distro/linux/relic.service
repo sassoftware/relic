@@ -1,15 +1,16 @@
 [Unit]
 Description=Relic package signing service
-Requires=relic.socket
 
 [Service]
 User=relic
 Group=relic
 Type=notify
+NotifyAccess=all
 WorkingDirectory=/
-ExecStart=/usr/bin/relic -c /etc/relic/relic.yml serve
-KillSignal=QUIT
+RuntimeDirectory=relic
+ExecStart=/usr/libexec/relic-einhorn start
+ExecStop=/usr/libexec/relic-einhorn stop
+ExecReload=/usr/libexec/relic-einhorn reload
 
 [Install]
-Also=relic.socket
 WantedBy=multi-user.target
