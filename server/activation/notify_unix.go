@@ -39,15 +39,14 @@ func DaemonReady() (err error) {
 			err = err2
 		}
 	}
-	if name := os.Getenv("EINHORN_SOCK_PATH"); name != "" {
-		// github.com/stripe/einhorn
-		if err2 := writePath(name, "unix", einhornReadyStr()); err2 != nil {
-			err = err2
-		}
-	}
 	if fdstr := os.Getenv("EINHORN_SOCK_FD"); fdstr != "" {
 		// einhorn -g
 		if err2 := writeFd(fdstr, einhornReadyStr()); err2 != nil {
+			err = err2
+		}
+	} else if name := os.Getenv("EINHORN_SOCK_PATH"); name != "" {
+		// github.com/stripe/einhorn
+		if err2 := writePath(name, "unix", einhornReadyStr()); err2 != nil {
 			err = err2
 		}
 	}

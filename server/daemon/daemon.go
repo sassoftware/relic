@@ -80,7 +80,7 @@ func getListener(laddr string, tconf *tls.Config) (net.Listener, error) {
 	return listener, err
 }
 
-func New(config *config.Config, force bool) (*Daemon, error) {
+func New(config *config.Config, force, test bool) (*Daemon, error) {
 	srv, err := server.New(config, force)
 	if err != nil {
 		return nil, err
@@ -89,6 +89,19 @@ func New(config *config.Config, force bool) (*Daemon, error) {
 	if err != nil {
 		return nil, err
 	}
+	httpServer := &http.Server{
+		Handler:   srv,
+		ErrorLog:  srv.ErrorLog,
+		TLSConfig: tconf,
+	}
+	if err := http2.ConfigureServer(httpServer, nil); err != nil {
+		return nil, err
+	}
+	if test {
+		srv.Close()
+		return nil, nil
+	}
+
 	listener, err := getListener(config.Server.Listen, tconf)
 	if err != nil {
 		return nil, err
@@ -100,14 +113,6 @@ func New(config *config.Config, force bool) (*Daemon, error) {
 			return nil, err
 		}
 		listeners = append(listeners, httpListener)
-	}
-	httpServer := &http.Server{
-		Handler:   srv,
-		ErrorLog:  srv.ErrorLog,
-		TLSConfig: tconf,
-	}
-	if err := http2.ConfigureServer(httpServer, nil); err != nil {
-		return nil, err
 	}
 	return &Daemon{
 		server:     srv,

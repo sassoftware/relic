@@ -18,6 +18,7 @@ package servecmd
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/sassoftware/relic/cmdline/shared"
@@ -31,11 +32,12 @@ var ServeCmd = &cobra.Command{
 	RunE:  serveCmd,
 }
 
-var argForce bool
+var argForce, argTest bool
 
 func init() {
 	shared.RootCmd.AddCommand(ServeCmd)
 	ServeCmd.Flags().BoolVarP(&argForce, "force", "f", false, "Start even if the initial health check fails")
+	ServeCmd.Flags().BoolVarP(&argTest, "test", "t", false, "Test configuration and exit")
 }
 
 func MakeServer() (*daemon.Daemon, error) {
@@ -57,7 +59,7 @@ func MakeServer() (*daemon.Daemon, error) {
 	if shared.CurrentConfig.Server.Listen == "" {
 		shared.CurrentConfig.Server.Listen = ":6300"
 	}
-	return daemon.New(shared.CurrentConfig, argForce)
+	return daemon.New(shared.CurrentConfig, argForce, argTest)
 }
 
 func serveCmd(cmd *cobra.Command, args []string) error {
@@ -68,6 +70,9 @@ func serveCmd(cmd *cobra.Command, args []string) error {
 	srv, err := MakeServer()
 	if err != nil {
 		return shared.Fail(err)
+	} else if argTest {
+		fmt.Println("OK")
+		return nil
 	}
 	go watchSignals(srv)
 	if err := srv.Serve(); err != nil && err != http.ErrServerClosed {
