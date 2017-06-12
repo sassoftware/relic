@@ -17,6 +17,7 @@
 package daemon
 
 import (
+	"context"
 	"crypto/tls"
 	"errors"
 	"fmt"
@@ -27,7 +28,6 @@ import (
 	"os"
 	"sync"
 
-	"github.com/braintree/manners"
 	"github.com/sassoftware/relic/config"
 	"github.com/sassoftware/relic/lib/certloader"
 	"github.com/sassoftware/relic/lib/x509tools"
@@ -37,9 +37,10 @@ import (
 )
 
 type Daemon struct {
-	server    *server.Server
-	gracefuls []*manners.GracefulServer
-	listeners []net.Listener
+	server     *server.Server
+	httpServer *http.Server
+	listeners  []net.Listener
+	wg         sync.WaitGroup
 }
 
 func makeTLSConfig(config *config.Config) (*tls.Config, error) {
@@ -108,50 +109,43 @@ func New(config *config.Config, force bool) (*Daemon, error) {
 	if err := http2.ConfigureServer(httpServer, nil); err != nil {
 		return nil, err
 	}
-	gracefuls := make([]*manners.GracefulServer, len(listeners))
-	for i := range listeners {
-		gracefuls[i] = manners.NewWithServer(httpServer)
-	}
 	return &Daemon{
-		server:    srv,
-		gracefuls: gracefuls,
-		listeners: listeners,
+		server:     srv,
+		httpServer: httpServer,
+		listeners:  listeners,
 	}, nil
 }
 
 func (d *Daemon) SetOutput(w io.Writer) {
 	logger := log.New(w, "", 0)
 	d.server.SetLogger(logger)
-	for _, graceful := range d.gracefuls {
-		graceful.ErrorLog = logger
-	}
+	d.httpServer.ErrorLog = logger
 }
 
 func (d *Daemon) Serve() error {
 	activation.DaemonReady()
-	var wg sync.WaitGroup
 	errch := make(chan error, len(d.listeners))
-	srv := func(l net.Listener, g *manners.GracefulServer) {
-		errch <- g.Serve(l)
-		wg.Done()
+	for _, listener := range d.listeners {
+		d.wg.Add(1)
+		go func(listener net.Listener) {
+			errch <- d.httpServer.Serve(listener)
+			d.wg.Done()
+		}(listener)
 	}
-	for i, listener := range d.listeners {
-		wg.Add(1)
-		go srv(listener, d.gracefuls[i])
-	}
-	wg.Wait()
+	d.wg.Wait()
 	for _ = range d.listeners {
-		err := <-errch
-		if err != nil {
+		if err := <-errch; err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (d *Daemon) Close() {
-	for _, graceful := range d.gracefuls {
-		graceful.Close()
-	}
+func (d *Daemon) Close() error {
+	// prevent Serve() from returning until the shutdown completes
+	d.wg.Add(1)
+	err := d.httpServer.Shutdown(context.Background())
 	d.server.Close()
+	d.wg.Done()
+	return err
 }

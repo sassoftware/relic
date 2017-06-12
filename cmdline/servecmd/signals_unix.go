@@ -40,7 +40,9 @@ func watchSignals(srv *daemon.Daemon) {
 		sig := <-ch
 		if (sig == syscall.SIGQUIT || sig == syscall.SIGUSR2) && !already {
 			log.Printf("Received signal %d; shutting down gracefully", sig)
-			srv.Close()
+			if err := srv.Close(); err != nil {
+				log.Printf("ERROR: failed to shutdown gracefully: %s", err)
+			}
 			already = true
 		} else {
 			log.Printf("Received signal %d; shutting down immediately", sig)

@@ -18,6 +18,7 @@ package servecmd
 
 import (
 	"errors"
+	"net/http"
 
 	"github.com/sassoftware/relic/cmdline/shared"
 	"github.com/sassoftware/relic/server/daemon"
@@ -69,5 +70,8 @@ func serveCmd(cmd *cobra.Command, args []string) error {
 		return shared.Fail(err)
 	}
 	go watchSignals(srv)
-	return shared.Fail(srv.Serve())
+	if err := srv.Serve(); err != nil && err != http.ErrServerClosed {
+		return shared.Fail(err)
+	}
+	return nil
 }

@@ -1,10 +1,8 @@
-hash: 1fcf7f6f7cd873f0c05611597e9333f0776b278812990f7b252f1bbe31179687
-updated: 2017-06-06T20:52:27.800277194Z
+hash: 758f2003cff4d6b9e320e9a867c8b81b5081943f1a456807b044ca003d44fc03
+updated: 2017-06-12T16:44:36.253822653Z
 imports:
 - name: github.com/beevik/etree
   version: 1095c300fba68cb7f7895c0f96b2d34927f8115b
-- name: github.com/braintree/manners
-  version: 82a8879fc5fd0381fa8b2d8033b19bf255252088
 - name: github.com/danieljoos/wincred
   version: 412b574fb496839b312a75fba146bd32a89001cf
 - name: github.com/godbus/dbus
