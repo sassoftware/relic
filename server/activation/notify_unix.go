@@ -26,21 +26,32 @@ import (
 )
 
 // Signal to a parent init system or daemon manager that the daemon is finished starting up
-func DaemonReady() error {
+func DaemonReady() (err error) {
 	if name := os.Getenv("NOTIFY_SOCKET"); name != "" {
 		// systemd
-		return writePath(name, "unixgram", "READY=1")
-	} else if fdstr := os.Getenv("NOTIFY_FD"); fdstr != "" {
-		// github.com/pusher/crank
-		return writeFd(fdstr, "READY=1")
-	} else if name := os.Getenv("EINHORN_SOCK_PATH"); name != "" {
-		// github.com/stripe/einhorn
-		return writePath(name, "unix", einhornReadyStr())
-	} else if fdstr := os.Getenv("EINHORN_SOCK_FD"); fdstr != "" {
-		// einhorn -g
-		return writeFd(fdstr, einhornReadyStr())
+		if err2 := writePath(name, "unixgram", "READY=1"); err2 != nil {
+			err = err2
+		}
 	}
-	return nil
+	if fdstr := os.Getenv("NOTIFY_FD"); fdstr != "" {
+		// github.com/pusher/crank
+		if err2 := writeFd(fdstr, "READY=1"); err2 != nil {
+			err = err2
+		}
+	}
+	if name := os.Getenv("EINHORN_SOCK_PATH"); name != "" {
+		// github.com/stripe/einhorn
+		if err2 := writePath(name, "unix", einhornReadyStr()); err2 != nil {
+			err = err2
+		}
+	}
+	if fdstr := os.Getenv("EINHORN_SOCK_FD"); fdstr != "" {
+		// einhorn -g
+		if err2 := writeFd(fdstr, einhornReadyStr()); err2 != nil {
+			err = err2
+		}
+	}
+	return
 }
 
 func writePath(path, netType, message string) error {
