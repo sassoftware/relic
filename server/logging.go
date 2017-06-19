@@ -21,6 +21,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // Set the logger where the server will write its messages
@@ -55,6 +56,7 @@ type loggingWriter struct {
 	http.ResponseWriter
 	s      *Server
 	r      *http.Request
+	st     time.Time
 	wrote  bool
 	length int64
 	status int
@@ -89,5 +91,6 @@ func (lw *loggingWriter) Close() {
 	if ua == "" {
 		ua = "-"
 	}
-	lw.s.Logr(lw.r, "%s \"%s\" %d %d %s", lw.r.Method, lw.r.URL, lw.status, lw.length, ua)
+	elapsed := time.Since(lw.st)
+	lw.s.Logr(lw.r, "%s \"%s\" %d %d %s %.03f", lw.r.Method, lw.r.URL, lw.status, lw.length, ua, elapsed.Seconds())
 }

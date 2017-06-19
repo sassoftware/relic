@@ -29,6 +29,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/sassoftware/relic/config"
 	"github.com/sassoftware/relic/lib/compresshttp"
@@ -135,7 +136,7 @@ func (s *Server) CheckKeyAccess(request *http.Request, keyName string) *config.K
 
 func (s *Server) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	writer.Header().Set("Accept-Encoding", compresshttp.AcceptedEncodings)
-	lw := &loggingWriter{ResponseWriter: writer, s: s, r: request}
+	lw := &loggingWriter{ResponseWriter: writer, s: s, r: request, st: time.Now()}
 	defer lw.Close()
 	response, err := s.callHandler(request, lw)
 	if err != nil {
