@@ -45,6 +45,10 @@ case "$1" in
         check
         exec einhornsh -d $sock -e upgrade
         ;;
+    reopenlogs)
+        [ -e $sock ] || exit 0
+        exec einhornsh -d $sock -e "signal USR1"
+        ;;
     *)
         echo invalid command
         exit 1

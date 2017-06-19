@@ -33,18 +33,24 @@ func watchSignals(srv *daemon.Daemon) {
 		syscall.SIGINT,
 		syscall.SIGTERM,
 		syscall.SIGQUIT,
+		syscall.SIGUSR1,
 		syscall.SIGUSR2,
 	)
 	already := false
 	for {
 		sig := <-ch
-		if (sig == syscall.SIGQUIT || sig == syscall.SIGUSR2) && !already {
+		switch {
+		case sig == syscall.SIGUSR1:
+			if err := srv.ReopenLogger(); err != nil {
+				log.Printf("Failed to reopen logs: %s", err)
+			}
+		case (sig == syscall.SIGQUIT || sig == syscall.SIGUSR2) && !already:
 			log.Printf("Received signal %d; shutting down gracefully", sig)
 			if err := srv.Close(); err != nil {
 				log.Printf("ERROR: failed to shutdown gracefully: %s", err)
 			}
 			already = true
-		} else {
+		default:
 			log.Printf("Received signal %d; shutting down immediately", sig)
 			os.Exit(0)
 		}

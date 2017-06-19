@@ -127,6 +127,10 @@ func (d *Daemon) SetOutput(w io.Writer) {
 	d.httpServer.ErrorLog = logger
 }
 
+func (d *Daemon) ReopenLogger() error {
+	return d.server.ReopenLogger()
+}
+
 func (d *Daemon) Serve() error {
 	activation.DaemonReady()
 	errch := make(chan error, len(d.listeners))

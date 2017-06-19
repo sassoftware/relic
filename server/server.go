@@ -22,11 +22,13 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
 	"runtime"
 	"strings"
+	"sync"
 
 	"github.com/sassoftware/relic/config"
 	"github.com/sassoftware/relic/lib/compresshttp"
@@ -35,6 +37,8 @@ import (
 type Server struct {
 	Config   *config.Config
 	ErrorLog *log.Logger
+	closeLog io.Closer
+	logMu    sync.Mutex
 	Closed   <-chan bool
 	closeCh  chan<- bool
 }
@@ -162,24 +166,36 @@ func (s *Server) Close() error {
 	return nil
 }
 
-func New(config *config.Config, force bool) (*Server, error) {
-	var logger *log.Logger
-	if config.Server.LogFile != "" {
-		f, err := os.OpenFile(config.Server.LogFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
-		if err != nil {
-			return nil, fmt.Errorf("failed to open logfile: %s", err)
-		}
-		logger = log.New(f, "", log.Ldate|log.Ltime|log.Lmicroseconds)
-	} else {
-		logger = log.New(os.Stderr, "", 0)
+func (s *Server) ReopenLogger() error {
+	if s.Config.Server.LogFile == "" {
+		return nil
 	}
+	f, err := os.OpenFile(s.Config.Server.LogFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		return err
+	}
+	s.ErrorLog.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds)
+	s.ErrorLog.SetOutput(f)
+	s.logMu.Lock()
+	defer s.logMu.Unlock()
+	if s.closeLog != nil {
+		s.closeLog.Close()
+	}
+	s.closeLog = f
+	return nil
+}
+
+func New(config *config.Config, force bool) (*Server, error) {
 	closed := make(chan bool)
 	s := &Server{
-		Config:  config,
-		Closed:  closed,
-		closeCh: closed,
+		Config:   config,
+		Closed:   closed,
+		closeCh:  closed,
+		ErrorLog: log.New(os.Stderr, "", 0),
 	}
-	s.SetLogger(logger)
+	if err := s.ReopenLogger(); err != nil {
+		return nil, fmt.Errorf("failed to open logfile: %s", err)
+	}
 	if err := s.startHealthCheck(force); err != nil {
 		return nil, err
 	}

@@ -46,6 +46,7 @@ install -D relic %{buildroot}%{_bindir}/relic
 install -D relic-einhorn %{buildroot}%{_libexecdir}/relic-einhorn
 install -D relic.yml %{buildroot}%{confdir}/relic.yml
 install -D audit.yml %{buildroot}%{confdir}/audit.yml
+install -D logrotate.conf %{buildroot}%{_sysconfdir}/logrotate.d/relic
 install relic.service relic-audit.service %{buildroot}%{systemddir}/
 
 %clean
@@ -54,7 +55,6 @@ rm -rf %{buildroot}
 %files
 %attr(0755,root,root)           %{_bindir}/relic
 %attr(0755,root,root) %dir      %{confdir}
-%attr(0750,relic,relic) %dir    %{_localstatedir}/log/relic
 
 %files server
 %attr(0755,root,root)           %{_libexecdir}/relic-einhorn
@@ -62,6 +62,8 @@ rm -rf %{buildroot}
 %attr(0755,root,root) %dir      %{confdir}/certs
 %attr(0640,root,relic) %config(noreplace) %{confdir}/relic.yml
 %attr(0750,root,relic) %dir     %{confdir}/server
+%attr(0750,relic,relic) %dir    %{_localstatedir}/log/relic
+%attr(0644,root,root)           %{_sysconfdir}/logrotate.d/relic
 
 %files audit
 %attr(0644,root,root)           %{systemddir}/relic-audit.service
