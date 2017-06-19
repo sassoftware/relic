@@ -29,6 +29,7 @@ import (
 	"github.com/sassoftware/relic/lib/atomicfile"
 	"github.com/sassoftware/relic/lib/audit"
 	"github.com/sassoftware/relic/lib/certloader"
+	"github.com/sassoftware/relic/lib/readercounter"
 	"github.com/sassoftware/relic/signers"
 	"github.com/sassoftware/relic/signers/pkcs"
 	"github.com/sassoftware/relic/signers/sigerrors"
@@ -68,6 +69,7 @@ func signCmd(cmd *cobra.Command, args []string) error {
 	if argOutput == "" {
 		argOutput = argFile
 	}
+	startTime := time.Now()
 	mod, err := signers.ByFile(argFile, argSigType)
 	if err != nil {
 		return shared.Fail(err)
@@ -108,13 +110,16 @@ func signCmd(cmd *cobra.Command, args []string) error {
 	defer infile.Close()
 	if argServer {
 		// sign an already-transformed stream and output a sig blob
-		blob, err := mod.Sign(infile, cert, opts)
+		counter := readercounter.New(infile)
+		blob, err := mod.Sign(counter, cert, opts)
 		if err != nil {
 			return shared.Fail(err)
 		}
 		if err := atomicfile.WriteFile(argOutput, blob); err != nil {
 			return shared.Fail(err)
 		}
+		opts.Audit.Attributes["perf.size.in"] = counter.N
+		opts.Audit.Attributes["perf.size.patch"] = len(blob)
 	} else {
 		// transform the input, sign the stream, and apply the result
 		transform, err := mod.GetTransform(infile, opts)
@@ -133,7 +138,10 @@ func signCmd(cmd *cobra.Command, args []string) error {
 		if err := transform.Apply(argOutput, mimeType, bytes.NewReader(blob)); err != nil {
 			return shared.Fail(err)
 		}
+		opts.Audit.Attributes["perf.size.patch"] = len(blob)
 	}
+	duration := time.Since(startTime)
+	opts.Audit.Attributes["perf.elapsed.ms"] = duration.Nanoseconds() / 1e6
 	if err := PublishAudit(opts.Audit); err != nil {
 		return err
 	}
