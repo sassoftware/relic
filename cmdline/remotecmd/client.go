@@ -252,7 +252,8 @@ func (e ResponseError) Temporary() bool {
 	case http.StatusGatewayTimeout,
 		http.StatusBadGateway,
 		http.StatusServiceUnavailable,
-		http.StatusInsufficientStorage:
+		http.StatusInsufficientStorage,
+		http.StatusInternalServerError:
 		return true
 	default:
 		return false
