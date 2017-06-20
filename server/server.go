@@ -33,6 +33,7 @@ import (
 
 	"github.com/sassoftware/relic/config"
 	"github.com/sassoftware/relic/lib/compresshttp"
+	"github.com/sassoftware/relic/lib/isologger"
 )
 
 type Server struct {
@@ -175,8 +176,6 @@ func (s *Server) ReopenLogger() error {
 	if err != nil {
 		return err
 	}
-	s.ErrorLog.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds)
-	s.ErrorLog.SetOutput(f)
 	s.logMu.Lock()
 	defer s.logMu.Unlock()
 	if s.closeLog != nil {
@@ -194,6 +193,7 @@ func New(config *config.Config, force bool) (*Server, error) {
 		closeCh:  closed,
 		ErrorLog: log.New(os.Stderr, "", 0),
 	}
+	isologger.SetOutput(s.ErrorLog, os.Stderr, isologger.RFC3339Milli)
 	if err := s.ReopenLogger(); err != nil {
 		return nil, fmt.Errorf("failed to open logfile: %s", err)
 	}
