@@ -19,11 +19,10 @@ package servecmd
 import (
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
-	"os"
 
 	"github.com/sassoftware/relic/cmdline/shared"
-	"github.com/sassoftware/relic/lib/isologger"
 	"github.com/sassoftware/relic/server/daemon"
 	"github.com/spf13/cobra"
 )
@@ -69,7 +68,8 @@ func serveCmd(cmd *cobra.Command, args []string) error {
 		// windows service
 		return nil
 	}
-	isologger.SetOutput(nil, os.Stderr, isologger.RFC3339Milli)
+	// let journald add timestamps
+	log.SetFlags(0)
 	srv, err := MakeServer()
 	if err != nil {
 		return shared.Fail(err)

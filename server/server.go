@@ -178,6 +178,7 @@ func (s *Server) ReopenLogger() error {
 	}
 	s.logMu.Lock()
 	defer s.logMu.Unlock()
+	isologger.SetOutput(s.ErrorLog, f, isologger.RFC3339Milli)
 	if s.closeLog != nil {
 		s.closeLog.Close()
 	}
@@ -193,7 +194,6 @@ func New(config *config.Config, force bool) (*Server, error) {
 		closeCh:  closed,
 		ErrorLog: log.New(os.Stderr, "", 0),
 	}
-	isologger.SetOutput(s.ErrorLog, os.Stderr, isologger.RFC3339Milli)
 	if err := s.ReopenLogger(); err != nil {
 		return nil, fmt.Errorf("failed to open logfile: %s", err)
 	}
