@@ -1,4 +1,4 @@
-relic is a multi-tool and server for package signing and working with PKCS#11 hardware security modules (HSMs).
+relic is a multi-tool and server for package signing and working with hardware security modules (HSMs).
 
 # Package types
 * RPM - RedHat packages
@@ -15,6 +15,13 @@ relic is a multi-tool and server for package signing and working with PKCS#11 ha
 * VSIX - Visual Studio extension
 * PGP - detached or cleartext signature of data
 
+# Token types
+relic can work with several types of token:
+
+* pkcs11 - Industry standard PKCS#11 HSM interface using shared object files
+* scdaemon - The GnuPG scdaemon service can enable access to OpenPGP cards (such as Yubikey NEO)
+* file - Private keys stored in a password-protected file
+
 # Features
 Relic is primarily meant to operate as a signing server, allowing clients to authenticate with a TLS certificate and sign packages remotely. It can also be used as a standalone signing tool.
 
@@ -28,12 +35,11 @@ Other features include:
 * Verify signatures, certificate chains and timestamps on all supported package types
 * Sending audit logs to an AMQP broker, with an optional sealing signature
 * Save token PINs in the system keyring
-* Using file-based private keys instead of a token
 
 # Platforms
 Linux and Windows are supported. Other platforms probably work as well.
 
-relic is tested using libsofthsm2 and Gemalto SafeNet "Luna SA" HSMs. Every vendor PKCS#11 implementation has quirks, so if relic doesn't work with your hardware please submit a pull request.
+relic is tested using libsofthsm2 and Gemalto SafeNet Network HSM (Luna SA). Every vendor PKCS#11 implementation has quirks, so if relic doesn't work with your hardware please submit a pull request.
 
 # Installation
 1. Install ltdl development headers, i.e.

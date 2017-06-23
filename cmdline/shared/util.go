@@ -22,12 +22,14 @@ import (
 	"os"
 
 	"github.com/sassoftware/relic/config"
+	"github.com/sassoftware/relic/lib/dlog"
 )
 
 func InitConfig() error {
 	if CurrentConfig != nil {
 		return nil
 	}
+	dlog.SetLevel(ArgDebug)
 	usedDefault := false
 	if ArgConfig == "" {
 		ArgConfig = config.DefaultConfig()

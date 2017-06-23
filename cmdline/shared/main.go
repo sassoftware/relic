@@ -25,9 +25,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var ArgConfig string
-var CurrentConfig *config.Config
-var argVersion bool
+var (
+	ArgConfig     string
+	ArgDebug      uint32
+	CurrentConfig *config.Config
+
+	argVersion bool
+)
 
 var lateHooks []func()
 
@@ -40,6 +44,7 @@ var RootCmd = &cobra.Command{
 func init() {
 	RootCmd.PersistentFlags().StringVarP(&ArgConfig, "config", "c", "", "Configuration file")
 	RootCmd.PersistentFlags().BoolVar(&argVersion, "version", false, "Show version and exit")
+	RootCmd.PersistentFlags().Uint32VarP(&ArgDebug, "debug", "d", 0, "Log additional diagnostic data. (0-9)")
 }
 
 func showVersion(cmd *cobra.Command, args []string) {

@@ -1,0 +1,12 @@
+[Unit]
+Description=GnuPG SmartCard Daemon
+Before=relic.service
+
+[Service]
+Type=forking
+Environment=GNUPGHOME=%t/scdaemon/%I
+ExecStartPre=/bin/mkdir -p $GNUPGHOME
+ExecStart=/usr/libexec/scdaemon --daemon --quiet --reader-port %I
+
+[Install]
+WantedBy=multi-user.target

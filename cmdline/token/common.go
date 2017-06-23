@@ -30,6 +30,7 @@ import (
 	"github.com/sassoftware/relic/token"
 	"github.com/sassoftware/relic/token/filetoken"
 	"github.com/sassoftware/relic/token/p11token"
+	"github.com/sassoftware/relic/token/scdtoken"
 	"github.com/spf13/cobra"
 )
 
@@ -135,6 +136,8 @@ func openToken(tokenName string) (token.Token, error) {
 		tok, err = p11token.Open(cfg, tokenName, prompt)
 	case "file":
 		tok, err = filetoken.Open(cfg, tokenName, prompt)
+	case "scdaemon":
+		tok, err = scdtoken.Open(cfg, tokenName, prompt)
 	default:
 		return nil, fmt.Errorf("unknown token type %s", tcfg.Type)
 	}
