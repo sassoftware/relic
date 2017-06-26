@@ -20,6 +20,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"math/big"
+	"strings"
 )
 
 func makeKeyID() []byte {
@@ -31,7 +32,7 @@ func makeKeyID() []byte {
 }
 
 func parseKeyID(value string) ([]byte, error) {
-	return hex.DecodeString(value)
+	return hex.DecodeString(strings.Replace(value, ":", "", -1))
 }
 
 func bytesToBig(val []byte) *big.Int {

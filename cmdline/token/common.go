@@ -39,7 +39,6 @@ var (
 	argKeyName   string
 	argToken     string
 	argLabel     string
-	argTokenName string
 	argRsaBits   uint
 	argEcdsaBits uint
 )
@@ -132,7 +131,7 @@ func openToken(tokenName string) (token.Token, error) {
 		return nil, err
 	}
 	switch tcfg.Type {
-	case "pkcs11", "":
+	case "pkcs11":
 		tok, err = p11token.Open(cfg, tokenName, prompt)
 	case "file":
 		tok, err = filetoken.Open(cfg, tokenName, prompt)

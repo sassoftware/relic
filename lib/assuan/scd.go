@@ -140,21 +140,21 @@ func (k *ScdKey) Public() (crypto.PublicKey, error) {
 		return nil, err
 	}
 	if len(exp.Items) != 1 {
-		return nil, errors.New("invalid public key in token A")
+		return nil, errors.New("invalid public key in token")
 	}
 	exp = exp.Items[0]
 	if len(exp.Items) != 2 || !bytes.Equal(exp.Items[0].Value, []byte("public-key")) {
-		return nil, errors.New("invalid public key in token B")
+		return nil, errors.New("invalid public key in token")
 	}
 	exp = exp.Items[1]
 	if len(exp.Items) == 0 {
-		return nil, errors.New("invalid public key in token C")
+		return nil, errors.New("invalid public key in token")
 	}
 	keyType := string(exp.Items[0].Value)
 	values := make(map[string][]byte)
 	for _, item := range exp.Items[1:] {
 		if len(item.Items) != 2 {
-			return nil, errors.New("invalid public key in token D")
+			return nil, errors.New("invalid public key in token")
 		}
 		name := string(item.Items[0].Value)
 		value := item.Items[1].Value

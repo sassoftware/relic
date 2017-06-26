@@ -19,6 +19,7 @@ package p11token
 import (
 	"errors"
 	"fmt"
+	"io"
 	"runtime"
 	"sync"
 
@@ -53,6 +54,29 @@ type Token struct {
 	ctx       *pkcs11.Ctx
 	sh        pkcs11.SessionHandle
 	mutex     sync.Mutex
+}
+
+func List(provider string, output io.Writer) error {
+	ctx := pkcs11.New(provider)
+	if ctx == nil {
+		return errors.New("Failed to initialize pkcs11 provider")
+	}
+	defer ctx.Destroy()
+	if err := ctx.Initialize(); err != nil {
+		return err
+	}
+	slots, err := ctx.GetSlotList(false)
+	if err != nil {
+		return err
+	}
+	for _, slot := range slots {
+		info, err := ctx.GetTokenInfo(slot)
+		if rv, ok := err.(pkcs11.Error); ok && rv == pkcs11.CKR_TOKEN_NOT_PRESENT {
+			continue
+		}
+		fmt.Fprintf(output, "slot %d:\n manuf:  %s\n model:  %s\n label:  %s\n serial: %s\n", slot, info.ManufacturerID, info.Model, info.Label, info.SerialNumber)
+	}
+	return nil
 }
 
 // Load a PKCS#11 provider, open a session, and login

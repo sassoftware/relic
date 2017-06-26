@@ -47,6 +47,8 @@ type Token interface {
 	ImportCertificate(cert *x509.Certificate, labelBase string) error
 	// Generate a new key in the token
 	Generate(keyName string, keyType KeyType, bits uint) (Key, error)
+	// Print key info
+	ListKeys(opts ListOptions) error
 }
 
 type Key interface {
@@ -57,4 +59,14 @@ type Key interface {
 	GetID() []byte
 	// Import a leaf certificate for this key
 	ImportCertificate(cert *x509.Certificate) error
+}
+
+type ListOptions struct {
+	// Destination stream
+	Output io.Writer
+	// Filter by attributes
+	Label string
+	ID    string
+	// Print key and certificate contents
+	Values bool
 }

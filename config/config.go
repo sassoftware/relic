@@ -163,6 +163,9 @@ func ReadFile(path string) (*Config, error) {
 	}
 	for tokenName, tokenConf := range config.Tokens {
 		tokenConf.name = tokenName
+		if tokenConf.Type == "" {
+			tokenConf.Type = "pkcs11"
+		}
 	}
 	for keyName, keyConf := range config.Keys {
 		keyConf.name = keyName
@@ -185,6 +188,15 @@ func (config *Config) GetToken(tokenName string) (*TokenConfig, error) {
 	return tokenConf, nil
 }
 
+func (config *Config) NewToken(name string) *TokenConfig {
+	if config.Tokens == nil {
+		config.Tokens = make(map[string]*TokenConfig)
+	}
+	tok := &TokenConfig{name: name}
+	config.Tokens[name] = tok
+	return tok
+}
+
 func (config *Config) GetKey(keyName string) (*KeyConfig, error) {
 	keyConf, ok := config.Keys[keyName]
 	if !ok {
@@ -205,8 +217,9 @@ func (config *Config) NewKey(name string) *KeyConfig {
 	if config.Keys == nil {
 		config.Keys = make(map[string]*KeyConfig)
 	}
-	config.Keys[name] = &KeyConfig{name: name}
-	return config.Keys[name]
+	key := &KeyConfig{name: name}
+	config.Keys[name] = key
+	return key
 }
 
 func (config *Config) Path() string {

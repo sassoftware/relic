@@ -26,9 +26,11 @@ This will create a UNIX socket at `/run/scdaemon/0/S.scdaemon` which relic can c
 Either place the corresponding PGP certificate in the configured location, or make a new one using the existing private key by running:
 
     relic -c relic.yml pgp-generate -k mykey -n "My Key" >certs/mykey.pgp
-    
+
 Now you can create signatures:
 
     echo hello world | relic -c relic.yml sign-pgp -u mykey --clearsign
-    
-Information about the IDs of keys in the token can be displayed by adding --debug 5 to most commands.
+
+Information about the IDs of keys in the token, and the serial number of the token itself, can be displayed by running:
+
+    relic -c relic.yml token contents -t scd0

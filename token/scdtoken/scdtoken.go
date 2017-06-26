@@ -18,6 +18,8 @@ package scdtoken
 
 import (
 	"crypto"
+	"crypto/ecdsa"
+	"crypto/rsa"
 	"crypto/x509"
 	"errors"
 	"fmt"
@@ -29,6 +31,7 @@ import (
 	"github.com/sassoftware/relic/config"
 	"github.com/sassoftware/relic/lib/assuan"
 	"github.com/sassoftware/relic/lib/passprompt"
+	"github.com/sassoftware/relic/lib/x509tools"
 	"github.com/sassoftware/relic/signers/sigerrors"
 	"github.com/sassoftware/relic/token"
 )
@@ -66,6 +69,30 @@ func findSock() string {
 		}
 	}
 	return ""
+}
+
+func List(sockPath string, output io.Writer) error {
+	if sockPath == "" {
+		sockPath = findSock()
+	}
+	if sockPath == "" {
+		return errors.New("scdaemon not found; provide an explicit path to the scdaemon socket")
+	}
+	sock, err := assuan.DialScd(sockPath)
+	if err != nil {
+		return err
+	}
+	defer sock.Close()
+	keyInfos, err := sock.Learn()
+	if err != nil {
+		return err
+	}
+	if len(keyInfos) == 0 {
+		fmt.Fprintln(output, "token is empty or missing")
+	} else {
+		fmt.Fprintf(output, "serial: %s\n", keyInfos[0].Serial)
+	}
+	return nil
 }
 
 func Open(conf *config.Config, tokenName string, prompt passprompt.PasswordGetter) (tok *scdToken, err error) {
@@ -141,6 +168,36 @@ func (tok *scdToken) Close() error {
 
 func (tok *scdToken) Config() *config.TokenConfig {
 	return tok.tokenConf
+}
+
+func (tok *scdToken) ListKeys(opts token.ListOptions) error {
+	tok.mu.Lock()
+	defer tok.mu.Unlock()
+	fmt.Fprintf(opts.Output, "serial: %#v\n", tok.serial)
+	for i, key := range tok.keyInfos {
+		if opts.ID != "" && opts.ID != key.KeyId {
+			continue
+		}
+		fmt.Fprintf(opts.Output, "key %d:\n id:          %s\n fingerprint: %s\n keygrip:     %s\n", i+1, key.KeyId, key.Fingerprint, key.KeyGrip)
+		if opts.Values {
+			pub, err := key.Public()
+			if err != nil {
+				fmt.Fprintln(opts.Output, " error reading key:", err)
+				continue
+			}
+			switch k := pub.(type) {
+			case *rsa.PublicKey:
+				fmt.Fprintf(opts.Output, " n:           0x%x\n e:           %d\n", k.N, k.E)
+			case *ecdsa.PublicKey:
+				curve, err := x509tools.CurveByCurve(k.Curve)
+				if err == nil {
+					fmt.Fprintf(opts.Output, " bits:        %d\n", curve.Bits)
+				}
+				fmt.Fprintf(opts.Output, " x:           %x\n y:           %x\n", k.X, k.Y)
+			}
+		}
+	}
+	return nil
 }
 
 func (tok *scdToken) GetKey(keyName string) (token.Key, error) {

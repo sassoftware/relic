@@ -67,6 +67,10 @@ func (tok *fileToken) Config() *config.TokenConfig {
 	return tok.tokenConf
 }
 
+func (tok *fileToken) ListKeys(opts token.ListOptions) error {
+	return errors.New("not implemented for tokens of type \"file\"")
+}
+
 func (tok *fileToken) GetKey(keyName string) (token.Key, error) {
 	keyConf, err := tok.config.GetKey(keyName)
 	if err != nil {
