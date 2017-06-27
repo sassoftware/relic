@@ -76,7 +76,7 @@ func (tok *Token) ListKeys(opts token.ListOptions) error {
 			if len(filterKeyId) != 0 && !bytes.Equal(filterKeyId, objId) {
 				continue
 			}
-			fmt.Fprintf(opts.Output, "handle: 0x%08x\n", handle)
+			fmt.Fprintf(opts.Output, "handle 0x%08x:\n", handle)
 			class := attrToInt(tok.getAttribute(handle, pkcs11.CKA_CLASS))
 			if name := classNames[class]; name != "" {
 				fmt.Fprintf(opts.Output, " class:   %s\n", name)
@@ -100,6 +100,7 @@ func (tok *Token) ListKeys(opts token.ListOptions) error {
 				value := tok.getAttribute(handle, pkcs11.CKA_VALUE)
 				fmt.Fprintf(opts.Output, " size:    %d\n", len(value))
 				if opts.Values {
+					fmt.Fprintln(opts.Output, " value: !!binary |")
 					dumpData(opts.Output, value)
 				}
 			}
@@ -163,9 +164,9 @@ func (tok *Token) printCertificate(opts token.ListOptions, handle pkcs11.ObjectH
 	d.Write(blob)
 	fmt.Fprintf(opts.Output, " subject: %s\n issuer:  %s\n sha1:    %x\n", x509tools.FormatSubject(cert), x509tools.FormatIssuer(cert), d.Sum(nil))
 	if opts.Values {
-		fmt.Fprintln(opts.Output, " value:\n-----BEGIN CERTIFICATE-----")
+		fmt.Fprintln(opts.Output, " value: |\n  -----BEGIN CERTIFICATE-----")
 		dumpData(opts.Output, blob)
-		fmt.Fprintln(opts.Output, "-----END CERTIFICATE-----")
+		fmt.Fprintln(opts.Output, "  -----END CERTIFICATE-----")
 	}
 }
 
@@ -184,7 +185,7 @@ func dumpData(w io.Writer, d []byte) error {
 		if n > len(encoded) {
 			n = len(encoded)
 		}
-		if _, err := fmt.Fprintln(w, encoded[:n]); err != nil {
+		if _, err := fmt.Fprintln(w, " ", encoded[:n]); err != nil {
 			return err
 		}
 		encoded = encoded[n:]
