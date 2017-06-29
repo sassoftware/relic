@@ -3,8 +3,8 @@ import:
 - package: github.com/howeyc/gopass
 - package: github.com/mattn/go-shellwords
 - package: github.com/miekg/pkcs11
-  repo: https://github.com/mtharp/pkcs11
   version: windows-packing
+  repo: https://github.com/mtharp/pkcs11
 - package: github.com/qur/ar
 - package: github.com/sassoftware/go-rpmutils
 - package: github.com/spf13/cobra
@@ -27,3 +27,4 @@ import:
   - windows/svc/mgr
 - package: gopkg.in/yaml.v2
 - package: xi2.org/x/xz
+- package: github.com/kr/pretty
