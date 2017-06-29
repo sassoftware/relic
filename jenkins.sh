@@ -30,6 +30,7 @@ version=$(cd checkout && git describe --tags |sed -e 's/-\([0-9]*\).*/.\1/')
 [ -n "$version" ] || { echo Unable to determine version; exit 1; }
 ldflags="-X ${module}/config.Version=$version"
 echo "Version: $version"
+echo "Go version: $(go version)"
 mkdir -p $GOPATH/src/$(dirname $module)
 ln -sfn $WORKDIR/checkout $GOPATH/src/$module
 
