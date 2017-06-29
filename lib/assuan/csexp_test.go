@@ -19,7 +19,7 @@ package assuan
 import "testing"
 
 func TestCsExp(t *testing.T) {
-	c, err := parseCsExp([]byte("(3:foo3:bar3:baz)"))
+	_, err := parseCsExp([]byte("(3:foo3:bar3:baz)"))
 	if err != nil {
 		t.Fatal(err)
 	}
