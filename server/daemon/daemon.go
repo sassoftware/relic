@@ -22,7 +22,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"net/http"
 	"os"
@@ -122,9 +121,9 @@ func New(config *config.Config, force, test bool) (*Daemon, error) {
 }
 
 func (d *Daemon) SetOutput(w io.Writer) {
-	logger := log.New(w, "", 0)
-	d.server.SetLogger(logger)
-	d.httpServer.ErrorLog = logger
+	d.server.ErrorLog.SetFlags(0)
+	d.server.ErrorLog.SetPrefix("")
+	d.server.ErrorLog.SetOutput(w)
 }
 
 func (d *Daemon) ReopenLogger() error {

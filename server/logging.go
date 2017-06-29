@@ -18,16 +18,10 @@ package server
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 	"time"
 )
-
-// Set the logger where the server will write its messages
-func (s *Server) SetLogger(logger *log.Logger) {
-	s.ErrorLog = logger
-}
 
 // Log a general message
 func (s *Server) Logf(format string, args ...interface{}) {
