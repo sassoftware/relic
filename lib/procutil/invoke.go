@@ -37,6 +37,8 @@ type Command struct {
 	stdio  *bytes.Buffer
 }
 
+// Prepare to launch a subprocess with the given command-line. The process will
+// be terminated when ctx is cancelled or timeout elapses.
 func CommandContext(ctx context.Context, cmdline []string, timeout time.Duration) *Command {
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	proc := exec.CommandContext(ctx, cmdline[0], cmdline[1:]...)
@@ -51,6 +53,7 @@ func CommandContext(ctx context.Context, cmdline []string, timeout time.Duration
 	}
 }
 
+// Run the subprocess and wait for it to complete.
 func (c *Command) Run() error {
 	defer c.cancel()
 	if err := c.Proc.Start(); err != nil {
@@ -103,6 +106,8 @@ type piper struct {
 	blob   []byte
 }
 
+// Attach a Reader to a pipe on the subprocess. Bytes will be copied from the
+// reader to the pipe until EOF.
 func (c *Command) AttachInput(r io.Reader) (int, error) {
 	pr, pw, err := os.Pipe()
 	if err != nil {
@@ -123,6 +128,8 @@ func (c *Command) AttachInput(r io.Reader) (int, error) {
 	return fd, nil
 }
 
+// Attach a pipe to the subprocess. Bytes will be copied from the pipe until
+// EOF and the result will be stored in Command.Pipes[fd] after Run() returns
 func (c *Command) AttachOutput() (int, error) {
 	pr, pw, err := os.Pipe()
 	if err != nil {
@@ -143,28 +150,25 @@ func (c *Command) AttachOutput() (int, error) {
 	return fd, nil
 }
 
+// close the remote end of the pipe, after the subprocess was spawned
 func (p *piper) detach() (err error) {
 	if p.blobch == nil {
 		// writer
-		err = p.r.Close()
-		p.r = nil
-	} else {
-		// reader
-		err = p.w.Close()
-		p.w = nil
+		return p.r.Close()
 	}
-	return err
+	// reader
+	return p.w.Close()
 }
 
+// close both ends of the pipe and surface any errors that occurred in a background goroutine
 func (p *piper) Close() error {
-	if p.w != nil {
-		p.w.Close()
-		p.w = nil
-	}
-	if p.r != nil {
-		p.r.Close()
-		p.r = nil
-	}
+	p.r.Close()
+	return p.closeWriter()
+}
+
+// close the writer end of the pipe and surface any errors that occurred in a background goroutine
+func (p *piper) closeWriter() error {
+	p.w.Close()
 	if p.errch != nil {
 		p.err = <-p.errch
 		p.errch = nil
@@ -173,7 +177,7 @@ func (p *piper) Close() error {
 }
 
 func (p *piper) get() ([]byte, error) {
-	err := p.Close()
+	err := p.closeWriter()
 	if err == nil && p.blobch != nil {
 		p.blob = <-p.blobch
 		p.blobch = nil
