@@ -110,7 +110,7 @@ func (i *starmanInfo) verifyFiles(tr *tar.Reader) error {
 				return err
 			}
 			if !hmac.Equal(expect, sum) {
-				return fmt.Errorf("digest mismatch for %s: given %x, calculated %x", expect, sum)
+				return fmt.Errorf("digest mismatch for %s: given %x, calculated %x", name, expect, sum)
 			}
 		} else {
 			switch hdr.FileInfo().Mode() & os.ModeType {
