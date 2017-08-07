@@ -72,9 +72,12 @@ func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]b
 	var twbuf bytes.Buffer
 	tw := tar.NewWriter(&twbuf)
 	tw.WriteHeader(&tar.Header{
-		Name: info.mdname + sigSuffix,
-		Mode: 0644,
-		Size: int64(sigbuf.Len()),
+		Name:     info.mdname + sigSuffix,
+		Mode:     0644,
+		Size:     int64(sigbuf.Len()),
+		Typeflag: tar.TypeReg,
+		Uname:    "root",
+		Gname:    "root",
 	})
 	tw.Write(sigbuf.Bytes())
 	tw.Flush()
