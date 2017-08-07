@@ -1,4 +1,4 @@
-// +build !windows,!clientonly
+// +build !clientonly
 //
 // Copyright (c) SAS Institute Inc.
 //
@@ -17,8 +17,9 @@
 
 package main
 
-// Windows service commands
+// Commands that are disabled for client-only builds
 
 import (
-	_ "github.com/sassoftware/relic/cmdline/winservice"
+	_ "github.com/sassoftware/relic/cmdline/auditor"
+	_ "github.com/sassoftware/relic/cmdline/servecmd"
 )

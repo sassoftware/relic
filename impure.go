@@ -1,4 +1,4 @@
-// +build cgo,!pure
+// +build cgo,!pure,!clientonly
 //
 // Copyright (c) SAS Institute Inc.
 //
@@ -16,6 +16,8 @@
 //
 
 package main
+
+// Local signing commands using tokens
 
 import (
 	_ "github.com/sassoftware/relic/cmdline/token"
