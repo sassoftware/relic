@@ -31,7 +31,7 @@ imports:
 - name: github.com/qur/ar
   version: 282534b917707a0e6639276266fa6421c634af2d
 - name: github.com/sassoftware/go-rpmutils
-  version: c2369def574f5673d68dbd5349337114758862ce
+  version: 1eab34795a2977e6827eba524d3d2b976804abbc
   subpackages:
   - cpio
   - fileutil
