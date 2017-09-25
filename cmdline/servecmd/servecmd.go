@@ -20,11 +20,14 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 
 	"github.com/sassoftware/relic/cmdline/shared"
 	"github.com/sassoftware/relic/server/daemon"
 	"github.com/spf13/cobra"
+
+	_ "net/http/pprof"
 )
 
 var ServeCmd = &cobra.Command{
@@ -63,6 +66,25 @@ func MakeServer() (*daemon.Daemon, error) {
 	return daemon.New(shared.CurrentConfig, argForce, argTest)
 }
 
+func listenDebug() error {
+	if !shared.CurrentConfig.Server.ListenDebug {
+		return nil
+	}
+	lis, err := net.Listen("tcp", ":0")
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Serving debug info on http://%s/debug/pprof/\n", lis.Addr())
+	go func() {
+		// pprof installs itself into the default handler on import
+		err := http.Serve(lis, nil)
+		if err != nil {
+			fmt.Println(err)
+		}
+	}()
+	return nil
+}
+
 func serveCmd(cmd *cobra.Command, args []string) error {
 	if runIfService() {
 		// windows service
@@ -78,6 +100,9 @@ func serveCmd(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	go watchSignals(srv)
+	if err := listenDebug(); err != nil {
+		return err
+	}
 	if err := srv.Serve(); err != nil && err != http.ErrServerClosed {
 		return shared.Fail(err)
 	}

@@ -15,6 +15,7 @@ import:
   - openpgp/armor
   - openpgp/clearsign
   - openpgp/packet
+  - pkcs12
 - package: golang.org/x/net
   subpackages:
   - http2

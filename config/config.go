@@ -70,7 +70,8 @@ type ServerConfig struct {
 	CertFile   string // Path to TLS certificate chain
 	LogFile    string // Optional error log
 
-	Disabled bool // Always return 503 Service Unavailable
+	Disabled    bool // Always return 503 Service Unavailable
+	ListenDebug bool // Serve debug info on an alternate port
 
 	TokenCheckInterval int
 	TokenCheckFailures int
