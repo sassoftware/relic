@@ -61,10 +61,13 @@ func (s *Server) callHandler(request *http.Request, lw *loggingWriter) (response
 		return errResponse, nil
 	}
 	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	closed := lw.CloseNotify()
 	go func() {
-		if <-closed {
+		select {
+		case <-closed:
 			cancel()
+		case <-ctx.Done():
 		}
 	}()
 	request = request.WithContext(ctx)
