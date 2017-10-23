@@ -2,6 +2,7 @@ build/
 keys/
 trust/
 work/
+vendorizer
 
 *.application
 *.appx
