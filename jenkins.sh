@@ -27,7 +27,7 @@ if [ -n "${VENDORIZER:-}" ]
 then
     curl -sOz ./vendorizer "$VENDORIZER/vendorizer"
     chmod a+rx vendorizer
-    vz="./vendorizer ensure -u $VENDORIZER"
+    vz="$WORKDIR/vendorizer ensure -u $VENDORIZER"
 else
     type -P dep >/dev/null || go get -v github.com/golang/dep/cmd/dep
     vz="dep ensure -vendor-only"
