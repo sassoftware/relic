@@ -138,6 +138,17 @@ func signCmd(cmd *cobra.Command, args []string) error {
 		if err := transform.Apply(argOutput, mimeType, bytes.NewReader(blob)); err != nil {
 			return shared.Fail(err)
 		}
+		// if needed, do a final fixup step
+		if mod.Fixup != nil {
+			f, err := os.OpenFile(argOutput, os.O_RDWR, 0)
+			if err != nil {
+				return shared.Fail(err)
+			}
+			defer f.Close()
+			if err := mod.Fixup(f); err != nil {
+				return shared.Fail(err)
+			}
+		}
 		opts.Audit.Attributes["perf.size.patch"] = len(blob)
 	}
 	duration := time.Since(startTime)
