@@ -95,6 +95,9 @@ func Detect(r io.Reader) FileType {
 				if bytes.Index(blob, []byte("META-INF/")) >= 0 {
 					return FileTypeJAR
 				}
+				if bytes.Index(blob, []byte("AndroidManifest.xml")) >= 0 {
+					return FileTypeJAR
+				}
 			}
 		}
 	case contains(br, []byte{0x06, 0x09, 0x2B, 0x06, 0x01, 0x04, 0x01, 0x82, 0x37, 0x0A, 0x01}, 256):

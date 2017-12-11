@@ -21,7 +21,6 @@ import (
 	"bytes"
 	"crypto"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"hash"
 	"io"
@@ -30,9 +29,12 @@ import (
 	"path"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/sassoftware/relic/lib/pkcs7"
 	"github.com/sassoftware/relic/lib/pkcs9"
 )
+
+var errNoDigests = errors.New("no recognized digests found")
 
 func Verify(inz *zip.Reader, skipDigests bool) ([]*pkcs9.TimestampedSignature, error) {
 	var manifest []byte
@@ -126,7 +128,7 @@ func verifyManifest(inz *zip.Reader, manifest []byte) error {
 			return err
 		}
 		if err := hashFile(keys, r, ""); err != nil {
-			return err
+			return errors.Wrapf(err, "file \"%s\" in MANIFEST.MF", filename)
 		}
 		if err := r.Close(); err != nil {
 			return err
@@ -161,6 +163,9 @@ func hashFile(keys http.Header, content io.Reader, suffix string) error {
 		}
 		digesters = append(digesters, digester{key, value[0], hash.New()})
 	}
+	if len(digesters) == 0 {
+		return errNoDigests
+	}
 	buf := make([]byte, 32*1024)
 	for {
 		n, err := content.Read(buf)
@@ -190,7 +195,13 @@ func verifySigFile(sigfile, manifest []byte) error {
 		return err
 	}
 	if err := hashFile(sfParsed.Main, bytes.NewReader(manifest), "-Manifest"); err != nil {
-		return err
+		if err != errNoDigests {
+			return errors.Wrap(err, "manifest signature")
+		}
+		// fall through and verify all the section digests
+	} else {
+		// if the whole-file digest passed then skip the sections
+		return nil
 	}
 	sections, err := splitManifest(manifest)
 	if err != nil {
@@ -200,7 +211,7 @@ func verifySigFile(sigfile, manifest []byte) error {
 	for i, section := range sections {
 		if i == 0 {
 			if err := hashFile(sfParsed.Main, bytes.NewReader(sections[0]), "-Manifest-Main-Attributes"); err != nil {
-				return err
+				return errors.Wrap(err, "manifest main attributes signature")
 			}
 		} else {
 			hdr, err := parseSection(section)
@@ -220,7 +231,7 @@ func verifySigFile(sigfile, manifest []byte) error {
 			return fmt.Errorf("manifest is missing signed section \"%s\"", name)
 		}
 		if err := hashFile(keys, bytes.NewReader(section), ""); err != nil {
-			return fmt.Errorf("manifest section \"%s\": %s", name, err)
+			return errors.Wrapf(err, "manifest signature over section \"%s\"", name)
 		}
 	}
 	return nil
