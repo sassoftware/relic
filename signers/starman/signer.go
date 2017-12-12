@@ -21,7 +21,6 @@ package starman
 import (
 	"archive/tar"
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"time"
@@ -35,6 +34,7 @@ import (
 	"github.com/sassoftware/relic/lib/magic"
 	"github.com/sassoftware/relic/lib/pgptools"
 	"github.com/sassoftware/relic/signers"
+	"github.com/sassoftware/relic/signers/sigerrors"
 )
 
 var Signer = &signers.Signer{
@@ -103,7 +103,7 @@ func verify(r io.Reader, opts signers.VerifyOpts) ([]*signers.Signature, error) 
 		return nil, err
 	}
 	if !info.hasSig {
-		return nil, errors.New("file is not signed")
+		return nil, sigerrors.NotSignedError{Type: "TAR"}
 	}
 	block, err := armor.Decode(bytes.NewReader(info.sigblob))
 	if err != nil {

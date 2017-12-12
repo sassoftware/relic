@@ -36,6 +36,7 @@ import (
 	"github.com/sassoftware/relic/lib/pkcs7"
 	"github.com/sassoftware/relic/lib/pkcs9"
 	"github.com/sassoftware/relic/lib/x509tools"
+	"github.com/sassoftware/relic/signers/sigerrors"
 )
 
 // Type of signature formatting used for different PowerShell file formats
@@ -169,7 +170,7 @@ func VerifyPowershell(r io.ReadSeeker, style PsSigStyle, skipDigests bool) (*pkc
 	for {
 		line, err := readLine(br, isUtf16)
 		if err == io.EOF && !found {
-			return nil, errors.New("powershell document is not signed")
+			return nil, sigerrors.NotSignedError{Type: "powershell document"}
 		} else if err != nil {
 			return nil, err
 		}

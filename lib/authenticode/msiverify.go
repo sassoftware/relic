@@ -31,6 +31,7 @@ import (
 	"github.com/sassoftware/relic/lib/pkcs7"
 	"github.com/sassoftware/relic/lib/pkcs9"
 	"github.com/sassoftware/relic/lib/x509tools"
+	"github.com/sassoftware/relic/signers/sigerrors"
 )
 
 type MSISignature struct {
@@ -71,7 +72,7 @@ func VerifyMSI(f io.ReaderAt, skipDigests bool) (*MSISignature, error) {
 		}
 	}
 	if len(sig) == 0 {
-		return nil, errors.New("MSI is not signed")
+		return nil, sigerrors.NotSignedError{Type: "MSI"}
 	}
 	psd, err := pkcs7.Unmarshal(sig)
 	if err != nil {

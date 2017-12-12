@@ -36,6 +36,7 @@ import (
 	"github.com/sassoftware/relic/lib/pkcs9"
 	"github.com/sassoftware/relic/lib/xmldsig"
 	"github.com/sassoftware/relic/signers"
+	"github.com/sassoftware/relic/signers/sigerrors"
 )
 
 type oxmlManifest struct {
@@ -132,7 +133,7 @@ func calcFileName(cert *x509.Certificate) string {
 func readSignature(files zipFiles) ([]byte, []*x509.Certificate, error) {
 	top := relPath("")
 	if files[top] == nil {
-		return nil, nil, errors.New("file is not signed")
+		return nil, nil, sigerrors.NotSignedError{Type: "vsix"}
 	}
 	// top rels file
 	r, err := parseRels(files, top)
@@ -141,7 +142,7 @@ func readSignature(files zipFiles) ([]byte, []*x509.Certificate, error) {
 	}
 	origin := r.Find(sigOriginType)
 	if origin == "" {
-		return nil, nil, errors.New("file is not signed")
+		return nil, nil, sigerrors.NotSignedError{Type: "vsix"}
 	}
 	// signature rels file
 	r, err = parseRels(files, relPath(origin))
@@ -150,7 +151,7 @@ func readSignature(files zipFiles) ([]byte, []*x509.Certificate, error) {
 	}
 	sigpath := r.Find(sigType)
 	if sigpath == "" {
-		return nil, nil, errors.New("file is not signed")
+		return nil, nil, sigerrors.NotSignedError{Type: "vsix"}
 	}
 	sigblob, err := readZip(files, sigpath)
 	if err != nil {

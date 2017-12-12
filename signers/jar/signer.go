@@ -26,7 +26,6 @@ import (
 	"github.com/sassoftware/relic/lib/certloader"
 	"github.com/sassoftware/relic/lib/magic"
 	"github.com/sassoftware/relic/lib/signjar"
-	"github.com/sassoftware/relic/lib/x509tools"
 	"github.com/sassoftware/relic/signers"
 	"github.com/sassoftware/relic/signers/zipbased"
 )
@@ -78,10 +77,9 @@ func verify(f *os.File, opts signers.VerifyOpts) ([]*signers.Signature, error) {
 	}
 	var ret []*signers.Signature
 	for _, ts := range sigs {
-		hash, _ := x509tools.PkixDigestToHash(ts.SignerInfo.DigestAlgorithm)
 		ret = append(ret, &signers.Signature{
-			Hash:          hash,
-			X509Signature: ts,
+			Hash:          ts.Hash,
+			X509Signature: &ts.TimestampedSignature,
 		})
 	}
 	return ret, nil

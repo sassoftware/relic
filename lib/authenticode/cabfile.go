@@ -29,6 +29,7 @@ import (
 	"github.com/sassoftware/relic/lib/pkcs7"
 	"github.com/sassoftware/relic/lib/pkcs9"
 	"github.com/sassoftware/relic/lib/x509tools"
+	"github.com/sassoftware/relic/signers/sigerrors"
 )
 
 type CabSignature struct {
@@ -45,7 +46,7 @@ func VerifyCab(f io.ReaderAt, skipDigests bool) (*CabSignature, error) {
 		return nil, err
 	}
 	if len(cab.Signature) == 0 {
-		return nil, errors.New("cab is not signed")
+		return nil, sigerrors.NotSignedError{Type: "cabinet"}
 	}
 	psd, err := pkcs7.Unmarshal(cab.Signature)
 	if err != nil {

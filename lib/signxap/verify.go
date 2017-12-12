@@ -28,6 +28,7 @@ import (
 	"github.com/sassoftware/relic/lib/pkcs7"
 	"github.com/sassoftware/relic/lib/pkcs9"
 	"github.com/sassoftware/relic/lib/x509tools"
+	"github.com/sassoftware/relic/signers/sigerrors"
 )
 
 type XapSignature struct {
@@ -46,7 +47,7 @@ func Verify(r io.ReaderAt, size int64, skipDigests bool) (*XapSignature, error) 
 			return nil, err
 		}
 		if zipMagic == 0x06054b50 {
-			return nil, errors.New("xap is not signed")
+			return nil, sigerrors.NotSignedError{Type: "XAP"}
 		}
 		return nil, errors.New("invalid xap file")
 	}

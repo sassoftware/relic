@@ -29,6 +29,7 @@ import (
 	"github.com/sassoftware/relic/lib/pkcs7"
 	"github.com/sassoftware/relic/lib/pkcs9"
 	"github.com/sassoftware/relic/lib/x509tools"
+	"github.com/sassoftware/relic/signers/sigerrors"
 )
 
 func Verify(r io.ReaderAt, size int64, skipDigests bool) (*AppxSignature, error) {
@@ -77,7 +78,7 @@ func Verify(r io.ReaderAt, size int64, skipDigests bool) (*AppxSignature, error)
 
 func readSignature(zf *zip.File) (*AppxSignature, error) {
 	if zf == nil {
-		return nil, errors.New("appx is not signed")
+		return nil, sigerrors.NotSignedError{Type: "appx"}
 	}
 	blob, err := readZipFile(zf)
 	if err != nil {

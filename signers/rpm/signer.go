@@ -20,7 +20,6 @@ package rpm
 
 import (
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -33,6 +32,7 @@ import (
 	"github.com/sassoftware/relic/lib/certloader"
 	"github.com/sassoftware/relic/lib/magic"
 	"github.com/sassoftware/relic/signers"
+	"github.com/sassoftware/relic/signers/sigerrors"
 )
 
 var RpmSigner = &signers.Signer{
@@ -86,7 +86,7 @@ func verify(f *os.File, opts signers.VerifyOpts) ([]*signers.Signature, error) {
 		return nil, err
 	}
 	if len(sigs) == 0 {
-		return nil, errors.New("file is not signed")
+		return nil, sigerrors.NotSignedError{Type: "RPM"}
 	}
 	var ret []*signers.Signature
 	seen := make(map[uint64]bool)

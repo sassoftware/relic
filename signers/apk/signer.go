@@ -17,6 +17,7 @@
 package apk
 
 import (
+	"archive/zip"
 	"bytes"
 	"crypto"
 	"crypto/ecdsa"
@@ -27,15 +28,18 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/sassoftware/relic/lib/certloader"
 	"github.com/sassoftware/relic/lib/magic"
 	"github.com/sassoftware/relic/lib/pkcs7"
 	"github.com/sassoftware/relic/lib/pkcs9"
+	"github.com/sassoftware/relic/lib/signjar"
 	"github.com/sassoftware/relic/lib/x509tools"
 	"github.com/sassoftware/relic/lib/zipslicer"
 	"github.com/sassoftware/relic/signers"
+	"github.com/sassoftware/relic/signers/sigerrors"
 	"github.com/sassoftware/relic/signers/zipbased"
 )
 
@@ -89,6 +93,7 @@ func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]b
 }
 
 func verify(f *os.File, opts signers.VerifyOpts) ([]*signers.Signature, error) {
+	// verify v2
 	inz, block, err := getSigBlock(f)
 	if err != nil {
 		return nil, err
@@ -117,7 +122,7 @@ func verify(f *os.File, opts signers.VerifyOpts) ([]*signers.Signature, error) {
 		if err != nil {
 			return nil, err
 		} else if len(signers) == 0 {
-			return nil, errors.New("no signers found in APK signing block")
+			return nil, errors.New("empty APK signing block")
 		}
 		for i, signer := range signers {
 			sigs, err := verifySigner(f, inz, signer)
@@ -127,8 +132,31 @@ func verify(f *os.File, opts signers.VerifyOpts) ([]*signers.Signature, error) {
 			allSigs = append(allSigs, sigs...)
 		}
 	}
+	v2present := len(allSigs) != 0
+	// verify v1
+	inzr, err := zip.NewReader(f, inz.Size)
+	if err != nil {
+		return nil, err
+	}
+	jarSigs, err := signjar.Verify(inzr, false)
+	if err != nil {
+		if _, ok := err.(sigerrors.NotSignedError); !ok {
+			return nil, err
+		}
+	}
+	for _, jarSig := range jarSigs {
+		apk := jarSig.SignatureHeader.Get("X-Android-APK-Signed")
+		if strings.ContainsRune(apk, '2') && !v2present {
+			return nil, errors.New("V1 signature contains X-Android-APK-Signed header but no V2 signature exists")
+		}
+		allSigs = append(allSigs, &signers.Signature{
+			SigInfo:       "v1",
+			Hash:          jarSig.Hash,
+			X509Signature: &jarSig.TimestampedSignature,
+		})
+	}
 	if len(allSigs) == 0 {
-		return nil, errors.New("no V2 signatures found in APK signing block")
+		return nil, sigerrors.NotSignedError{Type: "APK"}
 	}
 	return allSigs, nil
 }
@@ -153,7 +181,8 @@ func getSigBlock(f *os.File) (*zipslicer.Directory, []byte, error) {
 	}
 	sigLoc := int64(lastFile.Offset) + lastSize
 	if sigLoc == inz.DirLoc {
-		return nil, nil, errors.New("APK is not signed")
+		// not signed
+		return inz, nil, nil
 	}
 	// read signature block
 	blob := make([]byte, inz.DirLoc-sigLoc)
@@ -291,7 +320,8 @@ func verifySignature(signature, signedData []byte, intermediates []*x509.Certifi
 		return nil, errors.New("unsupported public key algorithm")
 	}
 	sig := &signers.Signature{
-		Hash: st.hash,
+		SigInfo: "v2",
+		Hash:    st.hash,
 		X509Signature: &pkcs9.TimestampedSignature{
 			Signature: pkcs7.Signature{
 				Certificate:   leaf,
@@ -328,70 +358,6 @@ func parseSigAlg(blob []byte) (st sigType, value []byte, err error) {
 		return
 	}
 	return
-}
-
-func merkleDigest(r io.ReaderAt, inz *zipslicer.Directory, hash crypto.Hash) ([]byte, error) {
-	lastFile := inz.File[len(inz.File)-1]
-	lastSize, _ := lastFile.GetTotalSize()
-	sigLoc := int64(lastFile.Offset) + lastSize
-	// https://source.android.com/security/apksigning/v2#integrity-protected-contents
-	// section 1: contents of zip entries
-	blocks, err := merkleBlocks(nil, io.NewSectionReader(r, 0, sigLoc), sigLoc, hash)
-	if err != nil {
-		return nil, err
-	}
-	// section 2 is the signature block itself (not digested obviously)
-	// section 3: central directory
-	// TODO: zip64 support
-	if inz.DirLoc >= (1 << 32) {
-		return nil, errors.New("ZIP64 is not yet supported")
-	}
-	cdir := make([]byte, inz.Size-inz.DirLoc)
-	if _, err := io.ReadFull(io.NewSectionReader(r, inz.DirLoc, inz.Size-inz.DirLoc), cdir); err != nil {
-		return nil, err
-	}
-	endOfDir := cdir[len(cdir)-directoryEndLen:]
-	cdirEntries := cdir[:len(cdir)-directoryEndLen]
-	if binary.LittleEndian.Uint32(endOfDir) != directoryEndSignature {
-		return nil, errors.New("zip file with comment not supported")
-	}
-	blocks, err = merkleBlocks(blocks, bytes.NewReader(cdirEntries), int64(len(cdirEntries)), hash)
-	if err != nil {
-		return nil, err
-	}
-	// section 4: end of central directory
-	// modify the offset so as to omit the effect of the signature being inserted
-	binary.LittleEndian.PutUint32(endOfDir[16:], uint32(sigLoc))
-	blocks, err = merkleBlocks(blocks, bytes.NewReader(endOfDir), int64(len(endOfDir)), hash)
-	if err != nil {
-		return nil, err
-	}
-	var pref [5]byte
-	pref[0] = 0x5a
-	binary.LittleEndian.PutUint32(pref[1:], uint32(len(blocks)/hash.Size()))
-	master := hash.New()
-	master.Write(pref[:])
-	master.Write(blocks)
-	return master.Sum(nil), nil
-}
-
-func merkleBlocks(blocks []byte, r io.Reader, size int64, hash crypto.Hash) ([]byte, error) {
-	for ; size > 0; size -= 1048576 {
-		chunk := size
-		if chunk > 1048576 {
-			chunk = 1048576
-		}
-		var pref [5]byte
-		pref[0] = 0xa5
-		binary.LittleEndian.PutUint32(pref[1:], uint32(chunk))
-		d := hash.New()
-		d.Write(pref[:])
-		if _, err := io.CopyN(d, r, chunk); err != nil {
-			return nil, err
-		}
-		blocks = d.Sum(blocks)
-	}
-	return blocks, nil
 }
 
 func splitUint32(blob []byte) (ret [][]byte, err error) {

@@ -113,8 +113,8 @@ func (jd *JarDigest) insertSignature(cert *x509.Certificate, alias string, sf, s
 			patch.Add(int64(f.Offset), size, nil)
 		}
 	}
-	var zipdir bytes.Buffer
-	if err := outz.WriteDirectory(&zipdir); err != nil {
+	zipdir := new(bytes.Buffer)
+	if err := outz.WriteDirectory(zipdir, zipdir, false); err != nil {
 		return nil, err
 	}
 	patch.Add(jd.inz.DirLoc, jd.inz.Size-jd.inz.DirLoc, zipdir.Bytes())

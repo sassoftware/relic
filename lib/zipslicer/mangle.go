@@ -71,8 +71,9 @@ func (m *Mangler) NewFile(name string, contents []byte) error {
 }
 
 // Create a binary patchset out of the operations performed in this mangler
-func (m *Mangler) MakePatch() (*binpatch.PatchSet, error) {
-	if err := m.outz.WriteDirectory(&m.newcontents); err != nil {
+func (m *Mangler) MakePatch(forceZip64 bool) (*binpatch.PatchSet, error) {
+	w := &m.newcontents
+	if err := m.outz.WriteDirectory(w, w, forceZip64); err != nil {
 		return nil, err
 	}
 	m.patch.Add(m.indir, m.insize-m.indir, m.newcontents.Bytes())

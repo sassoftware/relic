@@ -32,11 +32,19 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sassoftware/relic/lib/pkcs7"
 	"github.com/sassoftware/relic/lib/pkcs9"
+	"github.com/sassoftware/relic/lib/x509tools"
+	"github.com/sassoftware/relic/signers/sigerrors"
 )
 
 var errNoDigests = errors.New("no recognized digests found")
 
-func Verify(inz *zip.Reader, skipDigests bool) ([]*pkcs9.TimestampedSignature, error) {
+type JarSignature struct {
+	pkcs9.TimestampedSignature
+	SignatureHeader http.Header
+	Hash            crypto.Hash
+}
+
+func Verify(inz *zip.Reader, skipDigests bool) ([]*JarSignature, error) {
 	var manifest []byte
 	sigfiles := make(map[string][]byte)
 	sigblobs := make(map[string][]byte)
@@ -72,9 +80,9 @@ func Verify(inz *zip.Reader, skipDigests bool) ([]*pkcs9.TimestampedSignature, e
 	if manifest == nil {
 		return nil, errors.New("JAR contains no META-INF/MANIFEST.MF")
 	} else if len(sigfiles) == 0 {
-		return nil, errors.New("JAR contains no signatures")
+		return nil, sigerrors.NotSignedError{Type: "JAR"}
 	}
-	sigs := make([]*pkcs9.TimestampedSignature, 0, len(sigfiles))
+	sigs := make([]*JarSignature, 0, len(sigfiles))
 	for base, sigfile := range sigfiles {
 		pkcs := sigblobs[base]
 		if pkcs == nil {
@@ -92,10 +100,16 @@ func Verify(inz *zip.Reader, skipDigests bool) ([]*pkcs9.TimestampedSignature, e
 		if err != nil {
 			return nil, err
 		}
-		if err := verifySigFile(sigfile, manifest); err != nil {
+		hdr, err := verifySigFile(sigfile, manifest)
+		if err != nil {
 			return nil, err
 		}
-		sigs = append(sigs, &ts)
+		hash, _ := x509tools.PkixDigestToHash(ts.SignerInfo.DigestAlgorithm)
+		sigs = append(sigs, &JarSignature{
+			TimestampedSignature: ts,
+			Hash:                 hash,
+			SignatureHeader:      hdr,
+		})
 	}
 	if !skipDigests {
 		if err := verifyManifest(inz, manifest); err != nil {
@@ -189,38 +203,38 @@ func hashFile(keys http.Header, content io.Reader, suffix string) error {
 	return nil
 }
 
-func verifySigFile(sigfile, manifest []byte) error {
+func verifySigFile(sigfile, manifest []byte) (http.Header, error) {
 	sfParsed, err := ParseManifest(sigfile)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if err := hashFile(sfParsed.Main, bytes.NewReader(manifest), "-Manifest"); err != nil {
 		if err != errNoDigests {
-			return errors.Wrap(err, "manifest signature")
+			return nil, errors.Wrap(err, "manifest signature")
 		}
 		// fall through and verify all the section digests
 	} else {
 		// if the whole-file digest passed then skip the sections
-		return nil
+		return sfParsed.Main, nil
 	}
 	sections, err := splitManifest(manifest)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	sectionMap := make(map[string][]byte, len(sections)-1)
 	for i, section := range sections {
 		if i == 0 {
 			if err := hashFile(sfParsed.Main, bytes.NewReader(sections[0]), "-Manifest-Main-Attributes"); err != nil {
-				return errors.Wrap(err, "manifest main attributes signature")
+				return nil, errors.Wrap(err, "manifest main attributes signature")
 			}
 		} else {
 			hdr, err := parseSection(section)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			name := hdr.Get("Name")
 			if name == "" {
-				return errors.New("manifest has section with no \"Name\" attribute")
+				return nil, errors.New("manifest has section with no \"Name\" attribute")
 			}
 			sectionMap[name] = section
 		}
@@ -228,11 +242,11 @@ func verifySigFile(sigfile, manifest []byte) error {
 	for name, keys := range sfParsed.Files {
 		section := sectionMap[name]
 		if section == nil {
-			return fmt.Errorf("manifest is missing signed section \"%s\"", name)
+			return nil, fmt.Errorf("manifest is missing signed section \"%s\"", name)
 		}
 		if err := hashFile(keys, bytes.NewReader(section), ""); err != nil {
-			return errors.Wrapf(err, "manifest signature over section \"%s\"", name)
+			return nil, errors.Wrapf(err, "manifest signature over section \"%s\"", name)
 		}
 	}
-	return nil
+	return sfParsed.Main, nil
 }

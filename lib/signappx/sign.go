@@ -50,7 +50,8 @@ func (i *AppxDigest) Sign(cert *certloader.Certificate) (patch *binpatch.PatchSe
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	if err := i.outz.WriteDirectory(&i.patchBuf); err != nil {
+	w := &i.patchBuf
+	if err := i.outz.WriteDirectory(w, w, true); err != nil {
 		return nil, nil, nil, err
 	}
 	patch = binpatch.New()
@@ -159,7 +160,7 @@ func (i *AppxDigest) writeCodeIntegrity(cert *certloader.Certificate) (*pkcs9.Ti
 
 func (i *AppxDigest) writeSignature(cert *certloader.Certificate) (*pkcs9.TimestampedSignature, error) {
 	axcd := i.Hash.New()
-	if err := i.outz.WriteDirectory(axcd); err != nil {
+	if err := i.outz.WriteDirectory(axcd, axcd, true); err != nil {
 		return nil, err
 	}
 	digest := bytes.NewBuffer(make([]byte, 0, 4+5*(4+i.Hash.Size())))

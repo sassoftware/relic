@@ -43,3 +43,11 @@ type ErrNoCertificate struct {
 func (e ErrNoCertificate) Error() string {
 	return "no certificate of type \"" + e.Type + "\" defined for this key"
 }
+
+type NotSignedError struct {
+	Type string
+}
+
+func (e NotSignedError) Error() string {
+	return e.Type + " contains no signatures"
+}

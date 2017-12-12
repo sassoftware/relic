@@ -83,7 +83,7 @@ func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]b
 	if err := m.newCtypes(detachCerts); err != nil {
 		return nil, err
 	}
-	patch, err := m.m.MakePatch()
+	patch, err := m.m.MakePatch(true)
 	if err != nil {
 		return nil, err
 	}

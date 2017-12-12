@@ -24,6 +24,8 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+
+	"github.com/kr/pretty"
 )
 
 type Directory struct {
@@ -225,12 +227,20 @@ func (d *Directory) Truncate(n int, body, dir io.Writer) error {
 	return nil
 }
 
-// Serialize a zip central directory to file
-func (d *Directory) WriteDirectory(w io.Writer) error {
-	buf := bufio.NewWriter(w)
+// Serialize a zip central directory to file. The file entries will be written
+// to wcd, and the end-of-directory markers will be written to weod.
+//
+// If forceZip64 is true then a ZIP64 end-of-directory marker will always be
+// written; otherwise it is only done if ZIP64 features are required.
+func (d *Directory) WriteDirectory(wcd, weod io.Writer, forceZip64 bool) error {
+	buf := bufio.NewWriter(wcd)
 	cdoff := d.DirLoc
 	var count, size uint64
+	minVersion := uint16(zip20)
 	for _, f := range d.File {
+		if f.ReaderVersion > minVersion {
+			minVersion = f.ReaderVersion
+		}
 		blob, err := f.GetDirectoryHeader()
 		if err != nil {
 			return err
@@ -241,35 +251,58 @@ func (d *Directory) WriteDirectory(w io.Writer) error {
 		count++
 		size += uint64(len(blob))
 	}
-	end64off := cdoff + int64(size)
-	end64 := zip64End{
-		Signature:      directory64EndSignature,
-		RecordSize:     directory64EndLen - 12,
-		CreatorVersion: zip45,
-		ReaderVersion:  zip45,
-		DiskCDCount:    count,
-		TotalCDCount:   count,
-		CDSize:         size,
-		CDOffset:       uint64(cdoff),
+	if wcd != weod {
+		if err := buf.Flush(); err != nil {
+			return err
+		}
+		buf.Reset(weod)
 	}
-	if err := binary.Write(buf, binary.LittleEndian, end64); err != nil {
-		return err
+	var end zipEndRecord
+	if count >= uint16Max || size >= uint32Max || cdoff >= uint32Max || forceZip64 {
+		minVersion = zip45
 	}
-	loc64 := zip64Loc{
-		Signature: directory64LocSignature,
-		Offset:    uint64(end64off),
-		DiskCount: 1,
+	if minVersion == zip45 {
+		end64off := cdoff + int64(size)
+		end64 := zip64End{
+			Signature:      directory64EndSignature,
+			RecordSize:     directory64EndLen - 12,
+			CreatorVersion: zip45,
+			ReaderVersion:  minVersion,
+			DiskCDCount:    count,
+			TotalCDCount:   count,
+			CDSize:         size,
+			CDOffset:       uint64(cdoff),
+		}
+		pretty.Println(end64)
+		if err := binary.Write(buf, binary.LittleEndian, end64); err != nil {
+			return err
+		}
+		loc64 := zip64Loc{
+			Signature: directory64LocSignature,
+			Offset:    uint64(end64off),
+			DiskCount: 1,
+		}
+		if err := binary.Write(buf, binary.LittleEndian, loc64); err != nil {
+			return err
+		}
+		pretty.Println(loc64)
+		end = zipEndRecord{
+			Signature:    directoryEndSignature,
+			DiskCDCount:  uint16Max,
+			TotalCDCount: uint16Max,
+			CDSize:       uint32Max,
+			CDOffset:     uint32Max,
+		}
+	} else {
+		end = zipEndRecord{
+			Signature:    directoryEndSignature,
+			DiskCDCount:  uint16(count),
+			TotalCDCount: uint16(count),
+			CDSize:       uint32(size),
+			CDOffset:     uint32(cdoff),
+		}
 	}
-	if err := binary.Write(buf, binary.LittleEndian, loc64); err != nil {
-		return err
-	}
-	end := zipEndRecord{
-		Signature:    directoryEndSignature,
-		DiskCDCount:  uint16Max,
-		TotalCDCount: uint16Max,
-		CDSize:       uint32Max,
-		CDOffset:     uint32Max,
-	}
+	pretty.Println(end)
 	if err := binary.Write(buf, binary.LittleEndian, end); err != nil {
 		return err
 	}

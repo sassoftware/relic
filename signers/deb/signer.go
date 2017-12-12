@@ -19,7 +19,6 @@ package deb
 // Sign Debian packages
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -30,6 +29,7 @@ import (
 	"github.com/sassoftware/relic/lib/pgptools"
 	"github.com/sassoftware/relic/lib/signdeb"
 	"github.com/sassoftware/relic/signers"
+	"github.com/sassoftware/relic/signers/sigerrors"
 )
 
 var DebSigner = &signers.Signer{
@@ -77,7 +77,7 @@ func verify(f *os.File, opts signers.VerifyOpts) ([]*signers.Signature, error) {
 		return nil, err
 	}
 	if len(sigmap) == 0 {
-		return nil, errors.New("file is not signed")
+		return nil, sigerrors.NotSignedError{Type: "DEB"}
 	}
 	var ret []*signers.Signature
 	for role, sig := range sigmap {
