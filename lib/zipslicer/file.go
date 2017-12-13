@@ -384,3 +384,33 @@ func (f *File) Digest(hash crypto.Hash) ([]byte, error) {
 	}
 	return d.Sum(nil), fc.Close()
 }
+
+// Dump the local header and contents of this file to a writer
+func (f *File) Dump(w io.Writer) (int64, error) {
+	lfh, err := f.GetLocalHeader()
+	if err != nil {
+		return 0, err
+	}
+	if _, err := w.Write(lfh); err != nil {
+		return 0, err
+	}
+	if f.compd != nil {
+		if _, err := w.Write(f.compd); err != nil {
+			return 0, err
+		}
+	} else {
+		pos := int64(f.Offset) + fileHeaderLen + int64(f.lfh.FilenameLen) + int64(f.lfh.ExtraLen)
+		r := io.NewSectionReader(f.r, pos, int64(f.CompressedSize))
+		if _, err := io.Copy(w, r); err != nil {
+			return 0, err
+		}
+	}
+	ddb, err := f.GetDataDescriptor()
+	if err != nil {
+		return 0, err
+	}
+	if _, err := w.Write(ddb); err != nil {
+		return 0, err
+	}
+	return f.GetTotalSize()
+}

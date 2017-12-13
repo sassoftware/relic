@@ -36,9 +36,9 @@ import (
 	"github.com/sassoftware/relic/lib/zipslicer"
 )
 
-func (jd *JarDigest) Sign(cert *certloader.Certificate, alias string, sectionsOnly, inlineSignature bool) (*binpatch.PatchSet, *pkcs9.TimestampedSignature, error) {
+func (jd *JarDigest) Sign(cert *certloader.Certificate, alias string, sectionsOnly, inlineSignature, apkV2 bool) (*binpatch.PatchSet, *pkcs9.TimestampedSignature, error) {
 	// Create sigfile from the manifest
-	sf, err := DigestManifest(jd.Manifest, jd.Hash, sectionsOnly)
+	sf, err := DigestManifest(jd.Manifest, jd.Hash, sectionsOnly, apkV2)
 	if err != nil {
 		return nil, nil, err
 	}

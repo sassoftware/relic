@@ -24,8 +24,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-
-	"github.com/kr/pretty"
 )
 
 type Directory struct {
@@ -227,6 +225,47 @@ func (d *Directory) Truncate(n int, body, dir io.Writer) error {
 	return nil
 }
 
+// Get the original central directory and end-of-directory from a previously-read file.
+//
+// If trim is true, then the end-of-directory will be updated to skip over any
+// non-ZIP data between the last file's contents and the first central
+// directory entry.
+func (d *Directory) GetOriginalDirectory(trim bool) (cdEntries, endOfDir []byte, err error) {
+	if d.end.Signature == 0 {
+		return nil, nil, errors.New("new zipfile, can't produce original directory")
+	}
+	var wcd, weod bytes.Buffer
+	if err := d.WriteDirectory(&wcd, nil, false); err != nil {
+		return nil, nil, err
+	}
+	end64 := d.end64
+	loc64 := d.loc64
+	end := d.end
+	if trim {
+		contentEnd, err := d.NextFileOffset()
+		if err != nil {
+			return nil, nil, err
+		}
+		delta := d.DirLoc - contentEnd
+		if delta < 0 || delta > uint32Max {
+			return nil, nil, errors.New("non-ZIP data out of bounds")
+		}
+		if end64.Signature != 0 {
+			end64.CDOffset -= uint64(delta)
+		}
+		if loc64.Signature != 0 {
+			loc64.Offset -= uint64(delta)
+		}
+		if end.CDOffset != uint32Max || loc64.Signature == 0 {
+			end.CDOffset -= uint32(delta)
+		}
+	}
+	binary.Write(&weod, binary.LittleEndian, end64)
+	binary.Write(&weod, binary.LittleEndian, loc64)
+	binary.Write(&weod, binary.LittleEndian, end)
+	return wcd.Bytes(), weod.Bytes(), nil
+}
+
 // Serialize a zip central directory to file. The file entries will be written
 // to wcd, and the end-of-directory markers will be written to weod.
 //
@@ -256,6 +295,8 @@ func (d *Directory) WriteDirectory(wcd, weod io.Writer, forceZip64 bool) error {
 			return err
 		}
 		buf.Reset(weod)
+	} else if weod == nil {
+		return nil
 	}
 	var end zipEndRecord
 	if count >= uint16Max || size >= uint32Max || cdoff >= uint32Max || forceZip64 {
@@ -273,7 +314,6 @@ func (d *Directory) WriteDirectory(wcd, weod io.Writer, forceZip64 bool) error {
 			CDSize:         size,
 			CDOffset:       uint64(cdoff),
 		}
-		pretty.Println(end64)
 		if err := binary.Write(buf, binary.LittleEndian, end64); err != nil {
 			return err
 		}
@@ -285,7 +325,6 @@ func (d *Directory) WriteDirectory(wcd, weod io.Writer, forceZip64 bool) error {
 		if err := binary.Write(buf, binary.LittleEndian, loc64); err != nil {
 			return err
 		}
-		pretty.Println(loc64)
 		end = zipEndRecord{
 			Signature:    directoryEndSignature,
 			DiskCDCount:  uint16Max,
@@ -302,7 +341,6 @@ func (d *Directory) WriteDirectory(wcd, weod io.Writer, forceZip64 bool) error {
 			CDOffset:     uint32(cdoff),
 		}
 	}
-	pretty.Println(end)
 	if err := binary.Write(buf, binary.LittleEndian, end); err != nil {
 		return err
 	}
@@ -345,27 +383,16 @@ func (d *Directory) AddFile(f *File) (*File, error) {
 	return f, nil
 }
 
-// Copy the contents of a file from another zip directory to the given writer
-// and add it to this directory.
-func (d *Directory) AddFileContents(f *File, w io.Writer) (*File, error) {
-	lfh, err := f.GetLocalHeader()
+// Get the offset immediately following the last file's contents. This is the
+// same as DirLoc unless there is non-zip data in between.
+func (d *Directory) NextFileOffset() (int64, error) {
+	if len(d.File) == 0 {
+		return 0, nil
+	}
+	lastFile := d.File[len(d.File)-1]
+	size, err := lastFile.GetTotalSize()
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
-	if _, err := w.Write(lfh); err != nil {
-		return nil, err
-	}
-	pos := int64(f.Offset) + int64(len(lfh))
-	raw := io.NewSectionReader(f.r, pos, int64(f.CompressedSize))
-	if _, err := io.Copy(w, raw); err != nil {
-		return nil, err
-	}
-	dd, err := f.GetDataDescriptor()
-	if err != nil {
-		return nil, err
-	}
-	if _, err := w.Write(dd); err != nil {
-		return nil, err
-	}
-	return d.AddFile(f)
+	return int64(lastFile.Offset) + size, nil
 }

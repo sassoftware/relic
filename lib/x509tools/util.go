@@ -110,3 +110,18 @@ func Verify(pub interface{}, hash crypto.Hash, hashed []byte, sig []byte) error 
 	}
 	return errors.New("unsupported public key algorithm")
 }
+
+// Determine the type of a public or private key
+func GetPublicKeyAlgorithm(key interface{}) x509.PublicKeyAlgorithm {
+	if privkey, ok := key.(crypto.Signer); ok {
+		key = privkey.Public()
+	}
+	switch key.(type) {
+	case *rsa.PublicKey:
+		return x509.RSA
+	case *ecdsa.PublicKey:
+		return x509.ECDSA
+	default:
+		return x509.UnknownPublicKeyAlgorithm
+	}
+}

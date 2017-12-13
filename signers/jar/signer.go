@@ -42,6 +42,7 @@ var JarSigner = &signers.Signer{
 func init() {
 	JarSigner.Flags().Bool("sections-only", false, "(JAR) Don't compute hash of entire manifest")
 	JarSigner.Flags().Bool("inline-signature", false, "(JAR) Include .SF inside the signature block")
+	JarSigner.Flags().Bool("apk-v2-present", false, "(JAR) Add X-Android-APK-Signed header to signature")
 	JarSigner.Flags().String("key-alias", "RELIC", "(JAR, APK) Alias to use for the signed manifest")
 	signers.Register(JarSigner)
 }
@@ -50,6 +51,7 @@ func init() {
 func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]byte, error) {
 	argSectionsOnly, _ := opts.Flags.GetBool("sections-only")
 	argInlineSignature, _ := opts.Flags.GetBool("inline-signature")
+	argApkV2, _ := opts.Flags.GetBool("apk-v2-present")
 	argAlias, _ := opts.Flags.GetString("key-alias")
 	if argAlias == "" {
 		argAlias = "RELIC"
@@ -58,7 +60,7 @@ func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]b
 	if err != nil {
 		return nil, err
 	}
-	patch, ts, err := digest.Sign(cert, argAlias, argSectionsOnly, argInlineSignature)
+	patch, ts, err := digest.Sign(cert, argAlias, argSectionsOnly, argInlineSignature, argApkV2)
 	if err != nil {
 		return nil, err
 	}

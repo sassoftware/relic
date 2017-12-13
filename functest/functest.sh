@@ -134,6 +134,14 @@ pkg="VSIXProject1.vsix"
 relic verify --cert "testkeys/ralph.crt" "packages/$pkg"
 $relic remote sign -k rsa2048 -f "packages/$pkg" -o "$signed/$pkg"
 $verify_2048x "$signed/$pkg"
+echo
+
+### APK
+pkg="dummy.apk"
+$relic remote sign -k rsa2048 -f "packages/$pkg" -o "$signed/$pkg" -T jar --apk-v2-present
+$relic remote sign -k rsa2048 -f "$signed/$pkg"
+$verify_2048x "$signed/$pkg"
+echo
 
 trap - EXIT
 kill -QUIT $spid

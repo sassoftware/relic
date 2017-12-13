@@ -13,6 +13,7 @@ relic is a multi-tool and server for package signing and working with hardware s
 * PS1, PS1XML, MOF, etc. - Microsoft Powershell scripts and modules
 * manifest, application - Microsoft ClickOnce manifest
 * VSIX - Visual Studio extension
+* APK - Android package
 * PGP - detached or cleartext signature of data
 
 # Token types

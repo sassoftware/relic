@@ -134,7 +134,7 @@ func hashSection(hash crypto.Hash, section []byte) string {
 
 // Transform a MANIFEST.MF into a *.SF by digesting each section with the
 // specified hash
-func DigestManifest(manifest []byte, hash crypto.Hash, sectionsOnly bool) ([]byte, error) {
+func DigestManifest(manifest []byte, hash crypto.Hash, sectionsOnly, apkV2 bool) ([]byte, error) {
 	sections, err := splitManifest(manifest)
 	if err != nil {
 		return nil, err
@@ -150,6 +150,9 @@ func DigestManifest(manifest []byte, hash crypto.Hash, sectionsOnly bool) ([]byt
 		writeAttribute(&output, hashName+"-Digest-Manifest", hashSection(hash, manifest))
 	}
 	writeAttribute(&output, "Created-By", fmt.Sprintf("%s (%s)", config.UserAgent, config.Author))
+	if apkV2 {
+		writeAttribute(&output, "X-Android-APK-Signed", "2")
+	}
 	output.WriteString("\r\n")
 	for _, section := range sections[1:] {
 		hdr, err := parseSection(section)
