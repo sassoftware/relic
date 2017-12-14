@@ -24,6 +24,7 @@ import (
 	_ "github.com/sassoftware/relic/cmdline/remotecmd"
 	_ "github.com/sassoftware/relic/cmdline/verify"
 
+	_ "github.com/sassoftware/relic/signers/apk"
 	_ "github.com/sassoftware/relic/signers/appmanifest"
 	_ "github.com/sassoftware/relic/signers/appx"
 	_ "github.com/sassoftware/relic/signers/cab"

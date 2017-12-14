@@ -43,7 +43,7 @@ var JarSigner = &signers.Signer{
 func init() {
 	JarSigner.Flags().Bool("sections-only", false, "(JAR) Don't compute hash of entire manifest")
 	JarSigner.Flags().Bool("inline-signature", false, "(JAR) Include .SF inside the signature block")
-	JarSigner.Flags().String("key-alias", "RELIC", "(JAR) Alias to use for the signed manifest")
+	JarSigner.Flags().String("key-alias", "RELIC", "(JAR, APK) Alias to use for the signed manifest")
 	signers.Register(JarSigner)
 }
 
