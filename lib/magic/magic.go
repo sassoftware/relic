@@ -18,12 +18,15 @@ package magic
 
 import (
 	"archive/tar"
+	"archive/zip"
 	"bufio"
 	"bytes"
 	"compress/gzip"
 	"encoding/binary"
 	"errors"
 	"io"
+	"os"
+	"path"
 	"strings"
 
 	"xi2.org/x/xz"
@@ -45,6 +48,10 @@ const (
 	FileTypeAppManifest
 	FileTypeCAT
 	FileTypeStarman
+	FileTypeAPPX
+	FileTypeVSIX
+	FileTypeXAP
+	FileTypeAPK
 )
 
 const (
@@ -85,21 +92,6 @@ func Detect(r io.Reader) FileType {
 		return FileTypeDEB
 	case hasPrefix(br, []byte("-----BEGIN PGP")):
 		return FileTypePGP
-	case hasPrefix(br, []byte{0x50, 0x4b, 0x03, 0x04}):
-		if blob, _ := br.Peek(28); len(blob) == 28 {
-			fnLen := binary.LittleEndian.Uint16(blob[26:28])
-			if blob, err := br.Peek(32 + int(fnLen)); err == nil {
-				if blob[31+fnLen] == 0xca && blob[30+fnLen] == 0xfe {
-					return FileTypeJAR
-				}
-				if bytes.Index(blob, []byte("META-INF/")) >= 0 {
-					return FileTypeJAR
-				}
-				if bytes.Index(blob, []byte("AndroidManifest.xml")) >= 0 {
-					return FileTypeJAR
-				}
-			}
-		}
 	case contains(br, []byte{0x06, 0x09, 0x2B, 0x06, 0x01, 0x04, 0x01, 0x82, 0x37, 0x0A, 0x01}, 256):
 		// OID certTrustList
 		return FileTypeCAT
@@ -130,8 +122,8 @@ func Detect(r io.Reader) FileType {
 	return FileTypeUnknown
 }
 
-func DetectCompressed(r io.Reader) (FileType, CompressionType) {
-	br := bufio.NewReader(r)
+func DetectCompressed(f *os.File) (FileType, CompressionType) {
+	br := bufio.NewReader(f)
 	ftype := FileTypeUnknown
 	switch {
 	case hasPrefix(br, []byte{0x1f, 0x8b}):
@@ -152,6 +144,8 @@ func DetectCompressed(r io.Reader) (FileType, CompressionType) {
 			}
 		}
 		return ftype, CompressedXz
+	case hasPrefix(br, []byte{0x50, 0x4b, 0x03, 0x04}):
+		return detectZip(f), CompressedNone
 	}
 	return Detect(br), CompressedNone
 }
@@ -181,6 +175,42 @@ func detectTar(r io.Reader) FileType {
 	switch {
 	case strings.HasPrefix(hdr.Name, ".metadata/") && strings.HasSuffix(hdr.Name, ".meta"):
 		return FileTypeStarman
+	}
+	return FileTypeUnknown
+}
+
+func detectZip(f *os.File) FileType {
+	size, err := f.Seek(0, io.SeekEnd)
+	if err != nil {
+		return FileTypeUnknown
+	}
+	inz, err := zip.NewReader(f, size)
+	if err != nil {
+		return FileTypeUnknown
+	}
+	var isJar bool
+	for _, zf := range inz.File {
+		name := zf.Name
+		if strings.HasPrefix(name, "/") {
+			name = "." + name
+		}
+		name = path.Clean(name)
+		switch zf.Name {
+		case "AndroidManifest.xml":
+			return FileTypeAPK
+		case "AppManifest.xaml":
+			return FileTypeXAP
+		case "AppxManifest.xml", "AppxMetadata/AppxBundleManifest.xml":
+			return FileTypeAPPX
+		case "extension.vsixmanifest":
+			return FileTypeVSIX
+		case "META-INF/MANIFEST.MF":
+			// APKs are also JARs so save this for last
+			isJar = true
+		}
+	}
+	if isJar {
+		return FileTypeJAR
 	}
 	return FileTypeUnknown
 }

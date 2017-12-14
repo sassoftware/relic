@@ -193,7 +193,10 @@ func ByFile(name, sigtype string) (*Signer, error) {
 		return nil, err
 	}
 	defer f.Close()
-	fileType := magic.Detect(f)
+	fileType, compressionType := magic.DetectCompressed(f)
+	if compressionType != magic.CompressedNone {
+		return nil, errors.New("cannot sign compressed file")
+	}
 	if mod := ByMagic(fileType); mod != nil {
 		return mod, nil
 	} else if mod := ByFileName(name); mod != nil {

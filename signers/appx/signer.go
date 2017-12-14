@@ -22,9 +22,9 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 
 	"github.com/sassoftware/relic/lib/certloader"
+	"github.com/sassoftware/relic/lib/magic"
 	"github.com/sassoftware/relic/lib/signappx"
 	"github.com/sassoftware/relic/signers"
 	"github.com/sassoftware/relic/signers/zipbased"
@@ -32,8 +32,8 @@ import (
 
 var AppxSigner = &signers.Signer{
 	Name:      "appx",
+	Magic:     magic.FileTypeAPPX,
 	CertTypes: signers.CertTypeX509,
-	TestPath:  testPath,
 	Transform: zipbased.Transform,
 	Sign:      sign,
 	Verify:    verify,
@@ -41,11 +41,6 @@ var AppxSigner = &signers.Signer{
 
 func init() {
 	signers.Register(AppxSigner)
-}
-
-func testPath(fp string) bool {
-	ext := filepath.Ext(fp)
-	return ext == ".appx" || ext == ".appxbundle"
 }
 
 func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]byte, error) {

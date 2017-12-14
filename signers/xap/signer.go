@@ -19,9 +19,9 @@ package xap
 import (
 	"io"
 	"os"
-	"path/filepath"
 
 	"github.com/sassoftware/relic/lib/certloader"
+	"github.com/sassoftware/relic/lib/magic"
 	"github.com/sassoftware/relic/lib/signxap"
 	"github.com/sassoftware/relic/signers"
 	"github.com/sassoftware/relic/signers/zipbased"
@@ -31,8 +31,8 @@ import (
 
 var XapSigner = &signers.Signer{
 	Name:      "xap",
+	Magic:     magic.FileTypeXAP,
 	CertTypes: signers.CertTypeX509,
-	TestPath:  testPath,
 	Transform: zipbased.Transform,
 	Sign:      sign,
 	Verify:    verify,
@@ -40,11 +40,6 @@ var XapSigner = &signers.Signer{
 
 func init() {
 	signers.Register(XapSigner)
-}
-
-func testPath(fp string) bool {
-	ext := filepath.Ext(fp)
-	return ext == ".xap"
 }
 
 func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]byte, error) {

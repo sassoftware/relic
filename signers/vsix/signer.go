@@ -22,10 +22,10 @@ import (
 	"io"
 	"os"
 	"path"
-	"path/filepath"
 
 	"github.com/beevik/etree"
 	"github.com/sassoftware/relic/lib/certloader"
+	"github.com/sassoftware/relic/lib/magic"
 	"github.com/sassoftware/relic/lib/pkcs7"
 	"github.com/sassoftware/relic/lib/pkcs9"
 	"github.com/sassoftware/relic/lib/xmldsig"
@@ -35,8 +35,8 @@ import (
 
 var Signer = &signers.Signer{
 	Name:      "vsix",
+	Magic:     magic.FileTypeVSIX,
 	CertTypes: signers.CertTypeX509,
-	TestPath:  testPath,
 	Transform: zipbased.Transform,
 	Sign:      sign,
 	Verify:    verify,
@@ -47,10 +47,6 @@ type zipFiles map[string]*zip.File
 func init() {
 	signers.Register(Signer)
 	Signer.Flags().Bool("detach-certs", false, "(VSIX) Package certificates separately in the archive")
-}
-
-func testPath(fp string) bool {
-	return filepath.Ext(fp) == ".vsix"
 }
 
 func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]byte, error) {
