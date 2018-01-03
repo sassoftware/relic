@@ -29,7 +29,7 @@ import (
 	"path"
 	"strings"
 
-	"xi2.org/x/xz"
+	"github.com/xi2/xz"
 )
 
 type FileType int

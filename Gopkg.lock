@@ -83,7 +83,7 @@
   branch = "master"
   name = "github.com/sassoftware/go-rpmutils"
   packages = [".","cpio","fileutil"]
-  revision = "1eab34795a2977e6827eba524d3d2b976804abbc"
+  revision = "6535cfb30cfa1bfd6b94426c81196da892d7483f"
 
 [[projects]]
   name = "github.com/satori/go.uuid"
@@ -111,6 +111,12 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/xi2/xz"
+  packages = ["."]
+  revision = "48954b6210f8d154cb5f8484d3a3e1f83489309e"
+
+[[projects]]
+  branch = "master"
   name = "github.com/zalando/go-keyring"
   packages = [".","secret_service"]
   revision = "af539a5cf72c7e4bc536e7b505afab78293ceb3c"
@@ -119,7 +125,7 @@
   branch = "master"
   name = "golang.org/x/crypto"
   packages = ["cast5","openpgp","openpgp/armor","openpgp/clearsign","openpgp/elgamal","openpgp/errors","openpgp/packet","openpgp/s2k","pkcs12","pkcs12/internal/rc2","ssh/terminal"]
-  revision = "94eea52f7b742c7cbe0b03b22f0c4c8631ece122"
+  revision = "0fcca4842a8d74bfddc2c96a073bd2a4d2a7a2e8"
 
 [[projects]]
   branch = "master"
@@ -131,29 +137,23 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix","windows","windows/registry","windows/svc","windows/svc/debug","windows/svc/eventlog","windows/svc/mgr"]
-  revision = "53aa286056ef226755cd898109dbcdaba8ac0b81"
+  revision = "83801418e1b59fb1880e363299581ee543af32ca"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/text"
   packages = ["collate","collate/build","internal/colltab","internal/gen","internal/tag","internal/triegen","internal/ucd","language","secure/bidirule","transform","unicode/bidi","unicode/cldr","unicode/norm","unicode/rangetable"]
-  revision = "3b24cac7bc3a458991ab409aa2a339ac9e0d60d6"
+  revision = "e19ae1496984b1c655b8044a65c0300a3c878dd3"
 
 [[projects]]
   branch = "v2"
   name = "gopkg.in/yaml.v2"
   packages = ["."]
-  revision = "287cf08546ab5e7e37d55a84f7ed3fd1db036de5"
-
-[[projects]]
-  branch = "master"
-  name = "xi2.org/x/xz"
-  packages = ["."]
-  revision = "19aeb13c4e7cb6bd3188dfede73840f33455425a"
+  revision = "c95af922eae69f190717a0b7148960af8c55a072"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "e9300052f91b009311030c081daa2c8655e1074e146d9a7c44ed55016af61eee"
+  inputs-digest = "9753a41931b4d925dba392d6a29fdd90e4604bd7c38ca9db89221797d7da2699"
   solver-name = "gps-cdcl"
   solver-version = 1
