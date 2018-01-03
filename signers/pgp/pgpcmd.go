@@ -57,6 +57,9 @@ func AddCompatFlags(cmd *cobra.Command) {
 	flags.Bool("no-verbose", false, "(ignored)")
 	flags.BoolP("quiet", "q", false, "(ignored)")
 	flags.Bool("no-secmem-warning", false, "(ignored)")
+	flags.String("status-fd", "", "(ignored)")
+	flags.String("logger-fd", "", "(ignored)")
+	flags.String("attribute-fd", "", "(ignored)")
 }
 
 func CallCmd(src, dest *cobra.Command, args []string) error {
