@@ -56,13 +56,13 @@
     ".",
     "oid"
   ]
-  revision = "83612a56d3dd153a94a629cd64925371c9adad78"
+  revision = "88edab0803230a3898347e77b474f8c1820a1f20"
 
 [[projects]]
   branch = "master"
   name = "github.com/miekg/pkcs11"
   packages = ["."]
-  revision = "57296583125bf58643f8bac3635bc1af1d65a6df"
+  revision = "88ac7c418f89b164432a00c46ec7b7612d686b57"
 
 [[projects]]
   name = "github.com/op/go-logging"
@@ -90,7 +90,7 @@
     "cpio",
     "fileutil"
   ]
-  revision = "6535cfb30cfa1bfd6b94426c81196da892d7483f"
+  revision = "8c470ded63c3eb27c1aa3e7b08142f70f811e693"
 
 [[projects]]
   name = "github.com/satori/go.uuid"
@@ -114,7 +114,7 @@
   branch = "master"
   name = "github.com/streadway/amqp"
   packages = ["."]
-  revision = "a354ab84f102bc6eb31c9be006ca89446cf5b372"
+  revision = "fc7fda2371f5327ad39211e09482845b8734cc72"
 
 [[projects]]
   branch = "master"
@@ -147,7 +147,7 @@
     "pkcs12/internal/rc2",
     "ssh/terminal"
   ]
-  revision = "13931e22f9e72ea58bb73048bc752b48c6d4d4ac"
+  revision = "9334d73e5f05d728ee11a17c031f7eb9aed2c144"
 
 [[projects]]
   branch = "master"
@@ -158,7 +158,7 @@
     "idna",
     "lex/httplex"
   ]
-  revision = "5ccada7d0a7ba9aeb5d3aca8d3501b4c2a509fec"
+  revision = "f5dfe339be1d06f81b22525fe34671ee7d2c8904"
 
 [[projects]]
   branch = "master"
@@ -172,7 +172,7 @@
     "windows/svc/eventlog",
     "windows/svc/mgr"
   ]
-  revision = "810d7000345868fc619eb81f46307107118f4ae1"
+  revision = "37707fdb30a5b38865cfb95e5aab41707daec7fd"
 
 [[projects]]
   branch = "master"
@@ -193,7 +193,7 @@
     "unicode/norm",
     "unicode/rangetable"
   ]
-  revision = "e19ae1496984b1c655b8044a65c0300a3c878dd3"
+  revision = "4e4a3210bb54bb31f6ab2cdca2edcc0b50c420c1"
 
 [[projects]]
   branch = "v2"
