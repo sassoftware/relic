@@ -45,8 +45,12 @@ var (
 
 var tokenMap map[string]token.Token
 
-func addSelectOrGenerateFlags(cmd *cobra.Command) {
+func addKeyFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&argKeyName, "key", "k", "", "Name of key section in config file to use")
+}
+
+func addSelectOrGenerateFlags(cmd *cobra.Command) {
+	addKeyFlags(cmd)
 	cmd.Flags().StringVarP(&argToken, "token", "t", "", "Name of token to generate key in")
 	cmd.Flags().StringVarP(&argLabel, "label", "l", "", "Label to attach to generated key")
 	cmd.Flags().UintVar(&argRsaBits, "generate-rsa", 0, "Generate a RSA key of the specified bit size, if needed")

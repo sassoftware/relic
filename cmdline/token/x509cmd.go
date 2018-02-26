@@ -20,11 +20,17 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 
 	"github.com/sassoftware/relic/cmdline/shared"
+	"github.com/sassoftware/relic/lib/certloader"
 	"github.com/sassoftware/relic/lib/x509tools"
 	"github.com/spf13/cobra"
+)
+
+var (
+	argCopyExtensions bool
 )
 
 var ReqCmd = &cobra.Command{
@@ -37,6 +43,12 @@ var SelfSignCmd = &cobra.Command{
 	Short: "Generate self-signed X509 certificate",
 }
 
+var SignCsrCmd = &cobra.Command{
+	Use:   "x509-sign",
+	Short: "Create a X509 certificate from a certificate signing request",
+	RunE:  signCsrCmd,
+}
+
 func init() {
 	ReqCmd.RunE = x509Cmd
 	shared.RootCmd.AddCommand(ReqCmd)
@@ -47,6 +59,11 @@ func init() {
 	shared.RootCmd.AddCommand(SelfSignCmd)
 	addSelectOrGenerateFlags(SelfSignCmd)
 	x509tools.AddCertFlags(SelfSignCmd)
+
+	shared.RootCmd.AddCommand(SignCsrCmd)
+	addKeyFlags(SignCsrCmd)
+	x509tools.AddCertFlags(SignCsrCmd)
+	SignCsrCmd.Flags().BoolVar(&argCopyExtensions, "copy-extensions", false, "Copy extensions verbabim from CSR")
 }
 
 func x509Cmd(cmd *cobra.Command, args []string) error {
@@ -68,5 +85,33 @@ func x509Cmd(cmd *cobra.Command, args []string) error {
 	}
 	os.Stdout.WriteString(result)
 	fmt.Println("CKA_ID:", formatKeyID(key.GetID()))
+	return nil
+}
+
+func signCsrCmd(cmd *cobra.Command, args []string) error {
+	if len(args) != 1 {
+		return errors.New("expected a CSR file as input")
+	}
+	csr, err := ioutil.ReadFile(args[0])
+	if err != nil {
+		return err
+	}
+	key, err := openKey(argKeyName)
+	if err != nil {
+		return err
+	}
+	certPath := key.Config().X509Certificate
+	if certPath == "" {
+		return errors.New("token key has no x509 certificate")
+	}
+	cert, err := certloader.LoadTokenCertificates(key, certPath, "")
+	if err != nil {
+		return err
+	}
+	result, err := x509tools.SignCSR(csr, rand.Reader, key, cert.Leaf, argCopyExtensions)
+	if err != nil {
+		return err
+	}
+	os.Stdout.WriteString(result)
 	return nil
 }

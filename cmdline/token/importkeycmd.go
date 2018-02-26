@@ -40,7 +40,7 @@ var argPkcs12 bool
 
 func init() {
 	shared.RootCmd.AddCommand(ImportKeyCmd)
-	ImportKeyCmd.Flags().StringVarP(&argKeyName, "key", "k", "", "Name of key section in config file to use")
+	addKeyFlags(ImportKeyCmd)
 	ImportKeyCmd.Flags().StringVarP(&argToken, "token", "t", "", "Name of token to import key to")
 	ImportKeyCmd.Flags().StringVarP(&argLabel, "label", "l", "", "Label to attach to imported key")
 	ImportKeyCmd.Flags().StringVarP(&argFile, "file", "f", "", "Private key file to import: PEM, DER, or PGP")

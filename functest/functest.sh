@@ -143,6 +143,14 @@ $relic remote sign -k rsa2048 -f "$signed/$pkg"
 $verify_2048x "$signed/$pkg"
 echo
 
+### X.509 certificate operations
+$relic x509-self-sign -k root --generate-rsa 2048 --cert-authority -n "functest CA" >"$signed/root.crt"
+$relic x509-request -k inter --generate-ecdsa 384 --commonName "functest inter" >"$signed/inter.csr"
+$relic x509-sign -k root --cert-authority "$signed/inter.csr" > "$signed/inter.crt"
+$relic x509-request -k leaf --generate-ecdsa 256 --commonName "functest leaf" --alternate-dns leaf.localdomain >"$signed/leaf.csr"
+$relic x509-sign -k inter --copy-extensions "$signed/leaf.csr" > "$signed/leaf.crt"
+openssl verify -check_ss_sig -CAfile "$signed/root.crt" -untrusted "$signed/inter.crt" "$signed/leaf.crt"
+
 trap - EXIT
 kill -QUIT $spid
 wait $spid

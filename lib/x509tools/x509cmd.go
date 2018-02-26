@@ -17,12 +17,15 @@
 package x509tools
 
 import (
+	"bytes"
 	"crypto"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"io"
+	"math/big"
 	"strings"
 	"time"
 
@@ -41,6 +44,7 @@ var (
 	ArgKeyUsage           string
 	ArgExpireDays         uint
 	ArgCertAuthority      bool
+	ArgSerial             string
 )
 
 // Add flags associated with X509 requests to the given command
@@ -61,6 +65,7 @@ func AddCertFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVar(&ArgCertAuthority, "cert-authority", false, "If this certificate is an authority")
 	cmd.Flags().StringVarP(&ArgKeyUsage, "key-usage", "U", "", "Key usage, one of: serverAuth clientAuth codeSigning emailProtection")
 	cmd.Flags().UintVarP(&ArgExpireDays, "expire-days", "e", 36525, "Number of days before certificate expires")
+	cmd.Flags().StringVar(&ArgSerial, "serial", "", "Set the serial number of the certificate. Random if not specified.")
 }
 
 // Split a space- and/or comma-seperated string
@@ -127,6 +132,46 @@ func setUsage(template *x509.Certificate) error {
 	return nil
 }
 
+func fillCertFields(template *x509.Certificate, pub crypto.PublicKey) error {
+	if ArgSerial != "" {
+		serial, ok := new(big.Int).SetString(ArgSerial, 0)
+		if !ok {
+			return errors.New("invalid serial number, must be decimal or hexadecimal format")
+		}
+		template.SerialNumber = serial
+	} else {
+		template.SerialNumber = MakeSerial()
+		if template.SerialNumber == nil {
+			return errors.New("Failed to generate a serial number")
+		}
+	}
+	if ArgCommonName != "" {
+		template.Subject = subjName()
+	}
+	if ArgDNSNames != "" {
+		template.DNSNames = splitAndTrim(ArgDNSNames)
+	}
+	if ArgEmailNames != "" {
+		template.EmailAddresses = splitAndTrim(ArgEmailNames)
+	}
+	template.SignatureAlgorithm = X509SignatureAlgorithm(pub)
+	template.NotBefore = time.Now().Add(time.Hour * -24)
+	template.NotAfter = time.Now().Add(time.Hour * 24 * time.Duration(ArgExpireDays))
+	template.IsCA = ArgCertAuthority
+	template.BasicConstraintsValid = true
+	ski, err := SubjectKeyID(pub)
+	if err != nil {
+		return err
+	}
+	template.SubjectKeyId = ski
+	return setUsage(template)
+}
+
+func toPemString(der []byte, pemType string) string {
+	block := &pem.Block{Type: pemType, Bytes: der}
+	return string(pem.EncodeToMemory(block))
+}
+
 // Make a X509 certificate request using command-line arguments and return the
 // PEM string
 func MakeRequest(rand io.Reader, key crypto.Signer) (string, error) {
@@ -139,39 +184,66 @@ func MakeRequest(rand io.Reader, key crypto.Signer) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	block := &pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csr}
-	return string(pem.EncodeToMemory(block)), nil
+	return toPemString(csr, "CERTIFICATE REQUEST"), nil
 }
 
 // Make a self-signed X509 certificate using command-line arguments and return
 // the PEM string
 func MakeCertificate(rand io.Reader, key crypto.Signer) (string, error) {
 	var template x509.Certificate
-	template.SerialNumber = MakeSerial()
-	if template.SerialNumber == nil {
-		return "", errors.New("Failed to generate a serial number")
-	}
-	template.Subject = subjName()
-	template.DNSNames = splitAndTrim(ArgDNSNames)
-	template.EmailAddresses = splitAndTrim(ArgEmailNames)
-	template.SignatureAlgorithm = X509SignatureAlgorithm(key.Public())
-	template.NotBefore = time.Now().Add(time.Hour * -24)
-	template.NotAfter = time.Now().Add(time.Hour * 24 * time.Duration(ArgExpireDays))
-	template.IsCA = ArgCertAuthority
-	template.BasicConstraintsValid = true
-	if err := setUsage(&template); err != nil {
+	if err := fillCertFields(&template, key.Public()); err != nil {
 		return "", err
 	}
 	template.Issuer = template.Subject
-	ski, err := SubjectKeyID(key.Public())
-	if err != nil {
-		return "", err
-	}
-	template.SubjectKeyId = ski
 	cert, err := x509.CreateCertificate(rand, &template, &template, key.Public(), key)
 	if err != nil {
 		return "", err
 	}
-	block := &pem.Block{Type: "CERTIFICATE", Bytes: cert}
-	return string(pem.EncodeToMemory(block)), nil
+	return toPemString(cert, "CERTIFICATE"), nil
+}
+
+// SignCSR takes a PKCS#10 signing request in PEM or DER format as input and
+// produces a signed certificate in PEM format. Any command-line flags set will
+// override the CSR contents.
+func SignCSR(csrBytes []byte, rand io.Reader, key crypto.Signer, cacert *x509.Certificate, copyExtensions bool) (string, error) {
+	// parse and validate CSR
+	var der []byte
+	if bytes.Contains(csrBytes, []byte("-----BEGIN")) {
+		for {
+			var block *pem.Block
+			block, csrBytes = pem.Decode(csrBytes)
+			if block == nil {
+				break
+			} else if block.Type == "CERTIFICATE REQUEST" {
+				der = block.Bytes
+				break
+			}
+		}
+	} else if len(csrBytes) > 0 && csrBytes[0] == 0x30 {
+		der = csrBytes
+	}
+	if len(der) == 0 {
+		return "", errors.New("expected a certificate signing request in PEM or DER format")
+	}
+	csr, err := x509.ParseCertificateRequest(der)
+	if err != nil {
+		return "", fmt.Errorf("parsing CSR: %s", err)
+	}
+	if err := csr.CheckSignature(); err != nil {
+		return "", fmt.Errorf("validating CSR: %s", err)
+	}
+	// update fields
+	template := &x509.Certificate{Subject: csr.Subject}
+	if copyExtensions {
+		template.ExtraExtensions = csr.Extensions
+		copyNames(template, csr)
+	}
+	if err := fillCertFields(template, key.Public()); err != nil {
+		return "", err
+	}
+	certDer, err := x509.CreateCertificate(rand, template, cacert, csr.PublicKey, key)
+	if err != nil {
+		return "", err
+	}
+	return toPemString(certDer, "CERTIFICATE"), nil
 }

@@ -50,7 +50,7 @@ var (
 
 func init() {
 	shared.RootCmd.AddCommand(SignCmd)
-	SignCmd.Flags().StringVarP(&argKeyName, "key", "k", "", "Name of key to use")
+	addKeyFlags(SignCmd)
 	SignCmd.Flags().StringVarP(&argFile, "file", "f", "", "Input file to sign")
 	SignCmd.Flags().StringVarP(&argOutput, "output", "o", "", "Output file")
 	SignCmd.Flags().StringVarP(&argSigType, "sig-type", "T", "", "Specify signature type (default: auto-detect)")

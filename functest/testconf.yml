@@ -11,6 +11,18 @@ keys:
     pgpcertificate: ./testkeys/rsa2048.pgp
     x509certificate: ./testkeys/rsa2048.crt
     roles: ['client']
+  root:
+    token: softhsm
+    label: root
+    x509certificate: ./scratch/signed/root.crt
+  inter:
+    token: softhsm
+    label: inter
+    x509certificate: ./scratch/signed/inter.crt
+  leaf:
+    token: softhsm
+    label: leaf
+    x509certificate: ./scratch/signed/leaf.crt
 server:
   listen: ":6363"
   keyfile: ./testkeys/server.key
