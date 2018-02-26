@@ -134,7 +134,7 @@ func setUsage(template *x509.Certificate) error {
 	return nil
 }
 
-func fillCertFields(template *x509.Certificate, pub crypto.PublicKey) error {
+func fillCertFields(template *x509.Certificate, subjectPub, issuerPub crypto.PublicKey) error {
 	if ArgSerial != "" {
 		serial, ok := new(big.Int).SetString(ArgSerial, 0)
 		if !ok {
@@ -156,12 +156,12 @@ func fillCertFields(template *x509.Certificate, pub crypto.PublicKey) error {
 	if ArgEmailNames != "" {
 		template.EmailAddresses = splitAndTrim(ArgEmailNames)
 	}
-	template.SignatureAlgorithm = X509SignatureAlgorithm(pub)
+	template.SignatureAlgorithm = X509SignatureAlgorithm(issuerPub)
 	template.NotBefore = time.Now().Add(time.Hour * -24)
 	template.NotAfter = time.Now().Add(time.Hour * 24 * time.Duration(ArgExpireDays))
 	template.IsCA = ArgCertAuthority
 	template.BasicConstraintsValid = true
-	ski, err := SubjectKeyID(pub)
+	ski, err := SubjectKeyID(subjectPub)
 	if err != nil {
 		return err
 	}
@@ -193,7 +193,7 @@ func MakeRequest(rand io.Reader, key crypto.Signer) (string, error) {
 // the PEM string
 func MakeCertificate(rand io.Reader, key crypto.Signer) (string, error) {
 	var template x509.Certificate
-	if err := fillCertFields(&template, key.Public()); err != nil {
+	if err := fillCertFields(&template, key.Public(), key.Public()); err != nil {
 		return "", err
 	}
 	template.Issuer = template.Subject
@@ -240,7 +240,7 @@ func SignCSR(csrBytes []byte, rand io.Reader, key crypto.Signer, cacert *x509.Ce
 		template.ExtraExtensions = csr.Extensions
 		copyNames(template, csr)
 	}
-	if err := fillCertFields(template, key.Public()); err != nil {
+	if err := fillCertFields(template, csr.PublicKey, key.Public()); err != nil {
 		return "", err
 	}
 	certDer, err := x509.CreateCertificate(rand, template, cacert, csr.PublicKey, key)
