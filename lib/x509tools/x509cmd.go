@@ -63,7 +63,7 @@ func AddRequestFlags(cmd *cobra.Command) {
 func AddCertFlags(cmd *cobra.Command) {
 	AddRequestFlags(cmd)
 	cmd.Flags().BoolVar(&ArgCertAuthority, "cert-authority", false, "If this certificate is an authority")
-	cmd.Flags().StringVarP(&ArgKeyUsage, "key-usage", "U", "", "Key usage, one of: serverAuth clientAuth codeSigning emailProtection")
+	cmd.Flags().StringVarP(&ArgKeyUsage, "key-usage", "U", "", "Key usage, one of: serverAuth clientAuth codeSigning emailProtection keyCertSign")
 	cmd.Flags().UintVarP(&ArgExpireDays, "expire-days", "e", 36525, "Number of days before certificate expires")
 	cmd.Flags().StringVar(&ArgSerial, "serial", "", "Set the serial number of the certificate. Random if not specified.")
 }
@@ -109,26 +109,28 @@ func subjName() (name pkix.Name) {
 // Set both basic and extended key usage
 func setUsage(template *x509.Certificate) error {
 	usage := x509.KeyUsageDigitalSignature
-	var extended x509.ExtKeyUsage
+	var extended []x509.ExtKeyUsage
 	switch strings.ToLower(ArgKeyUsage) {
 	case "serverauth":
 		usage |= x509.KeyUsageKeyEncipherment | x509.KeyUsageKeyAgreement
-		extended = x509.ExtKeyUsageServerAuth
+		extended = append(extended, x509.ExtKeyUsageServerAuth)
 	case "clientauth":
 		usage |= x509.KeyUsageKeyEncipherment | x509.KeyUsageKeyAgreement
-		extended = x509.ExtKeyUsageClientAuth
+		extended = append(extended, x509.ExtKeyUsageClientAuth)
 	case "codesigning":
-		extended = x509.ExtKeyUsageCodeSigning
+		extended = append(extended, x509.ExtKeyUsageCodeSigning)
 	case "emailprotection":
 		usage |= x509.KeyUsageContentCommitment | x509.KeyUsageKeyEncipherment | x509.KeyUsageKeyAgreement
-		extended = x509.ExtKeyUsageEmailProtection
+		extended = append(extended, x509.ExtKeyUsageEmailProtection)
+	case "keycertsign":
+		usage |= x509.KeyUsageCertSign | x509.KeyUsageCRLSign
 	case "":
 		return nil
 	default:
 		return errors.New("invalid key-usage")
 	}
 	template.KeyUsage = usage
-	template.ExtKeyUsage = []x509.ExtKeyUsage{extended}
+	template.ExtKeyUsage = extended
 	return nil
 }
 
