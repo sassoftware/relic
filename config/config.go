@@ -136,10 +136,15 @@ func ReadFile(path string) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	config.path = path
+	return config, config.Normalize()
+}
+
+func (config *Config) Normalize() error {
 	normalized := make(map[string]*ClientConfig)
 	for fingerprint, client := range config.Clients {
 		if len(fingerprint) != 64 {
-			return nil, errors.New("Client keys must be hex-encoded SHA256 digests of the public key")
+			return errors.New("Client keys must be hex-encoded SHA256 digests of the public key")
 		}
 		lower := strings.ToLower(fingerprint)
 		normalized[lower] = client
@@ -148,11 +153,11 @@ func ReadFile(path string) (*Config, error) {
 	if config.PinFile != "" {
 		contents, err := ioutil.ReadFile(config.PinFile)
 		if err != nil {
-			return nil, fmt.Errorf("error reading PinFile: %s", err)
+			return fmt.Errorf("error reading PinFile: %s", err)
 		}
 		pinMap := make(map[string]string)
 		if err := yaml.Unmarshal(contents, pinMap); err != nil {
-			return nil, fmt.Errorf("error reading PinFile: %s", err)
+			return fmt.Errorf("error reading PinFile: %s", err)
 		}
 		for token, pin := range pinMap {
 			tokenConf := config.Tokens[token]
@@ -174,8 +179,7 @@ func ReadFile(path string) (*Config, error) {
 			keyConf.token = config.Tokens[keyConf.Token]
 		}
 	}
-	config.path = path
-	return config, nil
+	return nil
 }
 
 func (config *Config) GetToken(tokenName string) (*TokenConfig, error) {
