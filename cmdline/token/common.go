@@ -28,9 +28,7 @@ import (
 	"github.com/sassoftware/relic/lib/passprompt"
 	"github.com/sassoftware/relic/signers/sigerrors"
 	"github.com/sassoftware/relic/token"
-	"github.com/sassoftware/relic/token/filetoken"
-	"github.com/sassoftware/relic/token/p11token"
-	"github.com/sassoftware/relic/token/scdtoken"
+	"github.com/sassoftware/relic/token/open"
 	"github.com/spf13/cobra"
 )
 
@@ -129,21 +127,7 @@ func openToken(tokenName string) (token.Token, error) {
 	if !argServer {
 		prompt = new(passprompt.PasswordPrompt)
 	}
-	cfg := shared.CurrentConfig
-	tcfg, err := cfg.GetToken(tokenName)
-	if err != nil {
-		return nil, err
-	}
-	switch tcfg.Type {
-	case "pkcs11":
-		tok, err = p11token.Open(cfg, tokenName, prompt)
-	case "file":
-		tok, err = filetoken.Open(cfg, tokenName, prompt)
-	case "scdaemon":
-		tok, err = scdtoken.Open(cfg, tokenName, prompt)
-	default:
-		return nil, fmt.Errorf("unknown token type %s", tcfg.Type)
-	}
+	tok, err = open.Token(shared.CurrentConfig, tokenName, prompt)
 	if err != nil {
 		return nil, err
 	}
