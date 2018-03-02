@@ -19,6 +19,7 @@ package x509tools
 import (
 	"bytes"
 	"crypto"
+	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
@@ -26,10 +27,12 @@ import (
 	"fmt"
 	"io"
 	"math/big"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 var (
@@ -45,6 +48,8 @@ var (
 	ArgExpireDays         uint
 	ArgCertAuthority      bool
 	ArgSerial             string
+	ArgInteractive        bool
+	ArgRSAPSS             bool
 )
 
 // Add flags associated with X509 requests to the given command
@@ -57,6 +62,8 @@ func AddRequestFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&ArgCommonName, "commonName", "n", "", "Subject commonName")
 	cmd.Flags().StringVar(&ArgDNSNames, "alternate-dns", "", "DNS subject alternate name (comma or space separated)")
 	cmd.Flags().StringVar(&ArgEmailNames, "alternate-email", "", "Email subject alternate name (comma or space separated)")
+	cmd.Flags().BoolVarP(&ArgInteractive, "interactive", "i", false, "Prompt before signing certificate")
+	cmd.Flags().BoolVar(&ArgRSAPSS, "rsa-pss", false, "Use RSA-PSS signature")
 }
 
 // Add flags associated with X509 certificate creation to the given command
@@ -64,7 +71,7 @@ func AddCertFlags(cmd *cobra.Command) {
 	AddRequestFlags(cmd)
 	cmd.Flags().BoolVar(&ArgCertAuthority, "cert-authority", false, "If this certificate is an authority")
 	cmd.Flags().StringVarP(&ArgKeyUsage, "key-usage", "U", "", "Key usage, one of: serverAuth clientAuth codeSigning emailProtection keyCertSign")
-	cmd.Flags().UintVarP(&ArgExpireDays, "expire-days", "e", 36525, "Number of days before certificate expires")
+	cmd.Flags().UintVarP(&ArgExpireDays, "expire-days", "e", 36523, "Number of days before certificate expires")
 	cmd.Flags().StringVar(&ArgSerial, "serial", "", "Set the serial number of the certificate. Random if not specified.")
 }
 
@@ -197,7 +204,7 @@ func MakeCertificate(rand io.Reader, key crypto.Signer) (string, error) {
 		return "", err
 	}
 	template.Issuer = template.Subject
-	cert, err := x509.CreateCertificate(rand, &template, &template, key.Public(), key)
+	cert, err := confirmAndCreate(&template, &template, key.Public(), key)
 	if err != nil {
 		return "", err
 	}
@@ -243,9 +250,64 @@ func SignCSR(csrBytes []byte, rand io.Reader, key crypto.Signer, cacert *x509.Ce
 	if err := fillCertFields(template, csr.PublicKey, key.Public()); err != nil {
 		return "", err
 	}
-	certDer, err := x509.CreateCertificate(rand, template, cacert, csr.PublicKey, key)
+	certDer, err := confirmAndCreate(template, cacert, csr.PublicKey, key)
 	if err != nil {
 		return "", err
 	}
 	return toPemString(certDer, "CERTIFICATE"), nil
+}
+
+type fakeSigner struct{ pub crypto.PublicKey }
+
+func (f fakeSigner) Public() crypto.PublicKey {
+	return f.pub
+}
+
+func (f fakeSigner) Sign(io.Reader, []byte, crypto.SignerOpts) ([]byte, error) {
+	return nil, nil
+}
+
+func confirmAndCreate(template, parent *x509.Certificate, pub crypto.PublicKey, priv crypto.PrivateKey) ([]byte, error) {
+	if ArgInteractive {
+		// call CreateCertificate with a fake signer to get what the final cert will look like
+		pub := priv.(crypto.Signer).Public()
+		der, err := x509.CreateCertificate(rand.Reader, template, parent, pub, fakeSigner{pub})
+		if err != nil {
+			return nil, err
+		}
+		cert, err := x509.ParseCertificate(der)
+		if err != nil {
+			return nil, err
+		}
+		fmt.Println("Signing certificate:")
+		fmt.Println()
+		FprintCertificate(os.Stdout, cert)
+		fmt.Println()
+		if !promptYN("Sign this cert? [Y/n] ") {
+			fmt.Fprintln(os.Stderr, "operation canceled")
+			os.Exit(2)
+		}
+	}
+	return x509.CreateCertificate(rand.Reader, template, parent, pub, priv)
+}
+
+func promptYN(prompt string) bool {
+	fmt.Print(prompt)
+	if !terminal.IsTerminal(0) {
+		fmt.Println("input is not a terminal, assuming true")
+		return true
+	}
+	state, err := terminal.MakeRaw(0)
+	if err == nil {
+		defer fmt.Println()
+		defer terminal.Restore(0, state)
+	}
+	var d [1]byte
+	if _, err := os.Stdin.Read(d[:]); err != nil {
+		return false
+	}
+	if d[0] == 'Y' || d[0] == 'y' {
+		return true
+	}
+	return false
 }

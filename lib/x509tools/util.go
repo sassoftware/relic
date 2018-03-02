@@ -43,6 +43,9 @@ func MakeSerial() *big.Int {
 func X509SignatureAlgorithm(pub crypto.PublicKey) x509.SignatureAlgorithm {
 	switch pub.(type) {
 	case *rsa.PublicKey:
+		if ArgRSAPSS {
+			return x509.SHA256WithRSAPSS
+		}
 		return x509.SHA256WithRSA
 	case *ecdsa.PublicKey:
 		return x509.ECDSAWithSHA256
