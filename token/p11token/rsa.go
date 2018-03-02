@@ -38,13 +38,53 @@ func (key *Key) toRsaKey() (crypto.PublicKey, error) {
 	return &rsa.PublicKey{N: n, E: e}, nil
 }
 
+func (key *Key) newPssMech(opts *rsa.PSSOptions) (*pkcs11.Mechanism, error) {
+	var hashAlg, mgfType uint
+	switch opts.Hash {
+	case crypto.SHA1:
+		hashAlg = pkcs11.CKM_SHA_1
+		mgfType = pkcs11.CKG_MGF1_SHA1
+	case crypto.SHA224:
+		hashAlg = pkcs11.CKM_SHA224
+		mgfType = pkcs11.CKG_MGF1_SHA224
+	case crypto.SHA256:
+		hashAlg = pkcs11.CKM_SHA256
+		mgfType = pkcs11.CKG_MGF1_SHA256
+	case crypto.SHA384:
+		hashAlg = pkcs11.CKM_SHA384
+		mgfType = pkcs11.CKG_MGF1_SHA384
+	case crypto.SHA512:
+		hashAlg = pkcs11.CKM_SHA512
+		mgfType = pkcs11.CKG_MGF1_SHA512
+	default:
+		return nil, errors.New("unsupported hash type for PSS")
+	}
+	saltLength := opts.SaltLength
+	switch saltLength {
+	case rsa.PSSSaltLengthAuto:
+		pub := key.pubParsed.(*rsa.PublicKey)
+		saltLength = (pub.N.BitLen()+7)/8 - 2 - opts.Hash.Size()
+	case rsa.PSSSaltLengthEqualsHash:
+		saltLength = opts.Hash.Size()
+	}
+	args := make([]byte, ulongSize*3)
+	putUlong(args, hashAlg)
+	putUlong(args[ulongSize:], mgfType)
+	putUlong(args[ulongSize*2:], uint(saltLength))
+	return pkcs11.NewMechanism(pkcs11.CKM_RSA_PKCS_PSS, args), nil
+}
+
 // Sign a digest using token RSA private key
 func (key *Key) signRSA(digest []byte, opts crypto.SignerOpts) ([]byte, error) {
 	var mech *pkcs11.Mechanism
 	if opts == nil || opts.HashFunc() == 0 {
 		return nil, errors.New("Signer options are required")
-	} else if _, ok := opts.(*rsa.PSSOptions); ok {
-		return nil, errors.New("RSA-PSS not implemented")
+	} else if pss, ok := opts.(*rsa.PSSOptions); ok {
+		var err error
+		mech, err = key.newPssMech(pss)
+		if err != nil {
+			return nil, err
+		}
 	} else {
 		var ok bool
 		digest, ok = x509tools.MarshalDigest(opts.HashFunc(), digest)
