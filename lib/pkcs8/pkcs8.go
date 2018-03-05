@@ -47,7 +47,7 @@ func MarshalPKCS8PrivateKey(priv crypto.PrivateKey) ([]byte, error) {
 			Version: 0,
 			PrivateKeyAlgorithm: pkix.AlgorithmIdentifier{
 				x509tools.OidPublicKeyRSA,
-				x509tools.Asn1Null,
+				asn1.NullRawValue,
 			},
 			PrivateKey: x509.MarshalPKCS1PrivateKey(pkey),
 		})

@@ -19,11 +19,11 @@ package pkcs7
 import (
 	"crypto"
 	"crypto/rand"
-	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
 	"errors"
+	"fmt"
 
 	"github.com/sassoftware/relic/lib/x509tools"
 )
@@ -96,17 +96,10 @@ func (sb *SignatureBuilder) Sign() (*ContentInfoSignedData, error) {
 	if sb.digest == nil {
 		return nil, errors.New("SetContent was not called")
 	}
-	digestAlg, ok := x509tools.PkixDigestAlgorithm(sb.signerOpts.HashFunc())
-	if !ok {
-		return nil, errors.New("pkcs7: unsupported digest algorithm")
-	}
 	pubKey := sb.privateKey.Public()
-	pkeyAlg, ok := x509tools.PkixPublicKeyAlgorithm(pubKey)
-	if !ok {
-		return nil, errors.New("pkcs7: unsupported public key algorithm")
-	}
-	if _, ok := sb.signerOpts.(*rsa.PSSOptions); ok {
-		return nil, errors.New("pkcs7: RSA-PSS not implemented")
+	digestAlg, pkeyAlg, err := x509tools.PkixAlgorithms(pubKey, sb.signerOpts)
+	if err != nil {
+		return nil, fmt.Errorf("pkcs7: %s", err)
 	}
 	if len(sb.certs) < 1 || !x509tools.SameKey(pubKey, sb.certs[0].PublicKey) {
 		return nil, errors.New("pkcs7: first certificate must match private key")

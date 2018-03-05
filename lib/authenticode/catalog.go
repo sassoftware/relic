@@ -55,7 +55,7 @@ func (cat *Catalog) makeCatalog() CertTrustList {
 		SubjectUsage:     []asn1.ObjectIdentifier{OidCatalogList},
 		ListIdentifier:   uuid.NewV4().Bytes(),
 		EffectiveDate:    time.Now().UTC(),
-		SubjectAlgorithm: pkix.AlgorithmIdentifier{Algorithm: memberOid, Parameters: x509tools.Asn1Null},
+		SubjectAlgorithm: pkix.AlgorithmIdentifier{Algorithm: memberOid, Parameters: asn1.NullRawValue},
 		Entries:          append(cat.Sha2Entries, cat.Sha1Entries...),
 	}
 }

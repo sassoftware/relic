@@ -127,7 +127,7 @@ func (si *SignerInfo) Verify(content []byte, skipDigests bool, certs []*x509.Cer
 	// possible to decrypt the signature and check the padding but there's not
 	// much point to it.
 	if digest != nil {
-		err = x509tools.Verify(cert.PublicKey, hash, digest, si.EncryptedDigest)
+		err = x509tools.PkixVerify(cert.PublicKey, si.DigestAlgorithm, si.DigestEncryptionAlgorithm, digest, si.EncryptedDigest)
 		if err == rsa.ErrVerification {
 			// "Symantec Time Stamping Services Signer" seems to be emitting
 			// signatures without the AlgorithmIdentifier strucuture, so try

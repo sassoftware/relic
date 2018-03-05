@@ -17,7 +17,6 @@
 package x509tools
 
 import (
-	"crypto/dsa"
 	"crypto/ecdsa"
 	"crypto/rsa"
 	"crypto/x509"
@@ -91,8 +90,6 @@ func FprintCertificate(w io.Writer, cert *x509.Certificate) {
 		x := fmt.Sprintf("%x", k.X)
 		y := fmt.Sprintf("%x", k.Y)
 		fmt.Fprintf(w, "Public key: ECDSA bits=%d name=%s x=%s... y=...%s\n", p.BitSize, p.Name, x[:8], y[len(y)-8:])
-	case *dsa.PublicKey:
-		fmt.Fprintf(w, "Public key: DSA bits=%d\n", k.P.BitLen())
 	default:
 		fmt.Fprintf(w, "Public key: %T\n", k)
 	}
