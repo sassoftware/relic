@@ -148,7 +148,7 @@ func fillCertFields(template *x509.Certificate, subjectPub, issuerPub crypto.Pub
 			return errors.New("invalid serial number, must be decimal or hexadecimal format")
 		}
 		template.SerialNumber = serial
-	} else {
+	} else if template.SerialNumber == nil {
 		template.SerialNumber = MakeSerial()
 		if template.SerialNumber == nil {
 			return errors.New("Failed to generate a serial number")
@@ -216,25 +216,11 @@ func MakeCertificate(rand io.Reader, key crypto.Signer) (string, error) {
 // override the CSR contents.
 func SignCSR(csrBytes []byte, rand io.Reader, key crypto.Signer, cacert *x509.Certificate, copyExtensions bool) (string, error) {
 	// parse and validate CSR
-	var der []byte
-	if bytes.Contains(csrBytes, []byte("-----BEGIN")) {
-		for {
-			var block *pem.Block
-			block, csrBytes = pem.Decode(csrBytes)
-			if block == nil {
-				break
-			} else if block.Type == "CERTIFICATE REQUEST" {
-				der = block.Bytes
-				break
-			}
-		}
-	} else if len(csrBytes) > 0 && csrBytes[0] == 0x30 {
-		der = csrBytes
+	csrBytes, err := parseMaybePEM(csrBytes, "CERTIFICATE REQUEST")
+	if err != nil {
+		return "", err
 	}
-	if len(der) == 0 {
-		return "", errors.New("expected a certificate signing request in PEM or DER format")
-	}
-	csr, err := x509.ParseCertificateRequest(der)
+	csr, err := x509.ParseCertificateRequest(csrBytes)
 	if err != nil {
 		return "", fmt.Errorf("parsing CSR: %s", err)
 	}
@@ -255,6 +241,27 @@ func SignCSR(csrBytes []byte, rand io.Reader, key crypto.Signer, cacert *x509.Ce
 		return "", err
 	}
 	return toPemString(certDer, "CERTIFICATE"), nil
+}
+
+// CrossSign takes a certificate as input and re-signs it using the given key.
+// Any command-line flags set will override the CSR contents.
+func CrossSign(certBytes []byte, rand io.Reader, key crypto.Signer, cacert *x509.Certificate) (string, error) {
+	certBytes, err := parseMaybePEM(certBytes, "CERTIFICATE")
+	if err != nil {
+		return "", err
+	}
+	template, err := x509.ParseCertificate(certBytes)
+	if err != nil {
+		return "", fmt.Errorf("parsing certificate: %s", err)
+	}
+	if err := fillCertFields(template, template.PublicKey, key.Public()); err != nil {
+		return "", err
+	}
+	newCert, err := confirmAndCreate(template, cacert, template.PublicKey, key)
+	if err != nil {
+		return "", err
+	}
+	return toPemString(newCert, "CERTIFICATE"), nil
 }
 
 type fakeSigner struct{ pub crypto.PublicKey }
@@ -310,4 +317,21 @@ func promptYN(prompt string) bool {
 		return true
 	}
 	return false
+}
+
+func parseMaybePEM(blob []byte, pemType string) ([]byte, error) {
+	if bytes.Contains(blob, []byte("-----BEGIN")) {
+		for {
+			var block *pem.Block
+			block, blob = pem.Decode(blob)
+			if block == nil {
+				break
+			} else if block.Type == pemType {
+				return block.Bytes, nil
+			}
+		}
+	} else if len(blob) > 0 && blob[0] == 0x30 {
+		return blob, nil
+	}
+	return nil, fmt.Errorf("expected a %s in PEM or DER format", strings.ToLower(pemType))
 }

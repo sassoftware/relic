@@ -31,6 +31,7 @@ import (
 
 var (
 	argCopyExtensions bool
+	argCrossSign      bool
 )
 
 var ReqCmd = &cobra.Command{
@@ -64,6 +65,7 @@ func init() {
 	addKeyFlags(SignCsrCmd)
 	x509tools.AddCertFlags(SignCsrCmd)
 	SignCsrCmd.Flags().BoolVar(&argCopyExtensions, "copy-extensions", false, "Copy extensions verbabim from CSR")
+	SignCsrCmd.Flags().BoolVar(&argCrossSign, "cross-sign", false, "Input is an existing certificate (implies --copy-extensions)")
 }
 
 func x509Cmd(cmd *cobra.Command, args []string) error {
@@ -108,10 +110,18 @@ func signCsrCmd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	result, err := x509tools.SignCSR(csr, rand.Reader, key, cert.Leaf, argCopyExtensions)
-	if err != nil {
-		return err
+	if argCrossSign {
+		result, err := x509tools.CrossSign(csr, rand.Reader, key, cert.Leaf)
+		if err != nil {
+			return err
+		}
+		os.Stdout.WriteString(result)
+	} else {
+		result, err := x509tools.SignCSR(csr, rand.Reader, key, cert.Leaf, argCopyExtensions)
+		if err != nil {
+			return err
+		}
+		os.Stdout.WriteString(result)
 	}
-	os.Stdout.WriteString(result)
 	return nil
 }
