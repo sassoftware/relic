@@ -114,7 +114,7 @@
   branch = "master"
   name = "github.com/streadway/amqp"
   packages = ["."]
-  revision = "fc7fda2371f5327ad39211e09482845b8734cc72"
+  revision = "d27ae102b8892a98ca4edb74539436af62577379"
 
 [[projects]]
   branch = "master"
@@ -147,7 +147,7 @@
     "pkcs12/internal/rc2",
     "ssh/terminal"
   ]
-  revision = "91a49db82a88618983a78a06c1cbd4e00ab749ab"
+  revision = "85f98707c97e11569271e4d9b3d397e079c4f4d0"
 
 [[projects]]
   branch = "master"
@@ -158,7 +158,7 @@
     "idna",
     "lex/httplex"
   ]
-  revision = "22ae77b79946ea320088417e4d50825671d82d57"
+  revision = "07e8617a6db2368fa55d4616f371ee1b1403c817"
 
 [[projects]]
   branch = "master"
@@ -172,7 +172,7 @@
     "windows/svc/eventlog",
     "windows/svc/mgr"
   ]
-  revision = "dd2ff4accc098aceecb86b36eaa7829b2a17b1c9"
+  revision = "349b81fb5c64ec1734eb6ee148df25459ea48517"
 
 [[projects]]
   name = "golang.org/x/text"

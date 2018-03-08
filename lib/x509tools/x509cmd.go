@@ -286,10 +286,10 @@ func confirmAndCreate(template, parent *x509.Certificate, pub crypto.PublicKey, 
 		if err != nil {
 			return nil, err
 		}
-		fmt.Println("Signing certificate:")
-		fmt.Println()
-		FprintCertificate(os.Stdout, cert)
-		fmt.Println()
+		fmt.Fprintln(os.Stderr, "Signing certificate:")
+		fmt.Fprintln(os.Stderr)
+		FprintCertificate(os.Stderr, cert)
+		fmt.Fprintln(os.Stderr)
 		if !promptYN("Sign this cert? [Y/n] ") {
 			fmt.Fprintln(os.Stderr, "operation canceled")
 			os.Exit(2)
@@ -299,14 +299,14 @@ func confirmAndCreate(template, parent *x509.Certificate, pub crypto.PublicKey, 
 }
 
 func promptYN(prompt string) bool {
-	fmt.Print(prompt)
+	fmt.Fprint(os.Stderr, prompt)
 	if !terminal.IsTerminal(0) {
-		fmt.Println("input is not a terminal, assuming true")
+		fmt.Fprintln(os.Stderr, "input is not a terminal, assuming true")
 		return true
 	}
 	state, err := terminal.MakeRaw(0)
 	if err == nil {
-		defer fmt.Println()
+		defer fmt.Fprintln(os.Stderr)
 		defer terminal.Restore(0, state)
 	}
 	var d [1]byte

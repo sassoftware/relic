@@ -31,6 +31,7 @@ Other features include:
 * Generating and importing keys in the token
 * Importing certificate chains from a PKCS#12 file
 * Creating X509 certificate signing requests (CSR) and self-signed certificates
+* Limited X509 CA support -- signing CSRs and cross-signing certificates
 * Creating simple PGP public keys
 * RSA and ECDSA supported for all signature types
 * Verify signatures, certificate chains and timestamps on all supported package types
