@@ -30,9 +30,12 @@ const (
 	sigKey         = "relic.signatures"
 )
 
-var Version = "unknown" // set this at link time
-var UserAgent = "relic/" + Version
-var Author = "SAS Institute Inc."
+var (
+	Version   = "unknown" // set this at link time
+	Commit    = "unknown" // set this at link time
+	UserAgent = "relic/" + Version
+	Author    = "SAS Institute Inc."
+)
 
 type TokenConfig struct {
 	Type       string  // Provider type: file or pkcs11 (default)

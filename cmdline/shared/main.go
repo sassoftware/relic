@@ -49,7 +49,7 @@ func init() {
 
 func showVersion(cmd *cobra.Command, args []string) {
 	if argVersion {
-		fmt.Printf("relic version %s\n", config.Version)
+		fmt.Printf("relic version %s (%s)\n", config.Version, config.Commit)
 		os.Exit(0)
 	}
 }
