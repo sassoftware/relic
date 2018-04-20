@@ -36,6 +36,11 @@ import (
 	"github.com/sassoftware/relic/token"
 )
 
+func init() {
+	token.Openers["scdtoken"] = Open
+	token.Listers["scdtoken"] = List
+}
+
 var defaultScdSockets = []string{
 	"/run/user/$UID/gnupg/S.scdaemon",
 	"/var/run/user/$UID/gnupg/S.scdaemon",
@@ -95,7 +100,7 @@ func List(sockPath string, output io.Writer) error {
 	return nil
 }
 
-func Open(conf *config.Config, tokenName string, prompt passprompt.PasswordGetter) (tok *scdToken, err error) {
+func Open(conf *config.Config, tokenName string, prompt passprompt.PasswordGetter) (token.Token, error) {
 	tconf, err := conf.GetToken(tokenName)
 	if err != nil {
 		return nil, err
@@ -111,7 +116,7 @@ func Open(conf *config.Config, tokenName string, prompt passprompt.PasswordGette
 	if err != nil {
 		return nil, err
 	}
-	tok = &scdToken{
+	tok := &scdToken{
 		config:    conf,
 		tokenConf: tconf,
 		sock:      sock,

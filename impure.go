@@ -17,8 +17,4 @@
 
 package main
 
-// Local signing commands using tokens
-
-import (
-	_ "github.com/sassoftware/relic/cmdline/token"
-)
+import _ "github.com/sassoftware/relic/token/p11token"

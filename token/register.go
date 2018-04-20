@@ -1,4 +1,3 @@
-// +build !clientonly
 //
 // Copyright (c) SAS Institute Inc.
 //
@@ -15,15 +14,21 @@
 // limitations under the License.
 //
 
-package main
+package token
 
 import (
-	// Commands that are disabled for client-only builds
-	_ "github.com/sassoftware/relic/cmdline/auditor"
-	_ "github.com/sassoftware/relic/cmdline/servecmd"
-	_ "github.com/sassoftware/relic/cmdline/token"
+	"io"
 
-	// Token types that don't require cgo
-	_ "github.com/sassoftware/relic/token/filetoken"
-	_ "github.com/sassoftware/relic/token/scdtoken"
+	"github.com/sassoftware/relic/config"
+	"github.com/sassoftware/relic/lib/passprompt"
+)
+
+type (
+	OpenFunc func(cfg *config.Config, tokenName string, prompt passprompt.PasswordGetter) (Token, error)
+	ListFunc func(provider string, dest io.Writer) error
+)
+
+var (
+	Openers = make(map[string]OpenFunc)
+	Listers = make(map[string]ListFunc)
 )

@@ -31,6 +31,10 @@ import (
 	"github.com/sassoftware/relic/token"
 )
 
+func init() {
+	token.Openers["file"] = Open
+}
+
 type fileToken struct {
 	config    *config.Config
 	tokenConf *config.TokenConfig

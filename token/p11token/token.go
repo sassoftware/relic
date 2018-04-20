@@ -45,6 +45,11 @@ const (
 	CKK_ECDSA = pkcs11.CKK_ECDSA
 )
 
+func init() {
+	token.Openers["pkcs11"] = open
+	token.Listers["pkcs11"] = List
+}
+
 var providerMap map[string]*pkcs11.Ctx
 var providerMutex sync.Mutex
 
@@ -113,6 +118,11 @@ func Open(config *config.Config, tokenName string, pinProvider passprompt.Passwo
 		return nil, err
 	}
 	return tok, nil
+}
+
+// compat shim for token.Openers
+func open(cfg *config.Config, tokenName string, prompt passprompt.PasswordGetter) (token.Token, error) {
+	return Open(cfg, tokenName, prompt)
 }
 
 func openLib(tokenConf *config.TokenConfig, write bool) (*pkcs11.Ctx, error) {

@@ -56,13 +56,13 @@
     ".",
     "oid"
   ]
-  revision = "88edab0803230a3898347e77b474f8c1820a1f20"
+  revision = "d34b9ff171c21ad295489235aec8b6626023cd04"
 
 [[projects]]
   branch = "master"
   name = "github.com/miekg/pkcs11"
   packages = ["."]
-  revision = "6dbd569b952ec150d1425722dbbe80f2c6193f83"
+  revision = "05bded61edae2ff9358deca53276738020b926ea"
 
 [[projects]]
   name = "github.com/op/go-logging"
@@ -101,20 +101,20 @@
 [[projects]]
   name = "github.com/spf13/cobra"
   packages = ["."]
-  revision = "7b2c5ac9fc04fc5efafb60700713d4fa609b777b"
-  version = "v0.0.1"
+  revision = "a1f051bc3eba734da4772d60e2d677f47cf93ef4"
+  version = "v0.0.2"
 
 [[projects]]
   name = "github.com/spf13/pflag"
   packages = ["."]
-  revision = "e57e3eeb33f795204c1ca35f56c44f83227c6e66"
-  version = "v1.0.0"
+  revision = "583c0c0531f06d5278b7d917446061adc344b5cd"
+  version = "v1.0.1"
 
 [[projects]]
   branch = "master"
   name = "github.com/streadway/amqp"
   packages = ["."]
-  revision = "d27ae102b8892a98ca4edb74539436af62577379"
+  revision = "8e4aba63da9fc5571e01c6a45dc809a58cbc5a68"
 
 [[projects]]
   branch = "master"
@@ -147,18 +147,19 @@
     "pkcs12/internal/rc2",
     "ssh/terminal"
   ]
-  revision = "85f98707c97e11569271e4d9b3d397e079c4f4d0"
+  revision = "d6449816ce06963d9d136eee5a56fca5b0616e7e"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/net"
   packages = [
+    "http/httpguts",
     "http2",
     "http2/hpack",
     "idna",
     "lex/httplex"
   ]
-  revision = "07e8617a6db2368fa55d4616f371ee1b1403c817"
+  revision = "d41e8174641f662c5a2d1c7a5f9e828788eb8706"
 
 [[projects]]
   branch = "master"
@@ -172,7 +173,7 @@
     "windows/svc/eventlog",
     "windows/svc/mgr"
   ]
-  revision = "349b81fb5c64ec1734eb6ee148df25459ea48517"
+  revision = "a2a45943ae67364d56c5d7d62dee78cff16c8dc8"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -198,8 +199,8 @@
 [[projects]]
   name = "gopkg.in/yaml.v2"
   packages = ["."]
-  revision = "7f97868eec74b32b0982dd158a51a446d1da7eb5"
-  version = "v2.1.1"
+  revision = "5420a8b6744d3b0345ab293f6fcba19c978f1183"
+  version = "v2.2.1"
 
 [solve-meta]
   analyzer-name = "dep"

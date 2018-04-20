@@ -18,13 +18,11 @@ package open
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/sassoftware/relic/config"
 	"github.com/sassoftware/relic/lib/passprompt"
 	"github.com/sassoftware/relic/token"
-	"github.com/sassoftware/relic/token/filetoken"
-	"github.com/sassoftware/relic/token/p11token"
-	"github.com/sassoftware/relic/token/scdtoken"
 )
 
 func Token(cfg *config.Config, tokenName string, prompt passprompt.PasswordGetter) (token.Token, error) {
@@ -32,16 +30,14 @@ func Token(cfg *config.Config, tokenName string, prompt passprompt.PasswordGette
 	if err != nil {
 		return nil, err
 	}
-	switch tcfg.Type {
-	case "pkcs11":
-		return p11token.Open(cfg, tokenName, prompt)
-	case "file":
-		return filetoken.Open(cfg, tokenName, prompt)
-	case "scdaemon":
-		return scdtoken.Open(cfg, tokenName, prompt)
-	default:
-		return nil, fmt.Errorf("unknown token type %s", tcfg.Type)
+	if ofunc := token.Openers[tcfg.Type]; ofunc != nil {
+		return ofunc(cfg, tokenName, prompt)
 	}
+	var msg string
+	if tcfg.Type == "pkcs11" {
+		msg = " -- built without pkcs11 support"
+	}
+	return nil, fmt.Errorf("unknown token type %s%s", tcfg.Type, msg)
 }
 
 func Key(cfg *config.Config, keyName string, prompt passprompt.PasswordGetter) (token.Key, error) {
@@ -59,4 +55,18 @@ func Key(cfg *config.Config, keyName string, prompt passprompt.PasswordGetter) (
 		return nil, err
 	}
 	return key, nil
+}
+
+func List(tokenType, provider string, w io.Writer) error {
+	if listFunc := token.Listers[tokenType]; listFunc != nil {
+		return listFunc(provider, w)
+	}
+	if token.Openers[tokenType] != nil {
+		return fmt.Errorf("list operation not supported for token type %s", tokenType)
+	}
+	var msg string
+	if tokenType == "pkcs11" {
+		msg = " -- built without pkcs11 support"
+	}
+	return fmt.Errorf("unknown token type %s%s", tokenType, msg)
 }

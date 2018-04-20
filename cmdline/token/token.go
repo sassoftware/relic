@@ -18,13 +18,15 @@ package token
 
 import (
 	"errors"
+	"fmt"
 	"os"
+	"sort"
+	"strings"
 
 	"github.com/sassoftware/relic/cmdline/shared"
 	"github.com/sassoftware/relic/config"
 	"github.com/sassoftware/relic/token"
-	"github.com/sassoftware/relic/token/p11token"
-	"github.com/sassoftware/relic/token/scdtoken"
+	"github.com/sassoftware/relic/token/open"
 	"github.com/spf13/cobra"
 )
 
@@ -55,7 +57,6 @@ var (
 func init() {
 	shared.RootCmd.AddCommand(TokenCmd)
 	TokenCmd.PersistentFlags().StringVarP(&argToken, "token", "t", "", "Name of token")
-	TokenCmd.PersistentFlags().StringVar(&argType, "type", "", "Provider type (pkcs11, scdaemon)")
 	TokenCmd.PersistentFlags().StringVar(&argProvider, "provider", "", "Provider module path")
 
 	TokenCmd.AddCommand(TokensCmd)
@@ -64,6 +65,17 @@ func init() {
 	ContentsCmd.Flags().StringVarP(&argLabel, "label", "l", "", "Display objects with this label only")
 	ContentsCmd.Flags().StringVarP(&argId, "id", "i", "", "Display objects with this ID only")
 	ContentsCmd.Flags().BoolVarP(&argValues, "values", "v", false, "Show contents of objects")
+
+	shared.AddLateHook(addProviderTypeHelp) // deferred so token providers can init()
+}
+
+func addProviderTypeHelp() {
+	var listable []string
+	for ptype := range token.Listers {
+		listable = append(listable, ptype)
+	}
+	sort.Strings(listable)
+	TokenCmd.PersistentFlags().StringVar(&argType, "type", "", fmt.Sprintf("Provider type (%s)", strings.Join(listable, ", ")))
 }
 
 func tokensCmd(cmd *cobra.Command, args []string) error {
@@ -85,16 +97,7 @@ func tokensCmd(cmd *cobra.Command, args []string) error {
 			argProvider = tokenConf.Provider
 		}
 	}
-	var err error
-	switch argType {
-	case "pkcs11":
-		err = p11token.List(argProvider, os.Stdout)
-	case "scdaemon":
-		err = scdtoken.List(argProvider, os.Stdout)
-	default:
-		return errors.New("unsupported provider type")
-	}
-	return shared.Fail(err)
+	return shared.Fail(open.List(argType, argProvider, os.Stdout))
 }
 
 func contentsCmd(cmd *cobra.Command, args []string) error {
