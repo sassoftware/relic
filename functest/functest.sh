@@ -65,6 +65,8 @@ $relic remote sign-pgp -u rsa2048 -ba "packages/Release" -o "$signed/Release.gpg
 $verify_2048p "$signed/Release.gpg" --content "packages/Release"
 $relic remote sign-pgp -u rsa2048 --clearsign "packages/Release" -o "$signed/InRelease"
 $verify_2048p "$signed/InRelease"
+$relic remote sign-pgp -u rsa2048 "packages/Release" -o "$signed/Release.inline"
+$verify_2048p "$signed/Release.inline"
 echo
 
 ### JAR

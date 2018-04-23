@@ -62,12 +62,13 @@ func Verify(r io.Reader, keyring openpgp.EntityList, skipDigest bool) (map[strin
 	}
 	ret := make(map[string]*pgptools.PgpSignature, len(sigs))
 	for role, sig := range sigs {
-		info, body, err := pgptools.VerifyClearSign(bytes.NewReader(sig), keyring)
+		var body bytes.Buffer
+		info, err := pgptools.VerifyClearSign(bytes.NewReader(sig), &body, keyring)
 		if err != nil {
 			return nil, err
 		}
 		if !skipDigest {
-			if err := checkSig(role, body, digests); err != nil {
+			if err := checkSig(role, &body, digests); err != nil {
 				return nil, err
 			}
 		}
@@ -76,9 +77,9 @@ func Verify(r io.Reader, keyring openpgp.EntityList, skipDigest bool) (map[strin
 	return ret, nil
 }
 
-func checkSig(role string, body []byte, digests map[string]string) error {
+func checkSig(role string, body io.Reader, digests map[string]string) error {
 	sawFiles := false
-	scanner := bufio.NewScanner(bytes.NewReader(body))
+	scanner := bufio.NewScanner(body)
 	// read header
 	for scanner.Scan() {
 		line := scanner.Text()

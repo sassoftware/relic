@@ -66,9 +66,6 @@ func CallCmd(src, dest *cobra.Command, args []string) error {
 	if argPgpUser == "" {
 		return errors.New("-u must be set to a keyname or cfgpath:keyname")
 	}
-	if !(argPgpDetached || argPgpClearsign) {
-		return errors.New("--detach-sign or --clearsign must be set")
-	}
 	setFlag(dest.Flags(), "sig-type", "pgp")
 	idx := strings.LastIndex(argPgpUser, ":")
 	if idx <= 0 {
@@ -96,6 +93,8 @@ func CallCmd(src, dest *cobra.Command, args []string) error {
 	}
 	if argPgpClearsign {
 		setFlag(dest.Flags(), "clearsign", "true")
+	} else if !argPgpDetached {
+		setFlag(dest.Flags(), "inline", "true")
 	}
 	if argDigest != "" {
 		setFlag(dest.Flags(), "digest", argDigest)

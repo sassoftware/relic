@@ -89,37 +89,46 @@ func VerifyDetached(signature, signed io.Reader, keyring openpgp.EntityList) (*P
 	return &PgpSignature{&keys[0], creationTime, hash}, err
 }
 
-// Verify a cleartext PGP signature in "f" using keys from "keyring". Returns a
-// value of ErrNoKey in the key cannot be found.
-func VerifyClearSign(f io.Reader, keyring openpgp.EntityList) (*PgpSignature, []byte, error) {
-	blob, err := ioutil.ReadAll(f)
+// Verify a cleartext PGP signature in "signature" using keys from "keyring".
+// Returns a value of ErrNoKey in the key cannot be found. If "cleartext" is
+// not nil, then write the embedded cleartext as it is verified.
+func VerifyClearSign(signature io.Reader, cleartext io.Writer, keyring openpgp.EntityList) (*PgpSignature, error) {
+	blob, err := ioutil.ReadAll(signature)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	csblock, rest := clearsign.Decode(blob)
 	if csblock == nil {
-		return nil, nil, errors.New("malformed clearsign signature")
+		return nil, errors.New("malformed clearsign signature")
 	} else if bytes.Contains(rest, []byte("-----BEGIN")) {
-		return nil, nil, errors.New("clearsign contains multiple documents")
+		return nil, errors.New("clearsign contains multiple documents")
+	}
+	if cleartext != nil {
+		if _, err := cleartext.Write(csblock.Bytes); err != nil {
+			return nil, err
+		}
 	}
 	sig, err := VerifyDetached(csblock.ArmoredSignature.Body, bytes.NewReader(csblock.Bytes), keyring)
-	return sig, csblock.Bytes, err
+	return sig, err
 }
 
 // Verify an inline PGP signature in "signature" using keys from "keyring".
-// Returns a value of ErrNoKey if the key cannot be found.
-func VerifyInline(signature io.Reader, keyring openpgp.EntityList) (*PgpSignature, []byte, error) {
+// Returns a value of ErrNoKey if the key cannot be found. If "cleartext" is
+// not nil, then write the embedded cleartext as it is verified.
+func VerifyInline(signature io.Reader, cleartext io.Writer, keyring openpgp.EntityList) (*PgpSignature, error) {
 	md, err := openpgp.ReadMessage(signature, keyring, nil, nil)
 	if err == io.EOF {
-		return nil, nil, ErrNoContent{}
+		return nil, ErrNoContent{}
 	} else if err != nil {
-		return nil, nil, err
+		return nil, err
 	} else if md.SignedBy == nil {
-		return nil, nil, ErrNoKey(md.SignedByKeyId)
+		return nil, ErrNoKey(md.SignedByKeyId)
 	}
-	body, err := ioutil.ReadAll(md.UnverifiedBody)
-	if err != nil {
-		return nil, nil, err
+	if cleartext == nil {
+		cleartext = ioutil.Discard
+	}
+	if _, err := io.Copy(cleartext, md.UnverifiedBody); err != nil {
+		return nil, err
 	}
 	// reading UnverifiedBody in full triggers the signature validation
 	sig := &PgpSignature{Key: md.SignedBy}
@@ -130,7 +139,7 @@ func VerifyInline(signature io.Reader, keyring openpgp.EntityList) (*PgpSignatur
 		sig.CreationTime = md.SignatureV3.CreationTime
 		sig.Hash = md.Signature.Hash
 	}
-	return sig, body, md.SignatureError
+	return sig, md.SignatureError
 }
 
 // Returned by Verify* functions when the key used for signing is not in the

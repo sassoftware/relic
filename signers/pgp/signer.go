@@ -26,6 +26,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/sassoftware/relic/lib/atomicfile"
@@ -52,6 +53,7 @@ const maxStreamClearSignSize = 10 * 1000 * 1000
 
 func init() {
 	PgpSigner.Flags().BoolP("armor", "a", false, "(PGP) Create ASCII armored output")
+	PgpSigner.Flags().Bool("inline", false, "(PGP) Create a signed message instead of a detached signature")
 	PgpSigner.Flags().Bool("clearsign", false, "(PGP) Create a cleartext signature")
 	PgpSigner.Flags().BoolP("textmode", "t", false, "(PGP) Sign in CRLF canonical text form")
 	// for compat with 2.0 clients
@@ -61,12 +63,20 @@ func init() {
 }
 
 type pgpTransformer struct {
-	clearsign bool
-	stream    io.ReadSeeker
-	closer    io.Closer
+	inline, clearsign, armor bool
+
+	filename string
+	stream   io.ReadSeeker
+	closer   io.Closer
 }
 
 func transform(f *os.File, opts signers.SignOpts) (signers.Transformer, error) {
+	armor, _ := opts.Flags.GetBool("armor")
+	inline, _ := opts.Flags.GetBool("inline")
+	if inline {
+		// always get a non-armored sig from the server
+		opts.Flags.Set("armor", "false")
+	}
 	clearsign, _ := opts.Flags.GetBool("clearsign")
 	stream := io.ReadSeeker(f)
 	if _, err := f.Seek(0, 0); err != nil {
@@ -79,7 +89,14 @@ func transform(f *os.File, opts signers.SignOpts) (signers.Transformer, error) {
 		}
 		stream = bytes.NewReader(contents)
 	}
-	return &pgpTransformer{clearsign: clearsign, stream: stream, closer: f}, nil
+	return &pgpTransformer{
+		inline:    inline,
+		clearsign: clearsign,
+		armor:     armor,
+		filename:  filepath.Base(f.Name()),
+		stream:    stream,
+		closer:    f,
+	}, nil
 }
 
 func (t *pgpTransformer) GetReader() (io.Reader, error) {
@@ -131,8 +148,8 @@ func (t *pgpTransformer) Apply(dest, mimeType string, result io.Reader) error {
 		return err
 	}
 	defer outfile.Close()
-	if t.clearsign {
-		// reassemble cleartext signature
+	if t.inline || t.clearsign {
+		// reassemble signature
 		if _, err := t.stream.Seek(0, 0); err != nil {
 			return err
 		}
@@ -140,13 +157,16 @@ func (t *pgpTransformer) Apply(dest, mimeType string, result io.Reader) error {
 		if err != nil {
 			return err
 		}
-		if err := pgptools.MergeClearSign(outfile, sig, t.stream); err != nil {
-			return err
+		if t.clearsign {
+			err = pgptools.MergeClearSign(outfile, sig, t.stream)
+		} else {
+			err = pgptools.MergeSignature(outfile, sig, t.stream, t.armor, t.filename)
 		}
 	} else {
-		if _, err := io.Copy(outfile, result); err != nil {
-			return err
-		}
+		_, err = io.Copy(outfile, result)
+	}
+	if err != nil {
+		return err
 	}
 	t.closer.Close()
 	return outfile.Commit()
@@ -159,7 +179,7 @@ func verify(r io.Reader, opts signers.VerifyOpts) ([]*signers.Signature, error) 
 	if x, _ := br.Peek(34); len(x) >= 1 && x[0] == '-' {
 		if bytes.HasPrefix(x, []byte("-----BEGIN PGP SIGNED MESSAGE-----")) {
 			// clearsign
-			sig, _, err := pgptools.VerifyClearSign(reader, opts.TrustedPgp)
+			sig, err := pgptools.VerifyClearSign(reader, nil, opts.TrustedPgp)
 			return verifyPgp(sig, opts.FileName, err)
 		}
 		block, err := armor.Decode(reader)
@@ -179,7 +199,7 @@ func verify(r io.Reader, opts signers.VerifyOpts) ([]*signers.Signature, error) 
 		return verifyPgp(sig, opts.FileName, err)
 	}
 	// inline signature
-	sig, _, err := pgptools.VerifyInline(reader, opts.TrustedPgp)
+	sig, err := pgptools.VerifyInline(reader, nil, opts.TrustedPgp)
 	return verifyPgp(sig, opts.FileName, err)
 }
 
