@@ -175,7 +175,14 @@ func (tok *Token) Generate(keyName string, keyType token.KeyType, bits uint) (to
 	pubAttrs := attrConcat(commonAttrs, newPublicKeyAttrs, pubTypeAttrs)
 	privAttrs := attrConcat(commonAttrs, newPrivateKeyAttrs)
 	if _, _, err := tok.ctx.GenerateKeyPair(tok.sh, []*pkcs11.Mechanism{mech}, pubAttrs, privAttrs); err != nil {
-		return nil, err
+		if err2, ok := err.(pkcs11.Error); ok && err2 == pkcs11.CKR_MECHANISM_INVALID && mech.Mechanism == pkcs11.CKM_RSA_X9_31_KEY_PAIR_GEN {
+			mech.Mechanism = pkcs11.CKM_RSA_PKCS_KEY_PAIR_GEN
+			if _, _, err := tok.ctx.GenerateKeyPair(tok.sh, []*pkcs11.Mechanism{mech}, pubAttrs, privAttrs); err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, err
+		}
 	}
 	keyConf.ID = hex.EncodeToString(keyID)
 	return tok.getKey(keyConf, keyName)

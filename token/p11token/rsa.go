@@ -134,6 +134,6 @@ func rsaGenerateAttrs(bits uint) ([]*pkcs11.Attribute, *pkcs11.Mechanism, error)
 		pkcs11.NewAttribute(pkcs11.CKA_MODULUS_BITS, bits),
 		pkcs11.NewAttribute(pkcs11.CKA_PUBLIC_EXPONENT, pubExponent),
 	}
-	mech := pkcs11.NewMechanism(pkcs11.CKM_RSA_PKCS_KEY_PAIR_GEN, nil)
+	mech := pkcs11.NewMechanism(pkcs11.CKM_RSA_X9_31_KEY_PAIR_GEN, nil)
 	return attrs, mech, nil
 }
