@@ -101,10 +101,6 @@ func (r *ComDoc) Close() error {
 	// Write file header
 	copy(r.Header.Magic[:], fileMagic)
 	r.Header.ByteOrder = byteOrderMarker
-	if r.Header.Revision != 0 && r.Header.Version != 0 {
-		r.Header.Revision = 0x3e
-		r.Header.Version = 0x3
-	}
 	r.Header.SATSectors = uint32(len(satList))
 	r.Header.MSATSectorCount = uint32(len(msatList))
 	buf := bytes.NewBuffer(make([]byte, 0, 512))
