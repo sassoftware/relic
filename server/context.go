@@ -26,6 +26,7 @@ type ctxKey int
 const (
 	ctxClientName ctxKey = iota
 	ctxRoles
+	ctxClientDN
 )
 
 func GetClientRoles(request *http.Request) []string {
@@ -38,6 +39,14 @@ func GetClientRoles(request *http.Request) []string {
 
 func GetClientName(request *http.Request) string {
 	name := request.Context().Value(ctxClientName)
+	if name == nil {
+		return ""
+	}
+	return name.(string)
+}
+
+func GetClientDN(request *http.Request) string {
+	name := request.Context().Value(ctxClientDN)
 	if name == nil {
 		return ""
 	}

@@ -1,0 +1,12 @@
+CREATE TABLE signatures (
+    signature_id bigserial PRIMARY KEY,
+    "timestamp" timestamptz,
+    client_name text,
+    client_ip text,
+    client_dn text,
+    client_filename text,
+    sig_hostname text,
+    sig_type text,
+    sig_keyname text,
+    attributes text,
+    seal text);

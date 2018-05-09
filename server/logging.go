@@ -31,7 +31,11 @@ func (s *Server) Logf(format string, args ...interface{}) {
 // Log a message associated with an ongoing request
 func (s *Server) Logr(request *http.Request, format string, args ...interface{}) {
 	msg := fmt.Sprintf(format, args...)
-	msg2 := fmt.Sprintf("[%s \"%s\"] %s", GetClientIP(request), GetClientName(request), msg)
+	dn := GetClientDN(request)
+	if dn != "" {
+		dn = " `" + dn + "`"
+	}
+	msg2 := fmt.Sprintf("[%s \"%s\"%s] %s", GetClientIP(request), GetClientName(request), dn, msg)
 	s.ErrorLog.Output(2, msg2)
 }
 

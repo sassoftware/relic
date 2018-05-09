@@ -220,10 +220,11 @@ func insertRow(db *sql.DB, info *audit.Info) (int64, error) {
 		seal64 = base64.StdEncoding.EncodeToString(seal)
 	}
 	var rowid int64
-	row := db.QueryRow("INSERT INTO signatures (timestamp, client_name, client_ip, client_filename, sig_hostname, sig_type, sig_keyname, attributes, seal) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING signature_id",
+	row := db.QueryRow("INSERT INTO signatures (timestamp, client_name, client_ip, client_dn, client_filename, sig_hostname, sig_type, sig_keyname, attributes, seal) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING signature_id",
 		info.Attributes["sig.timestamp"],
 		info.Attributes["client.name"],
 		info.Attributes["client.ip"],
+		info.Attributes["client.dn"],
 		info.Attributes["client.filename"],
 		info.Attributes["sig.hostname"],
 		info.Attributes["sig.type"],
@@ -255,9 +256,10 @@ func logToFile(info *audit.Info, rowid int64) error {
 }
 
 func fmtRow(info *audit.Info, rowid int64) string {
-	return fmt.Sprintf("[%s] client=%s ip=%s server=%s sigtype=%s filename=%s key=%s rowid=%d",
+	return fmt.Sprintf("[%s] client=%s dn=%s ip=%s server=%s sigtype=%s filename=%s key=%s rowid=%d",
 		info.Attributes["sig.timestamp"],
 		info.Attributes["client.name"],
+		info.Attributes["client.dn"],
 		info.Attributes["client.ip"],
 		info.Attributes["sig.hostname"],
 		info.Attributes["sig.type"],

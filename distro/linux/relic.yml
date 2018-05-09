@@ -154,3 +154,15 @@ clients:
     # List of roles this user possesses. Must contain at least one of the roles
     # on a key for the user to access that key.
     roles: ['somegroup']
+
+  # Alternately, clients can be authenticated using one or more CA
+  # certificates. The CA that the client matches determines the roles they have
+  # access to, and the subject DN of the leaf certificate is logged. This can
+  # be used to delegate access to a short-lived build process.
+  my_root_ca:
+    nickname: my_root_ca
+    certificate: |
+      -----BEGIN CERTIFICATE-----
+      asdfasdfasdf
+      -----END CERTIFICATE-----
+    roles: ['somegroup']

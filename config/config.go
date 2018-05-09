@@ -17,11 +17,13 @@
 package config
 
 import (
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"strings"
 
+	"github.com/sassoftware/relic/lib/certloader"
 	"gopkg.in/yaml.v2"
 )
 
@@ -87,8 +89,11 @@ type ServerConfig struct {
 }
 
 type ClientConfig struct {
-	Nickname string   // Name that appears in audit log entries
-	Roles    []string // List of roles that this client possesses
+	Nickname    string   // Name that appears in audit log entries
+	Roles       []string // List of roles that this client possesses
+	Certificate string   // Optional CA certificate(s) that sign client certs instead of using fingerprint-based auth
+
+	certs *x509.CertPool
 }
 
 type RemoteConfig struct {
@@ -146,7 +151,16 @@ func ReadFile(path string) (*Config, error) {
 func (config *Config) Normalize() error {
 	normalized := make(map[string]*ClientConfig)
 	for fingerprint, client := range config.Clients {
-		if len(fingerprint) != 64 {
+		if client.Certificate != "" {
+			certs, err := certloader.ParseX509Certificates([]byte(client.Certificate))
+			if err != nil {
+				return fmt.Errorf("invalid certificate for client %s: %s", fingerprint, err)
+			}
+			client.certs = x509.NewCertPool()
+			for _, cert := range certs {
+				client.certs.AddCert(cert)
+			}
+		} else if len(fingerprint) != 64 {
 			return errors.New("Client keys must be hex-encoded SHA256 digests of the public key")
 		}
 		lower := strings.ToLower(fingerprint)

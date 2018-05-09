@@ -90,6 +90,7 @@ func (s *Server) serveSign(request *http.Request, writer http.ResponseWriter) (r
 	env = audit.PutAuditFd(env, auditfd)
 	env = audit.PutEnv(env, "client.ip", GetClientIP(request))
 	env = audit.PutEnv(env, "client.name", GetClientName(request))
+	env = audit.PutEnv(env, "client.dn", GetClientDN(request))
 	env = audit.PutEnv(env, "client.filename", filename)
 	cmd.Proc.Env = env
 	// execute

@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"crypto/x509"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -34,6 +35,7 @@ import (
 	"github.com/sassoftware/relic/config"
 	"github.com/sassoftware/relic/lib/compresshttp"
 	"github.com/sassoftware/relic/lib/isologger"
+	"github.com/sassoftware/relic/lib/x509tools"
 )
 
 type Server struct {
@@ -102,14 +104,36 @@ func (s *Server) callHandler(request *http.Request, lw *loggingWriter) (response
 	}
 }
 
+func formatSubject(cert *x509.Certificate) string {
+	return x509tools.FormatPkixName(cert.RawSubject, x509tools.NameStyleOpenSsl)
+}
+
 func (s *Server) getUserRoles(ctx context.Context, request *http.Request) (context.Context, Response) {
 	if request.TLS != nil && len(request.TLS.PeerCertificates) != 0 {
 		cert := request.TLS.PeerCertificates[0]
 		digest := sha256.Sum256(cert.RawSubjectPublicKeyInfo)
 		encoded := hex.EncodeToString(digest[:])
-		client, ok := s.Config.Clients[encoded]
-		if !ok {
-			s.Logr(request, "access denied: unknown fingerprint %s\n", encoded)
+		var useDN bool
+		client := s.Config.Clients[encoded]
+		if client == nil {
+			var saved error
+			for _, c2 := range s.Config.Clients {
+				match, err := c2.Match(request.TLS.PeerCertificates)
+				if match {
+					client = c2
+					useDN = true
+					break
+				} else if err != nil {
+					// preserve any potentially interesting validation errors
+					saved = err
+				}
+			}
+			if client == nil && saved != nil {
+				s.Logr(request, "client cert verification failed: %s\n", saved)
+			}
+		}
+		if client == nil {
+			s.Logr(request, "access denied: unknown fingerprint %s on certificate: %s\n", encoded, formatSubject(cert))
 			return nil, AccessDeniedResponse
 		}
 		name := client.Nickname
@@ -118,6 +142,9 @@ func (s *Server) getUserRoles(ctx context.Context, request *http.Request) (conte
 		}
 		ctx = context.WithValue(ctx, ctxClientName, name)
 		ctx = context.WithValue(ctx, ctxRoles, client.Roles)
+		if useDN {
+			ctx = context.WithValue(ctx, ctxClientDN, formatSubject(cert))
+		}
 	}
 	return ctx, nil
 }

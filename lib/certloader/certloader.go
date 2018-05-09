@@ -169,6 +169,15 @@ func parseCertificatesDer(der []byte) (*Certificate, error) {
 	}
 }
 
+// ParseX509Certificates parses a blob in PEM or DER, X509 or PKCS#7 format and returns a list of certificates
+func ParseX509Certificates(blob []byte) ([]*x509.Certificate, error) {
+	cert, err := parseCertificates(blob)
+	if err != nil {
+		return nil, err
+	}
+	return cert.Certificates, nil
+}
+
 // Load a X509 private key and certificate
 func LoadX509KeyPair(certFile, keyFile string) (*Certificate, error) {
 	keyblob, err := ioutil.ReadFile(keyFile)

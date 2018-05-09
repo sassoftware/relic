@@ -46,3 +46,4 @@ xgo \
 mv build/relic-darwin-*-amd64 build/relic-darwin-amd64
 mv build/relic-windows-*-amd64.exe build/relic-windows-amd64.exe
 mv build/out/* build/
+rmdir build/out
