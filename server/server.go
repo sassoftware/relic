@@ -36,6 +36,7 @@ import (
 	"github.com/sassoftware/relic/lib/compresshttp"
 	"github.com/sassoftware/relic/lib/isologger"
 	"github.com/sassoftware/relic/lib/x509tools"
+	"github.com/sassoftware/relic/token/worker"
 )
 
 type Server struct {
@@ -45,6 +46,7 @@ type Server struct {
 	logMu    sync.Mutex
 	Closed   <-chan bool
 	closeCh  chan<- bool
+	tokens   map[string]*worker.WorkerToken
 }
 
 func (s *Server) callHandler(request *http.Request, lw *loggingWriter) (response Response, err error) {
@@ -195,6 +197,9 @@ func (s *Server) Close() error {
 		close(s.closeCh)
 		s.closeCh = nil
 	}
+	for _, t := range s.tokens {
+		t.Close()
+	}
 	return nil
 }
 
@@ -223,9 +228,20 @@ func New(config *config.Config, force bool) (*Server, error) {
 		Closed:   closed,
 		closeCh:  closed,
 		ErrorLog: log.New(os.Stderr, "", 0),
+		tokens:   make(map[string]*worker.WorkerToken),
 	}
 	if err := s.ReopenLogger(); err != nil {
 		return nil, fmt.Errorf("failed to open logfile: %s", err)
+	}
+	for _, name := range config.ListServedTokens() {
+		tok, err := worker.New(config, name)
+		if err != nil {
+			for _, t := range s.tokens {
+				t.Close()
+			}
+			return nil, err
+		}
+		s.tokens[name] = tok
 	}
 	if err := s.startHealthCheck(force); err != nil {
 		return nil, err

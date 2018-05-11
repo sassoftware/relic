@@ -25,8 +25,8 @@ import (
 
 	"github.com/sassoftware/relic/cmdline/shared"
 	"github.com/sassoftware/relic/config"
+	"github.com/sassoftware/relic/internal/activation"
 	"github.com/sassoftware/relic/lib/audit"
-	"github.com/sassoftware/relic/server/activation"
 	"github.com/spf13/cobra"
 	"github.com/streadway/amqp"
 

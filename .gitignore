@@ -30,6 +30,10 @@ vendorizer
 *.SIG
 *.xap
 
+*.orig
+*.rej
+*.swp
+
 # Created by https://www.gitignore.io/api/go,vim
 
 ### Go ###

@@ -28,10 +28,10 @@ import (
 	"sync"
 
 	"github.com/sassoftware/relic/config"
+	"github.com/sassoftware/relic/internal/activation"
 	"github.com/sassoftware/relic/lib/certloader"
 	"github.com/sassoftware/relic/lib/x509tools"
 	"github.com/sassoftware/relic/server"
-	"github.com/sassoftware/relic/server/activation"
 	"golang.org/x/net/http2"
 )
 
@@ -69,7 +69,7 @@ func makeTLSConfig(config *config.Config) (*tls.Config, error) {
 }
 
 func getListener(laddr string, tconf *tls.Config) (net.Listener, error) {
-	listener, err := activation.GetListener(0, laddr)
+	listener, err := activation.GetListener(0, "tcp", laddr)
 	if err == nil {
 		if listener.Addr().Network() != "tcp" {
 			return nil, errors.New("inherited a listener but it isn't tcp")
@@ -107,7 +107,7 @@ func New(config *config.Config, force, test bool) (*Daemon, error) {
 	}
 	listeners := []net.Listener{listener}
 	if config.Server.ListenHTTP != "" {
-		httpListener, err := activation.GetListener(1, config.Server.ListenHTTP)
+		httpListener, err := activation.GetListener(1, "tcp", config.Server.ListenHTTP)
 		if err != nil {
 			return nil, err
 		}

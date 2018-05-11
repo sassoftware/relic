@@ -77,6 +77,7 @@ type ServerConfig struct {
 
 	Disabled    bool // Always return 503 Service Unavailable
 	ListenDebug bool // Serve debug info on an alternate port
+	NumWorkers  int  // Number of worker subprocesses per configured token
 
 	TokenCheckInterval int
 	TokenCheckFailures int
@@ -144,11 +145,11 @@ func ReadFile(path string) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	config.path = path
-	return config, config.Normalize()
+	return config, config.Normalize(path)
 }
 
-func (config *Config) Normalize() error {
+func (config *Config) Normalize(path string) error {
+	config.path = path
 	normalized := make(map[string]*ClientConfig)
 	for fingerprint, client := range config.Clients {
 		if client.Certificate != "" {
@@ -256,6 +257,21 @@ func (config *Config) GetTimestampConfig() (*TimestampConfig, error) {
 		return nil, errors.New("No timestamp urls are defined in the configuration")
 	}
 	return tconf, nil
+}
+
+// ListServedTokens returns a list of token names that are accessible by at least one role
+func (config *Config) ListServedTokens() []string {
+	names := make(map[string]bool)
+	for _, key := range config.Keys {
+		if len(key.Roles) != 0 {
+			names[key.Token] = true
+		}
+	}
+	ret := make([]string, 0, len(names))
+	for name := range names {
+		ret = append(ret, name)
+	}
+	return ret
 }
 
 func (tconf *TokenConfig) Name() string {

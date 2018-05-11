@@ -4,8 +4,8 @@
 [[projects]]
   name = "github.com/beevik/etree"
   packages = ["."]
-  revision = "15a30b44cfd6c5a16a7ddfe271bf146aaf2d3195"
-  version = "v1.0.0"
+  revision = "9d7e8feddccb4ed1b8afb54e368bd323d2ff652c"
+  version = "v1.0.1"
 
 [[projects]]
   name = "github.com/danieljoos/wincred"
@@ -38,16 +38,16 @@
   version = "v1.0"
 
 [[projects]]
-  branch = "master"
   name = "github.com/kr/pretty"
   packages = ["."]
-  revision = "cfb55aafdaf3ec08f0db22699ab822c50091b1c4"
+  revision = "73f6ac0b30a98e433b289500d779f50c1a6f0712"
+  version = "v0.1.0"
 
 [[projects]]
-  branch = "master"
   name = "github.com/kr/text"
   packages = ["."]
-  revision = "7cafcd837844e784b526369c9bce262804aebc60"
+  revision = "e2ffdb16a802fe2bb95e2e35ff34f0e53aeef34f"
+  version = "v0.1.0"
 
 [[projects]]
   branch = "master"
@@ -62,7 +62,7 @@
   branch = "master"
   name = "github.com/miekg/pkcs11"
   packages = ["."]
-  revision = "05bded61edae2ff9358deca53276738020b926ea"
+  revision = "287d9350987cc9334667882061e202e96cdfb4d0"
 
 [[projects]]
   name = "github.com/op/go-logging"
@@ -147,19 +147,25 @@
     "pkcs12/internal/rc2",
     "ssh/terminal"
   ]
-  revision = "d6449816ce06963d9d136eee5a56fca5b0616e7e"
+  revision = "2d027ae1dddd4694d54f7a8b6cbe78dca8720226"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/net"
   packages = [
+    "context",
     "http/httpguts",
     "http2",
     "http2/hpack",
-    "idna",
-    "lex/httplex"
+    "idna"
   ]
-  revision = "d41e8174641f662c5a2d1c7a5f9e828788eb8706"
+  revision = "2491c5de3490fced2f6cff376127c667efeed857"
+
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/sync"
+  packages = ["errgroup"]
+  revision = "1d60e4601c6fd243af51cc01ddf169918a5407ca"
 
 [[projects]]
   branch = "master"
@@ -173,7 +179,7 @@
     "windows/svc/eventlog",
     "windows/svc/mgr"
   ]
-  revision = "a2a45943ae67364d56c5d7d62dee78cff16c8dc8"
+  revision = "d0faeb539838e250bd0a9db4182d48d4a1915181"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -205,6 +211,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "672be24bb1c44db8e39d1d603b7ec9f7a962cd93017115fd558153ccc1bea47c"
+  inputs-digest = "6f4fca889fee22808bfd2e829629c30335afd40933f7bede376dc9fc8eb54102"
   solver-name = "gps-cdcl"
   solver-version = 1

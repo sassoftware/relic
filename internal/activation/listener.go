@@ -1,6 +1,4 @@
-//
-// Copyright (c) SAS Institute Inc.
-//
+// Copyright © SAS Institute Inc.
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -12,10 +10,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//
 
-// Socket activation functions for Go daemons. Supports systemd, einhorn,
-// socketmaster, and crank.
+// Package activation provides utilities for inheriting listening sockets from
+// systemd, einhorn, socketmaster, and crank.
 package activation
 
 import (
@@ -24,12 +21,13 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"syscall"
 )
 
-// If a daemon manager passed a listener socket when starting this process then
-// use that, otherwise open a new listening socket. index starts at 0 and
-// increments for each additional socket being passed in.
-func GetListener(index uint, laddr string) (listener net.Listener, err error) {
+// GetListener checks if a daemon manager has passed a pre-activated listener
+// socket. If not, then net.Listener is used to open a new one. index starts at
+// 0 and increments for each additional socket being inherited.
+func GetListener(index uint, family, laddr string) (listener net.Listener, err error) {
 	listener, err = einhornListener(index)
 	if listener != nil || err != nil {
 		return
@@ -42,7 +40,10 @@ func GetListener(index uint, laddr string) (listener net.Listener, err error) {
 	if listener != nil || err != nil {
 		return
 	}
-	return net.Listen("tcp", laddr)
+	if family == "unix" || family == "unixpacket" {
+		os.Remove(laddr)
+	}
+	return net.Listen(family, laddr)
 }
 
 // Env vars are unset as they are read to avoid passing them to child
@@ -73,6 +74,9 @@ func popEnvInt(name string) (int, error) {
 }
 
 func fdListener(fd uintptr) (net.Listener, error) {
+	if err := syscall.SetNonblock(int(fd), true); err != nil {
+		return nil, err
+	}
 	file := os.NewFile(fd, "FD_"+strconv.Itoa(int(fd)))
 	// FileListener dupes the fd so make sure the originally inherited one gets closed
 	defer file.Close()
@@ -137,4 +141,8 @@ func socketmasterListener(index uint) (net.Listener, error) {
 		return nil, err
 	}
 	return fdListener(uintptr(fd))
+}
+
+type filer interface {
+	File() (*os.File, error)
 }

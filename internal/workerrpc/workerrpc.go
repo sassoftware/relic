@@ -14,8 +14,23 @@
 // limitations under the License.
 //
 
-package activation
+package workerrpc
 
-func DaemonReady() error {
-	return nil
+const (
+	Ping   = "/ping"
+	GetKey = "/getKey"
+	Sign   = "/sign"
+)
+
+type Request struct {
+	KeyName    string
+	Digest     []byte
+	Hash       uint
+	SaltLength *int
+}
+
+type Response struct {
+	Value []byte
+	ID    []byte
+	Err   string
 }

@@ -1,7 +1,4 @@
-// +build !windows
-//
-// Copyright (c) SAS Institute Inc.
-//
+// Copyright © SAS Institute Inc.
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -14,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
+// +build !windows
 
 package activation
 
@@ -25,7 +23,9 @@ import (
 	"syscall"
 )
 
-// Signal to a parent init system or daemon manager that the daemon is finished starting up
+// DaemonReady signals to a parent init system or daemon manager that the
+// daemon is finished starting up. Use after all listening sockets have been
+// opened.
 func DaemonReady() (err error) {
 	if name := os.Getenv("NOTIFY_SOCKET"); name != "" {
 		// systemd
@@ -53,6 +53,7 @@ func DaemonReady() (err error) {
 	return
 }
 
+// write a string to the unix socket at the named path
 func writePath(path, netType, message string) error {
 	sockAddr := &net.UnixAddr{Name: path, Net: netType}
 	conn, err := net.DialUnix(netType, nil, sockAddr)
@@ -64,16 +65,14 @@ func writePath(path, netType, message string) error {
 	return err
 }
 
+// write a string to a numeric file descriptor
 func writeFd(fdstr, message string) error {
 	fd, err := strconv.Atoi(fdstr)
 	if err != nil {
 		return err
 	}
 	_, err = syscall.Write(fd, []byte(message))
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func einhornReadyStr() string {

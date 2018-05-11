@@ -1,3 +1,4 @@
+// +build cgo,!pure,!clientonly
 //
 // Copyright (c) SAS Institute Inc.
 //
@@ -14,4 +15,9 @@
 // limitations under the License.
 //
 
-package main
+package open
+
+import (
+	// Token types that need cgo
+	_ "github.com/sassoftware/relic/token/p11token"
+)

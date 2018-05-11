@@ -23,6 +23,10 @@ import (
 	"github.com/sassoftware/relic/config"
 	"github.com/sassoftware/relic/lib/passprompt"
 	"github.com/sassoftware/relic/token"
+
+	// Token types that don't require cgo
+	_ "github.com/sassoftware/relic/token/filetoken"
+	_ "github.com/sassoftware/relic/token/scdtoken"
 )
 
 func Token(cfg *config.Config, tokenName string, prompt passprompt.PasswordGetter) (token.Token, error) {
