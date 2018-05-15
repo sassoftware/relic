@@ -24,6 +24,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"strconv"
 	"sync"
 	"syscall"
 	"time"
@@ -33,32 +34,34 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-// Notification wraps a notify event from a child process
-type Notification struct {
-	PID   int  // PID is the process that originated the event
-	Ready bool // Ready is true if the event was a "worker ready" type
-}
-
 // Listener implements a channel that receives ready notifications from spawned processes
 type Listener struct {
-	once   sync.Once
-	closed closeonce.Closed
-	c      chan Notification
-	eg     *errgroup.Group
-	ctx    context.Context
-	cancel context.CancelFunc
+	once     sync.Once
+	closed   closeonce.Closed
+	ready    chan int
+	stopping chan int
+	eg       *errgroup.Group
+	ctx      context.Context
+	cancel   context.CancelFunc
 }
 
 func (l *Listener) initialize() {
 	l.ctx, l.cancel = context.WithCancel(context.Background())
 	l.eg, l.ctx = errgroup.WithContext(l.ctx)
-	l.c = make(chan Notification, 10)
+	l.ready = make(chan int, 10)
+	l.stopping = make(chan int, 10)
 }
 
-// Chan returns a channel that receives notifications from child processes
-func (l *Listener) Chan() <-chan Notification {
+// Ready returns a channel that receives PIDs that are ready
+func (l *Listener) Ready() <-chan int {
 	l.once.Do(l.initialize)
-	return l.c
+	return l.ready
+}
+
+// Stopping returns a channel that receives PIDs that are stopping
+func (l *Listener) Stopping() <-chan int {
+	l.once.Do(l.initialize)
+	return l.stopping
 }
 
 // Close shuts down all notification sockets
@@ -67,7 +70,8 @@ func (l *Listener) Close() error {
 	return l.closed.Close(func() error {
 		l.cancel()
 		err := l.eg.Wait()
-		close(l.c)
+		close(l.ready)
+		close(l.stopping)
 		return err
 	})
 }
@@ -124,8 +128,11 @@ func (l *Listener) listen(sock net.PacketConn) error {
 			log.Printf("error: failed to decode notification: %s", err)
 			continue
 		}
-		if payload.Command == "worker:ack" {
-			l.c <- Notification{PID: payload.PID, Ready: true}
+		switch payload.Command {
+		case "worker:ack":
+			l.ready <- payload.PID
+		case "worker:stopping":
+			l.stopping <- payload.PID
 		}
 	}
 	return nil
@@ -161,4 +168,16 @@ func socketpairFiles() (files [2]*os.File, err error) {
 		files[1] = os.NewFile(uintptr(fds[1]), "<socketpair>")
 	}
 	return
+}
+
+// DaemonStopping is used by the child process to indicate it is no longer
+// serving requests and will exit soon.
+func DaemonStopping() error {
+	fd, err := strconv.Atoi(os.Getenv("EINHORN_SOCK_FD"))
+	if err != nil {
+		return err
+	}
+	message := fmt.Sprintf(`{"command":"worker:stopping", "pid":%d}`+"\n", os.Getpid())
+	_, err = unix.Write(fd, []byte(message))
+	return err
 }

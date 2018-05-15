@@ -25,16 +25,21 @@ import (
 	"errors"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/sassoftware/relic/config"
 	"github.com/sassoftware/relic/internal/workerrpc"
 	"github.com/sassoftware/relic/token"
 )
 
-func (t *WorkerToken) request(path string, rr workerrpc.Request) (resp workerrpc.Response, err error) {
+const (
+	defaultRetries = 5
+	defaultTimeout = 60 * time.Second
+)
+
+func (t *WorkerToken) request(path string, rr workerrpc.Request) (*workerrpc.Response, error) {
 	req := &http.Request{
 		Method: http.MethodPost,
 		URL:    &url.URL{Scheme: "http", Host: t.addr, Path: path},
@@ -42,33 +47,21 @@ func (t *WorkerToken) request(path string, rr workerrpc.Request) (resp workerrpc
 	}
 	blob, err := json.Marshal(rr)
 	if err != nil {
-		return resp, err
+		return nil, err
 	}
 	req.GetBody = func() (io.ReadCloser, error) {
 		return ioutil.NopCloser(bytes.NewReader(blob)), nil
 	}
-	hres, err := doRetry(req)
-	if err != nil {
-		return resp, err
-	}
-	defer hres.Body.Close()
-	blob, err = ioutil.ReadAll(hres.Body)
-	if err != nil {
-		return resp, err
-	}
-	if err := json.Unmarshal(blob, &resp); err != nil {
-		return resp, err
-	}
-	return resp, nil
+	return t.doRetry(req)
 }
 
 func (t *WorkerToken) Ping() error {
-	log.Printf("TODO: ping") // TODO
-	return nil
+	_, err := t.request(workerrpc.Ping, workerrpc.Request{})
+	return err
 }
 
 func (t *WorkerToken) Config() *config.TokenConfig {
-	return t.config.Tokens[t.tokenName]
+	return t.tconf
 }
 
 func (t *WorkerToken) GetKey(keyName string) (token.Key, error) {
@@ -137,7 +130,10 @@ func (k *workerKey) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts) 
 		rr.SaltLength = &o.SaltLength
 	}
 	res, err := k.token.request(workerrpc.Sign, rr)
-	return res.Value, err
+	if err != nil {
+		return nil, err
+	}
+	return res.Value, nil
 }
 
 func (k *workerKey) ImportCertificate(cert *x509.Certificate) error {

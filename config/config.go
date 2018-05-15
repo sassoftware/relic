@@ -45,7 +45,8 @@ type TokenConfig struct {
 	Label      string  // Select a token by label
 	Serial     string  // Select a token by serial number
 	Pin        *string // PIN to use, otherwise will be prompted. Can be empty. (optional)
-	Timeout    int     // (server) Terminate command after N seconds (default 300)
+	Timeout    int     // (server) Terminate command after N seconds (default 60)
+	Retries    int     // (server) Retry failed commands N times (default 5)
 	User       *uint   // User argument for PKCS#11 login (optional)
 	UseKeyring bool    // Read PIN from system keyring
 

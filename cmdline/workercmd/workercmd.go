@@ -18,13 +18,6 @@ package workercmd
 
 import (
 	"context"
-	"crypto"
-	"crypto/hmac"
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/x509"
-	"encoding/json"
-	"errors"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -35,8 +28,7 @@ import (
 
 	"github.com/sassoftware/relic/cmdline/shared"
 	"github.com/sassoftware/relic/internal/activation"
-	"github.com/sassoftware/relic/internal/workerrpc"
-	"github.com/sassoftware/relic/token"
+	"github.com/sassoftware/relic/internal/activation/activatecmd"
 	"github.com/sassoftware/relic/token/open"
 	"github.com/spf13/cobra"
 )
@@ -87,18 +79,28 @@ func runWorker(tokenName string) error {
 		cookie: cookie,
 	}
 	srv := &http.Server{Handler: handler}
-	activation.DaemonReady()
 	wg := new(sync.WaitGroup)
-	go watchSignals(srv, wg)
+	handler.shutdown = func() {
+		// keep the main goroutine from exiting until all requests are served
+		wg.Add(1)
+		// notify parent that this process is doomed and to start another one
+		activatecmd.DaemonStopping()
+		// stop accepting requests and wait for ongoing ones to finish
+		srv.Shutdown(context.Background())
+		wg.Done()
+	}
+	go handler.watchSignals()
+	go handler.healthCheck()
+	activation.DaemonReady()
 	err = srv.Serve(lis)
 	if err == http.ErrServerClosed {
 		err = nil
 	}
-	wg.Wait()
+	wg.Wait() // wait for shutdown to finish
 	return err
 }
 
-func watchSignals(srv *http.Server, wg *sync.WaitGroup) {
+func (h *handler) watchSignals() {
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch,
 		syscall.SIGINT,
@@ -106,83 +108,6 @@ func watchSignals(srv *http.Server, wg *sync.WaitGroup) {
 		syscall.SIGQUIT,
 	)
 	<-ch
-	wg.Add(1)
-	go func() {
-		srv.Shutdown(context.Background())
-		wg.Done()
-	}()
-}
-
-type handler struct {
-	token    token.Token
-	cookie   []byte
-	keyCache sync.Map
-}
-
-func (h *handler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	cookie := req.Header.Get("Auth-Cookie")
-	if !hmac.Equal([]byte(cookie), []byte(h.cookie)) {
-		rw.WriteHeader(http.StatusForbidden)
-		return
-	}
-	resp, err := h.handle(rw, req)
-	if err != nil {
-		resp.Err = err.Error()
-	}
-	blob, err := json.Marshal(resp)
-	if err != nil {
-		log.Printf("error: worker for token \"%s\": %s", h.token.Config().Name(), err)
-		return
-	}
-	rw.Write(blob)
-}
-
-func (h *handler) handle(rw http.ResponseWriter, req *http.Request) (resp workerrpc.Response, err error) {
-	blob, err := ioutil.ReadAll(req.Body)
-	if err != nil {
-		return resp, err
-	}
-	var rr workerrpc.Request
-	if err := json.Unmarshal(blob, &rr); err != nil {
-		return resp, err
-	}
-	switch req.URL.Path {
-	case workerrpc.Ping:
-		return resp, h.token.Ping()
-	case workerrpc.GetKey:
-		key, err := h.getKey(rr.KeyName)
-		if err != nil {
-			return resp, err
-		}
-		resp.ID = key.GetID()
-		resp.Value, err = x509.MarshalPKIXPublicKey(key.Public())
-		return resp, err
-	case workerrpc.Sign:
-		hash := crypto.Hash(rr.Hash)
-		opts := crypto.SignerOpts(hash)
-		if rr.SaltLength != nil {
-			opts = &rsa.PSSOptions{SaltLength: *rr.SaltLength, Hash: hash}
-		}
-		key, err := h.getKey(rr.KeyName)
-		if err != nil {
-			return resp, err
-		}
-		resp.Value, err = key.Sign(rand.Reader, rr.Digest, opts)
-		return resp, err
-	default:
-		return resp, errors.New("invalid method: " + req.URL.Path)
-	}
-}
-
-func (h *handler) getKey(keyName string) (token.Key, error) {
-	key, _ := h.keyCache.Load(keyName)
-	if key == nil {
-		var err error
-		key, err = h.token.GetKey(keyName)
-		if err != nil {
-			return nil, err
-		}
-		h.keyCache.Store(keyName, key)
-	}
-	return key.(token.Key), nil
+	signal.Stop(ch)
+	h.shutdown()
 }

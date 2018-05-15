@@ -49,16 +49,17 @@ func getCookie() string {
 }
 
 type WorkerToken struct {
-	config    *config.Config
-	tokenName string
-	cookie    string
-	addr      string
-	fdset     *activatecmd.ListenerSet
-	lis       net.Listener
-	closed    closeonce.Closed
-	wg        sync.WaitGroup
-	ctx       context.Context
-	cancel    context.CancelFunc
+	config *config.Config
+	tconf  *config.TokenConfig
+	cookie string
+	addr   string
+	fdset  *activatecmd.ListenerSet
+	notify *activatecmd.Listener
+	lis    net.Listener
+	closed closeonce.Closed
+	wg     sync.WaitGroup
+	ctx    context.Context
+	cancel context.CancelFunc
 
 	mu          sync.Mutex
 	procs       map[int]struct{}
@@ -66,6 +67,10 @@ type WorkerToken struct {
 }
 
 func New(config *config.Config, tokenName string) (*WorkerToken, error) {
+	tconf, err := config.GetToken(tokenName)
+	if err != nil {
+		return nil, err
+	}
 	lis, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		return nil, err
@@ -77,9 +82,10 @@ func New(config *config.Config, tokenName string) (*WorkerToken, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	t := &WorkerToken{
 		config:      config,
-		tokenName:   tokenName,
+		tconf:       tconf,
 		cookie:      getCookie(),
 		fdset:       fdset,
+		notify:      new(activatecmd.Listener),
 		addr:        lis.Addr().String(),
 		ctx:         ctx,
 		cancel:      cancel,
@@ -101,7 +107,7 @@ func (t *WorkerToken) spawn() error {
 	if err != nil {
 		return err
 	}
-	cmd := exec.Command(os.Args[0], "worker", t.config.Path(), t.tokenName)
+	cmd := exec.Command(os.Args[0], "worker", t.config.Path(), t.tconf.Name())
 	cmd.Path = self
 	cmd.Stdin = bytes.NewReader([]byte(t.cookie))
 	cmd.Stdout = os.Stdout
@@ -113,9 +119,7 @@ func (t *WorkerToken) spawn() error {
 		return err
 	}
 	// attach notify socket so we know when the process is ready or if it died on init
-	notify := new(activatecmd.Listener)
-	defer notify.Close()
-	detach, err := notify.Attach(cmd)
+	detach, err := t.notify.Attach(cmd)
 	if err != nil {
 		return err
 	}
@@ -140,15 +144,15 @@ func (t *WorkerToken) spawn() error {
 	ctx, cancel := context.WithTimeout(context.Background(), startTimeout)
 	defer cancel()
 	select {
-	case <-notify.Chan():
+	case <-t.notify.Ready():
 		// ready
 	case <-ctx.Done():
 		// timed out
 		cmd.Process.Kill()
-		return fmt.Errorf("token \"%s\" worker timed out during startup", t.tokenName)
+		return fmt.Errorf("token \"%s\" worker timed out during startup", t.tconf.Name())
 	case <-exited:
 		// terminated
-		return fmt.Errorf("token \"%s\" worker exited prematurely", t.tokenName)
+		return fmt.Errorf("token \"%s\" worker exited prematurely", t.tconf.Name())
 	}
 	return nil
 }
@@ -181,14 +185,19 @@ func (t *WorkerToken) monitor() {
 		case <-t.ctx.Done():
 			return
 		case pid := <-t.procsExited:
-			if t.ctx.Err() != nil {
-				return
-			}
-			t.mu.Lock()
-			delete(t.procs, pid)
-			t.mu.Unlock()
+			// process exited
+			t.removePid(pid)
+		case pid := <-t.notify.Stopping():
+			// process hit an error and will exit soon
+			t.removePid(pid)
 		}
 	}
+}
+
+func (t *WorkerToken) removePid(pid int) {
+	t.mu.Lock()
+	delete(t.procs, pid)
+	t.mu.Unlock()
 }
 
 func (t *WorkerToken) Close() error {
@@ -203,6 +212,8 @@ func (t *WorkerToken) Close() error {
 		}
 		t.mu.Unlock()
 		t.wg.Wait()
+		t.fdset.Close()
+		t.notify.Close()
 		return nil
 	})
 }

@@ -30,7 +30,8 @@ type Request struct {
 }
 
 type Response struct {
-	Value []byte
-	ID    []byte
-	Err   string
+	Value     []byte
+	ID        []byte
+	Err       string
+	Retryable bool
 }

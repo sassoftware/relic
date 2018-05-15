@@ -18,7 +18,7 @@ package config
 
 import "time"
 
-const defaultTimeout = time.Second * 300
+const defaultTimeout = 60 * time.Second
 
 func (keyConf *KeyConfig) Name() string {
 	return keyConf.name
