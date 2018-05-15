@@ -16,7 +16,7 @@
 
 package main
 
-// Commands and signers for the basic client only.
+// Commands and signers for the basic client only (pure Go, all OSes)
 
 import (
 	"github.com/sassoftware/relic/cmdline/shared"

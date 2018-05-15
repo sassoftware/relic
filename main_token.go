@@ -1,4 +1,4 @@
-// +build !windows,!clientonly
+// +build !clientonly
 //
 // Copyright (c) SAS Institute Inc.
 //
@@ -17,8 +17,5 @@
 
 package main
 
-// Windows service commands
-
-import (
-	_ "github.com/sassoftware/relic/cmdline/winservice"
-)
+// local token commands (no server)
+import _ "github.com/sassoftware/relic/cmdline/token"

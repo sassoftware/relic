@@ -36,7 +36,7 @@ docker rmi relic-build
 ## cgo build of full program
 # build libtool-ltdl as a static library so no deps other than libc are needed
 xgo \
-    --targets=linux/amd64,darwin/amd64,windows/amd64 \
+    --targets=linux/amd64,darwin/amd64 \
     --deps="http://ftpmirror.gnu.org/libtool/libtool-2.4.6.tar.gz" \
     --depsargs=--disable-shared \
     --out="build/relic" \
@@ -44,6 +44,5 @@ xgo \
     .
 
 mv build/relic-darwin-*-amd64 build/relic-darwin-amd64
-mv build/relic-windows-*-amd64.exe build/relic-windows-amd64.exe
 mv build/out/* build/
 rmdir build/out

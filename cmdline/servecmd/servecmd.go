@@ -86,10 +86,6 @@ func listenDebug() error {
 }
 
 func serveCmd(cmd *cobra.Command, args []string) error {
-	if runIfService() {
-		// windows service
-		return nil
-	}
 	// let journald add timestamps
 	log.SetFlags(0)
 	srv, err := MakeServer()
