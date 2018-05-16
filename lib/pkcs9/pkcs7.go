@@ -29,7 +29,10 @@ import (
 )
 
 type Timestamper interface {
+	// PKCS#9 timestamp
 	Timestamp(data []byte, hash crypto.Hash) (token *pkcs7.ContentInfoSignedData, err error)
+	// Old "Microsoft" style counter-signature
+	LegacyTimestamp(data []byte) (token *pkcs7.ContentInfoSignedData, err error)
 }
 
 func TimestampAndMarshal(psd *pkcs7.ContentInfoSignedData, timestamper Timestamper, authenticode bool) (*TimestampedSignature, error) {

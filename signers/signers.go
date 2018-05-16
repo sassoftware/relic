@@ -29,7 +29,6 @@ import (
 
 	"github.com/spf13/pflag"
 
-	"github.com/sassoftware/relic/config"
 	"github.com/sassoftware/relic/lib/audit"
 	"github.com/sassoftware/relic/lib/binpatch"
 	"github.com/sassoftware/relic/lib/certloader"
@@ -74,13 +73,12 @@ const (
 )
 
 type SignOpts struct {
-	Path            string
-	Hash            crypto.Hash
-	Time            time.Time
-	Flags           *pflag.FlagSet
-	FlagOverride    map[string]string
-	Audit           *audit.Info
-	TimestampConfig *config.TimestampConfig
+	Path         string
+	Hash         crypto.Hash
+	Time         time.Time
+	Flags        *pflag.FlagSet
+	FlagOverride map[string]string
+	Audit        *audit.Info
 }
 
 // Convenience method to return a binary patch
@@ -278,6 +276,19 @@ func (s *Signer) FlagsToQuery(fs *pflag.FlagSet, override map[string]string, q u
 		}
 	})
 	return nil
+}
+
+// FlagsFromQuery parses flags out of a URL
+func (s *Signer) FlagsFromQuery(q url.Values) (*pflag.FlagSet, error) {
+	if s.flags == nil {
+		return nil, nil
+	}
+	s.flags.VisitAll(func(flag *pflag.Flag) {
+		if v := q.Get(flag.Name); v != "" {
+			s.flags.Set(flag.Name, v)
+		}
+	})
+	return s.flags, nil
 }
 
 // Copy URL query parameters to a set of command-line arguments to pass to an

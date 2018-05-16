@@ -18,22 +18,26 @@ package server
 
 import (
 	"context"
-	"errors"
+	"crypto"
 	"fmt"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
-	"github.com/sassoftware/relic/lib/audit"
+	"github.com/sassoftware/relic/internal/signinit"
 	"github.com/sassoftware/relic/lib/procutil"
+	"github.com/sassoftware/relic/lib/readercounter"
+	"github.com/sassoftware/relic/lib/x509tools"
 	"github.com/sassoftware/relic/signers"
 )
+
+const defaultHash = crypto.SHA256
 
 func (s *Server) serveSign(request *http.Request, writer http.ResponseWriter) (res Response, err error) {
 	if request.Method != "POST" {
 		return ErrorResponse(http.StatusMethodNotAllowed), nil
 	}
+	// parse parameters
 	query := request.URL.Query()
 	keyName := query.Get("key")
 	if keyName == "" {
@@ -49,72 +53,55 @@ func (s *Server) serveSign(request *http.Request, writer http.ResponseWriter) (r
 		s.Logr(request, "access denied to key %s\n", keyName)
 		return AccessDeniedResponse, nil
 	}
-	if keyConf.Token == "" {
-		return nil, fmt.Errorf("Key %s needs a token setting", keyName)
-	}
 	mod := signers.ByName(sigType)
 	if mod == nil {
 		s.Logr(request, "error: unknown sigtype: sigtype=%s key=%s", sigType, keyName)
 		return StringResponse(http.StatusBadRequest, "unknown sigtype"), nil
 	}
-	cmdline := []string{
-		os.Args[0],
-		"sign",
-		"--config", s.Config.Path(),
-		"--server",
-		"--key", keyConf.Name(),
-		"--sig-type", mod.Name,
-	}
+	hash := defaultHash
 	if digest := request.URL.Query().Get("digest"); digest != "" {
-		cmdline = append(cmdline, "--digest", digest)
+		hash = x509tools.HashByName(digest)
+		if hash == 0 {
+			s.Logr(request, "error: unknown digest %s", digest)
+			return StringResponse(http.StatusBadRequest, "unknown digest"), nil
+		}
 	}
-	flags := mod.QueryToCmdline(request.URL.Query())
-	cmdline = append(cmdline, flags...)
-	// build subproc environment
-	cmd := procutil.CommandContext(request.Context(), cmdline, keyConf.GetTimeout())
-	infd, err := cmd.AttachInput(request.Body)
+	flags, err := mod.FlagsFromQuery(query)
+	if err != nil {
+		s.Logr(request, "error: parsing arguments: %s", err)
+		return StringResponse(http.StatusBadRequest, "invalid parameters"), nil
+	}
+	// get key from token and initialize signer context
+	tok := s.tokens[keyConf.Token]
+	if tok == nil {
+		return nil, fmt.Errorf("missing token \"%s\" for key \"%s\"", keyConf.Token, keyName)
+	}
+	cert, opts, err := signinit.Init(mod, tok, keyName, hash, flags)
 	if err != nil {
 		return nil, err
 	}
-	cmd.Proc.Args = append(cmd.Proc.Args, fmt.Sprintf("--file=/dev/fd/%d", infd))
-	outfd, err := cmd.AttachOutput()
+	opts.Audit.Attributes["client.ip"] = GetClientIP(request)
+	opts.Audit.Attributes["client.name"] = GetClientName(request)
+	opts.Audit.Attributes["client.dn"] = GetClientDN(request)
+	opts.Audit.Attributes["client.filename"] = filename
+	// sign the request stream and output a binpatch or signature blob
+	counter := readercounter.New(request.Body)
+	blob, err := mod.Sign(counter, cert, *opts)
 	if err != nil {
 		return nil, err
 	}
-	cmd.Proc.Args = append(cmd.Proc.Args, fmt.Sprintf("--output=/dev/fd/%d", outfd))
-	auditfd, err := cmd.AttachOutput()
-	if err != nil {
-		return nil, err
-	}
-	env := os.Environ()
-	env = audit.PutAuditFd(env, auditfd)
-	env = audit.PutEnv(env, "client.ip", GetClientIP(request))
-	env = audit.PutEnv(env, "client.name", GetClientName(request))
-	env = audit.PutEnv(env, "client.dn", GetClientDN(request))
-	env = audit.PutEnv(env, "client.filename", filename)
-	cmd.Proc.Env = env
-	// execute
-	if err := cmd.Run(); err != nil {
-		return s.showProcError(request, cmd, keyConf.GetTimeout(), err)
-	}
-	// gather results
-	result := cmd.Pipes[outfd]
-	if len(result) == 0 {
-		return nil, errors.New("empty result")
-	}
-	attrs, err := audit.Parse(cmd.Pipes[auditfd])
-	if err != nil {
-		return nil, err
-	}
+	opts.Audit.Attributes["perf.size.in"] = counter.N
+	opts.Audit.Attributes["perf.size.patch"] = len(blob)
 	var extra string
 	if mod.FormatLog != nil {
-		extra = mod.FormatLog(attrs)
+		extra = mod.FormatLog(opts.Audit)
 	}
 	if extra != "" {
 		extra = " " + extra
 	}
+	// XXX FIXME audit publish
 	s.Logr(request, "Signed package: filename=%s key=%s%s", filename, keyConf.Name(), extra)
-	return BytesResponse(result, attrs.GetMimeType()), nil
+	return BytesResponse(blob, opts.Audit.GetMimeType()), nil
 }
 
 func (s *Server) showProcError(request *http.Request, cmd *procutil.Command, timeout time.Duration, err error) (Response, error) {

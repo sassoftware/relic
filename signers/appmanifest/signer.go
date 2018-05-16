@@ -21,20 +21,14 @@ package appmanifest
 // other Microsoft signatures, does not use an Authenticode PKCS#7 structure.
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"os"
-	"time"
 
-	"github.com/sassoftware/relic/config"
 	"github.com/sassoftware/relic/lib/appmanifest"
 	"github.com/sassoftware/relic/lib/audit"
 	"github.com/sassoftware/relic/lib/certloader"
 	"github.com/sassoftware/relic/lib/magic"
-	"github.com/sassoftware/relic/lib/pkcs7"
-	"github.com/sassoftware/relic/lib/pkcs9"
 	"github.com/sassoftware/relic/signers"
 )
 
@@ -68,29 +62,10 @@ func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]b
 	if err != nil {
 		return nil, err
 	}
-	tconf := opts.TimestampConfig
-	if tconf != nil {
-		if len(tconf.MsURLs) == 0 {
-			return nil, errors.New("Need 1 or more MsURLs defined in Timestamp configuration in order to create old-style counter-signatures")
-		}
-		cl := pkcs9.TimestampClient{
-			UserAgent: config.UserAgent,
-			CaFile:    tconf.CaCert,
-			Timeout:   time.Second * time.Duration(tconf.Timeout),
-		}
-		var token *pkcs7.ContentInfoSignedData
-		for _, url := range tconf.MsURLs {
-			cl.URL = url
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Timestamping failed: %s\nTrying next server %s...\n", err, cl.URL)
-			}
-			token, err = cl.MicrosoftRequest(signed.EncryptedDigest)
-			if err == nil {
-				break
-			}
-		}
+	if cert.Timestamper != nil {
+		token, err := cert.Timestamper.LegacyTimestamp(signed.EncryptedDigest)
 		if err != nil {
-			return nil, fmt.Errorf("Timestamping failed: %s", err)
+			return nil, err
 		}
 		if err := signed.AddTimestamp(token); err != nil {
 			return nil, err

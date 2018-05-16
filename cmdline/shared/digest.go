@@ -19,8 +19,8 @@ package shared
 import (
 	"crypto"
 	"fmt"
-	"strings"
 
+	"github.com/sassoftware/relic/lib/x509tools"
 	"github.com/spf13/cobra"
 )
 
@@ -37,23 +37,9 @@ func GetDigest() (hash crypto.Hash, err error) {
 		// TODO: figure out why this randomly started coming back blank
 		ArgDigest = DefaultHash
 	}
-	name := strings.ToLower(ArgDigest)
-	name = strings.Replace(name, "-", "", -1)
-	switch name {
-	case "md5":
-		hash = crypto.MD5
-	case "sha1":
-		hash = crypto.SHA1
-	case "sha224":
-		hash = crypto.SHA224
-	case "sha256":
-		hash = crypto.SHA256
-	case "sha384":
-		hash = crypto.SHA384
-	case "sha512":
-		hash = crypto.SHA512
-	default:
-		return hash, fmt.Errorf("unsupported digest \"%s\"", ArgDigest)
+	hash = x509tools.HashByName(ArgDigest)
+	if hash == 0 {
+		err = fmt.Errorf("unsupported digest \"%s\"", ArgDigest)
 	}
-	return hash, nil
+	return hash, err
 }

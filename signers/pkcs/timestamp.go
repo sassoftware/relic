@@ -21,6 +21,7 @@ package pkcs
 
 import (
 	"crypto"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -54,6 +55,8 @@ type Timestamper struct {
 func (t Timestamper) Timestamp(data []byte, hash crypto.Hash) (*pkcs7.ContentInfoSignedData, error) {
 	if t.Config == nil {
 		return nil, nil
+	} else if len(t.Config.URLs) == 0 {
+		return nil, errors.New("no timestamp server URLs defined")
 	}
 	d := hash.New()
 	d.Write(data)
@@ -72,6 +75,35 @@ func (t Timestamper) Timestamp(data []byte, hash crypto.Hash) (*pkcs7.ContentInf
 			fmt.Fprintf(os.Stderr, "Timestamping failed: %s\nTrying next server %s...\n", err, cl.URL)
 		}
 		token, err = cl.Request(hash, imprint)
+		if err == nil {
+			break
+		}
+	}
+	if err != nil {
+		return nil, fmt.Errorf("Timestamping failed: %s", err)
+	}
+	return token, nil
+}
+
+func (t Timestamper) LegacyTimestamp(data []byte) (*pkcs7.ContentInfoSignedData, error) {
+	if t.Config == nil {
+		return nil, nil
+	} else if len(t.Config.MsURLs) == 0 {
+		return nil, errors.New("no microsoft timestamp URLs defined (MsURLs)")
+	}
+	cl := pkcs9.TimestampClient{
+		UserAgent: config.UserAgent,
+		CaFile:    t.Config.CaCert,
+		Timeout:   time.Second * time.Duration(t.Config.Timeout),
+	}
+	var token *pkcs7.ContentInfoSignedData
+	var err error
+	for _, url := range t.Config.MsURLs {
+		cl.URL = url
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Timestamping failed: %s\nTrying next server %s...\n", err, cl.URL)
+		}
+		token, err = cl.MicrosoftRequest(data)
 		if err == nil {
 			break
 		}

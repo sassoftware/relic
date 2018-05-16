@@ -23,7 +23,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/sassoftware/relic/lib/pgptools"
@@ -55,18 +54,6 @@ func New(keyName, sigType string, hash crypto.Hash) *Info {
 	a["sig.timestamp"] = time.Now().UTC()
 	if hostname, _ := os.Hostname(); hostname != "" {
 		a["sig.hostname"] = hostname
-	}
-	for _, env := range os.Environ() {
-		if !strings.HasPrefix(env, "RELIC_ATTR_") {
-			continue
-		}
-		env = env[11:]
-		i := strings.Index(env, "=")
-		if i < 0 {
-			continue
-		}
-		k, v := env[:i], env[i+1:]
-		a[k] = v
 	}
 	return &Info{a, nil, nil}
 }

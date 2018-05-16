@@ -123,10 +123,7 @@ func openToken(tokenName string) (token.Token, error) {
 	if err != nil {
 		return nil, err
 	}
-	var prompt passprompt.PasswordGetter
-	if !argServer {
-		prompt = new(passprompt.PasswordPrompt)
-	}
+	prompt := new(passprompt.PasswordPrompt)
 	tok, err = open.Token(shared.CurrentConfig, tokenName, prompt)
 	if err != nil {
 		return nil, err

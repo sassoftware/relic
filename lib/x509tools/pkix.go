@@ -29,15 +29,6 @@ import (
 
 var (
 	// RFC 3279
-	OidDigestMD5  = asn1.ObjectIdentifier{1, 2, 840, 113549, 2, 5}
-	OidDigestSHA1 = asn1.ObjectIdentifier{1, 3, 14, 3, 2, 26}
-	// RFC 5758
-	OidDigestSHA224 = asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 2, 4}
-	OidDigestSHA256 = asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 2, 1}
-	OidDigestSHA384 = asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 2, 2}
-	OidDigestSHA512 = asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 2, 3}
-
-	// RFC 3279
 	OidPublicKeyRSA   = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 1, 1}
 	OidPublicKeyDSA   = asn1.ObjectIdentifier{1, 2, 840, 10040, 4, 1}
 	OidPublicKeyECDSA = asn1.ObjectIdentifier{1, 2, 840, 10045, 2, 1}
@@ -62,24 +53,6 @@ var (
 
 	Asn1TagBMPString = 30
 )
-
-var HashOids = map[crypto.Hash]asn1.ObjectIdentifier{
-	crypto.MD5:    OidDigestMD5,
-	crypto.SHA1:   OidDigestSHA1,
-	crypto.SHA224: OidDigestSHA224,
-	crypto.SHA256: OidDigestSHA256,
-	crypto.SHA384: OidDigestSHA384,
-	crypto.SHA512: OidDigestSHA512,
-}
-
-var HashNames = map[crypto.Hash]string{
-	crypto.MD5:    "MD5",
-	crypto.SHA1:   "SHA1",
-	crypto.SHA224: "SHA-224",
-	crypto.SHA256: "SHA-256",
-	crypto.SHA384: "SHA-384",
-	crypto.SHA512: "SHA-512",
-}
 
 type sigAlgInfo struct {
 	oid        asn1.ObjectIdentifier
@@ -216,23 +189,4 @@ func PkixVerify(pub crypto.PublicKey, digestAlg, sigAlg pkix.AlgorithmIdentifier
 	default:
 		return errors.New("unsupported public key algorithm")
 	}
-}
-
-type digestInfo struct {
-	DigestAlgorithm pkix.AlgorithmIdentifier
-	Digest          []byte
-}
-
-// Pack a digest along with an algorithm identifier. Mainly useful for
-// PKCS#1v1.5 padding (RSA).
-func MarshalDigest(hash crypto.Hash, digest []byte) (der []byte, ok bool) {
-	alg, ok := PkixDigestAlgorithm(hash)
-	if !ok {
-		return nil, false
-	}
-	der, err := asn1.Marshal(digestInfo{alg, digest})
-	if err != nil {
-		return nil, false
-	}
-	return der, true
 }
