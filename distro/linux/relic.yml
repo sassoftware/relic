@@ -22,6 +22,10 @@ tokens:
     # 0x80000001 - SafeNet: CKU_LIMITED_USER
     #user: 1
 
+    # Optional parameters for server mode
+    #timeout: 60  # Terminate each attempt after this N seconds (default: 60)
+    #retries: 5   # Retry failed commands N times (default: 5)
+
   # Use GnuPG scdaemon as a token
   myscd:
     type: scdaemon
@@ -109,6 +113,9 @@ server:
   # Optional logfile for server errors. If not set, then standard error is used
   logfile: /var/log/relic/server.log
 
+  # How many worker subprocesses to spawn per token. Usually only 1 is required.
+  # numworkers: 1
+
 # Instead of including token PINs in this file, you can specify an alternate
 # "pin file" which is a YAML file holding key-value pairs where the key is the
 # name of the token and the value is the PIN.
@@ -156,10 +163,10 @@ clients:
   # certificates. The CA that the client matches determines the roles they have
   # access to, and the subject DN of the leaf certificate is logged. This can
   # be used to delegate access to a short-lived build process.
-  my_root_ca:
-    nickname: my_root_ca
-    certificate: |
-      -----BEGIN CERTIFICATE-----
-      asdfasdfasdf
-      -----END CERTIFICATE-----
-    roles: ['somegroup']
+  #my_root_ca:
+  #  nickname: my_root_ca
+  #  certificate: |
+  #    -----BEGIN CERTIFICATE-----
+  #    asdfasdfasdf
+  #    -----END CERTIFICATE-----
+  #  roles: ['somegroup']
