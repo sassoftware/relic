@@ -137,10 +137,12 @@ func (k *workerKey) SignContext(ctx context.Context, digest []byte, opts crypto.
 	rr := workerrpc.Request{
 		KeyName: k.kconf.Name(),
 		Digest:  digest,
-		Hash:    uint(opts.HashFunc()),
 	}
-	if o, ok := opts.(*rsa.PSSOptions); ok {
-		rr.SaltLength = &o.SaltLength
+	if opts != nil {
+		rr.Hash = uint(opts.HashFunc())
+		if o, ok := opts.(*rsa.PSSOptions); ok {
+			rr.SaltLength = &o.SaltLength
+		}
 	}
 	res, err := k.token.request(ctx, workerrpc.Sign, rr)
 	if err != nil {
