@@ -119,7 +119,7 @@ func signCmd(cmd *cobra.Command, args []string) error {
 	}
 	duration := time.Since(startTime)
 	opts.Audit.Attributes["perf.elapsed.ms"] = duration.Nanoseconds() / 1e6
-	if err := PublishAudit(opts.Audit); err != nil {
+	if err := signinit.PublishAudit(opts.Audit); err != nil {
 		return err
 	}
 	fmt.Fprintln(os.Stderr, "Signed", argFile)

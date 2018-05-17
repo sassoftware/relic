@@ -99,7 +99,9 @@ func (s *Server) serveSign(request *http.Request, writer http.ResponseWriter) (r
 	if extra != "" {
 		extra = " " + extra
 	}
-	// XXX FIXME audit publish
+	if err := signinit.PublishAudit(opts.Audit); err != nil {
+		return nil, err
+	}
 	s.Logr(request, "Signed package: filename=%s key=%s%s", filename, keyConf.Name(), extra)
 	return BytesResponse(blob, opts.Audit.GetMimeType()), nil
 }

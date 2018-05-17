@@ -140,9 +140,6 @@ amqp:
   # "fanout" type exchange to send audit messages to, default relic.signatures
   # sigsXchg: relic.signatures
 
-  # Optional name of key to use to "seal" audit messages
-  #sealingKey: my_token_key
-
 # Authentication to the server is via client certificate. Certificates are
 # identified by their fingerprint. Fingerprints can be obtained by using the
 # "relic remote register" command on the client to generate the key, or by

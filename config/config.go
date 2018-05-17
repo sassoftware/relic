@@ -114,12 +114,11 @@ type TimestampConfig struct {
 }
 
 type AmqpConfig struct {
-	URL        string // AMQP URL to report signatures to i.e. amqp://user:password@host
-	CaCert     string
-	KeyFile    string
-	CertFile   string
-	SigsXchg   string // Name of exchange to send to (default relic.signatures)
-	SealingKey string // Name of key to seal audit related information
+	URL      string // AMQP URL to report signatures to i.e. amqp://user:password@host
+	CaCert   string
+	KeyFile  string
+	CertFile string
+	SigsXchg string // Name of exchange to send to (default relic.signatures)
 }
 
 type Config struct {

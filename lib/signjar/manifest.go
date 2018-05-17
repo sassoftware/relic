@@ -27,6 +27,7 @@ import (
 	"strings"
 
 	"github.com/sassoftware/relic/config"
+	"github.com/sassoftware/relic/lib/x509tools"
 )
 
 // See https://docs.oracle.com/javase/8/docs/technotes/guides/jar/jar.html#JAR_Manifest
@@ -139,7 +140,7 @@ func DigestManifest(manifest []byte, hash crypto.Hash, sectionsOnly, apkV2 bool)
 	if err != nil {
 		return nil, err
 	}
-	hashName := hashNames[hash]
+	hashName := x509tools.HashNames[hash]
 	if hashName == "" {
 		return nil, errors.New("unsupported hash type")
 	}
@@ -202,13 +203,4 @@ func writeSection(out io.Writer, hdr http.Header, first string) {
 		}
 	}
 	out.Write([]byte("\r\n"))
-}
-
-var hashNames = map[crypto.Hash]string{
-	crypto.MD5:    "MD5",
-	crypto.SHA1:   "SHA1",
-	crypto.SHA224: "SHA-224",
-	crypto.SHA256: "SHA-256",
-	crypto.SHA384: "SHA-384",
-	crypto.SHA512: "SHA-512",
 }

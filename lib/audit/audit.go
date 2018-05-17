@@ -19,6 +19,7 @@ package audit
 import (
 	"crypto"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -26,22 +27,13 @@ import (
 	"time"
 
 	"github.com/sassoftware/relic/lib/pgptools"
-	"github.com/sassoftware/relic/lib/pkcs7"
 	"github.com/sassoftware/relic/lib/pkcs9"
 	"github.com/sassoftware/relic/lib/x509tools"
 	"golang.org/x/crypto/openpgp"
 )
 
-const EnvAuditFd = "RELIC_AUDIT_FD"
-
 type Info struct {
-	Attributes   map[string]interface{}
-	sealed, seal []byte
-}
-
-type sealedDoc struct {
-	Attributes []byte `json:"attributes"`
-	Seal       []byte `json:"seal"`
+	Attributes map[string]interface{}
 }
 
 // Create a new audit record, starting with the given key name, signature type,
@@ -55,7 +47,7 @@ func New(keyName, sigType string, hash crypto.Hash) *Info {
 	if hostname, _ := os.Hostname(); hostname != "" {
 		a["sig.hostname"] = hostname
 	}
-	return &Info{a, nil, nil}
+	return &Info{Attributes: a}
 }
 
 // Set a PGP certificate for this audit record
@@ -104,48 +96,9 @@ func (info *Info) GetMimeType() string {
 	return "application/octet-stream"
 }
 
-// Seal the audit record by signing it with a key
-func (info *Info) Seal(key crypto.Signer, certs []*x509.Certificate, hash crypto.Hash) error {
-	blob, err := json.Marshal(info.Attributes)
-	if err != nil {
-		return err
-	}
-	d := hash.New()
-	d.Write(blob)
-	builder := pkcs7.NewBuilder(key, certs, hash)
-	if err := builder.SetDetachedContent(pkcs7.OidData, d.Sum(nil)); err != nil {
-		return err
-	}
-	if err := builder.AddAuthenticatedAttribute(pkcs7.OidAttributeSigningTime, time.Now().UTC()); err != nil {
-		return err
-	}
-	psd, err := builder.Sign()
-	if err != nil {
-		return err
-	}
-	sealblob, err := psd.Marshal()
-	if err != nil {
-		return err
-	}
-	info.sealed, err = json.Marshal(sealedDoc{blob, sealblob})
-	return err
-}
-
-// Marshal the possibly-sealed audit record to JSON
+// Marshal the audit record to JSON
 func (info *Info) Marshal() ([]byte, error) {
-	if info.sealed != nil {
-		return info.sealed, nil
-	}
-	blob, err := json.Marshal(info.Attributes)
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(sealedDoc{blob, nil})
-}
-
-// Get previously parsed, marshalled JSON data
-func (info *Info) GetSealed() ([]byte, []byte) {
-	return info.sealed, info.seal
+	return json.Marshal(info.Attributes)
 }
 
 // Parse audit data from a JSON blob
@@ -153,16 +106,19 @@ func Parse(blob []byte) (*Info, error) {
 	if len(blob) == 0 {
 		return nil, errors.New("missing attributes")
 	}
-	var doc sealedDoc
-	if err := json.Unmarshal(blob, &doc); err != nil {
+	info := new(Info)
+	if err := json.Unmarshal(blob, &info.Attributes); err != nil {
 		return nil, err
 	}
-	if len(doc.Attributes) == 0 {
-		return nil, errors.New("missing attributes")
+	if sealed := info.Attributes["attributes"]; sealed != nil {
+		blob, err := base64.StdEncoding.DecodeString(sealed.(string))
+		if err != nil {
+			return nil, err
+		}
+		info.Attributes = nil
+		if err := json.Unmarshal(blob, &info.Attributes); err != nil {
+			return nil, err
+		}
 	}
-	info := new(Info)
-	info.sealed = doc.Attributes
-	info.seal = doc.Seal
-	err := json.Unmarshal(doc.Attributes, &info.Attributes)
-	return info, err
+	return info, nil
 }

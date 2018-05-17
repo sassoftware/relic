@@ -75,10 +75,6 @@ func (lw *loggingWriter) Write(d []byte) (int, error) {
 	return n, err
 }
 
-func (lw *loggingWriter) CloseNotify() <-chan bool {
-	return lw.ResponseWriter.(http.CloseNotifier).CloseNotify()
-}
-
 func (lw *loggingWriter) Close() {
 	path := lw.r.URL.Path
 	if path == "/health" {

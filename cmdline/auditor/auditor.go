@@ -209,18 +209,13 @@ func logToAll(db *sql.DB, info *audit.Info) (err error) {
 }
 
 func insertRow(db *sql.DB, info *audit.Info) (int64, error) {
-	sealed, seal := info.GetSealed()
-	if len(seal) == 0 {
-		seal = nil
+	blob, err := info.Marshal()
+	if err != nil {
+		return 0, err
 	}
-	sealed64 := base64.StdEncoding.EncodeToString(sealed)
-	// send this as interface{} so that it emits NULL when absent instead of an empty string
-	var seal64 interface{}
-	if len(seal) != 0 {
-		seal64 = base64.StdEncoding.EncodeToString(seal)
-	}
+	attrs64 := base64.StdEncoding.EncodeToString(blob)
 	var rowid int64
-	row := db.QueryRow("INSERT INTO signatures (timestamp, client_name, client_ip, client_dn, client_filename, sig_hostname, sig_type, sig_keyname, attributes, seal) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING signature_id",
+	row := db.QueryRow("INSERT INTO signatures (timestamp, client_name, client_ip, client_dn, client_filename, sig_hostname, sig_type, sig_keyname, attributes) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING signature_id",
 		info.Attributes["sig.timestamp"],
 		info.Attributes["client.name"],
 		info.Attributes["client.ip"],
@@ -229,8 +224,7 @@ func insertRow(db *sql.DB, info *audit.Info) (int64, error) {
 		info.Attributes["sig.hostname"],
 		info.Attributes["sig.type"],
 		info.Attributes["sig.keyname"],
-		sealed64,
-		seal64,
+		attrs64,
 	)
 	if err := row.Scan(&rowid); err != nil {
 		return 0, err

@@ -165,13 +165,7 @@ func hashFile(keys http.Header, content io.Reader, suffix string) error {
 			continue
 		}
 		hashName := strings.ToUpper(key[:len(key)-len(suffix)])
-		var hash crypto.Hash
-		for hash2, hashName2 := range hashNames {
-			if hashName == hashName2 {
-				hash = hash2
-				break
-			}
-		}
+		hash := x509tools.HashByName(hashName)
 		if !hash.Available() {
 			return fmt.Errorf("unknown digest key in manifest: %s", hashName)
 		}

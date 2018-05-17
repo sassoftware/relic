@@ -26,6 +26,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/sassoftware/relic/lib/x509tools"
 	"github.com/sassoftware/relic/lib/zipslicer"
 )
 
@@ -104,7 +105,7 @@ func updateManifest(jar *zipslicer.Directory, hash crypto.Hash) (*JarDigest, err
 		return nil, err
 	}
 
-	hashName := hashNames[hash]
+	hashName := x509tools.HashNames[hash]
 	if hashName == "" {
 		return nil, errors.New("unsupported hash type")
 	}

@@ -18,6 +18,7 @@ package signinit
 
 import (
 	"crypto"
+	"fmt"
 	"time"
 
 	"github.com/sassoftware/relic/cmdline/shared"
@@ -80,4 +81,14 @@ func Init(mod *signers.Signer, tok token.Token, keyName string, hash crypto.Hash
 		FlagOverride: make(map[string]string),
 	}
 	return cert, opts, nil
+}
+
+func PublishAudit(info *audit.Info) error {
+	aconf := shared.CurrentConfig.Amqp
+	if aconf != nil && aconf.URL != "" {
+		if err := info.Publish(aconf); err != nil {
+			return fmt.Errorf("failed to publish audit log: %s", err)
+		}
+	}
+	return nil
 }

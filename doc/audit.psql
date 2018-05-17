@@ -8,5 +8,4 @@ CREATE TABLE signatures (
     sig_hostname text,
     sig_type text,
     sig_keyname text,
-    attributes text,
-    seal text);
+    attributes text);

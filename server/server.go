@@ -64,16 +64,6 @@ func (s *Server) callHandler(request *http.Request, lw *loggingWriter) (response
 	if errResponse != nil {
 		return errResponse, nil
 	}
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	closed := lw.CloseNotify()
-	go func() {
-		select {
-		case <-closed:
-			cancel()
-		case <-ctx.Done():
-		}
-	}()
 	request = request.WithContext(ctx)
 	lw.r = request
 	if err := compresshttp.DecompressRequest(request); err == compresshttp.ErrUnacceptableEncoding {
