@@ -18,6 +18,7 @@ package worker
 
 import (
 	"bytes"
+	"context"
 	"crypto"
 	"crypto/rsa"
 	"crypto/x509"
@@ -39,7 +40,7 @@ const (
 	defaultTimeout = 60 * time.Second
 )
 
-func (t *WorkerToken) request(path string, rr workerrpc.Request) (*workerrpc.Response, error) {
+func (t *WorkerToken) request(ctx context.Context, path string, rr workerrpc.Request) (*workerrpc.Response, error) {
 	req := &http.Request{
 		Method: http.MethodPost,
 		URL:    &url.URL{Scheme: "http", Host: t.addr, Path: path},
@@ -52,11 +53,15 @@ func (t *WorkerToken) request(path string, rr workerrpc.Request) (*workerrpc.Res
 	req.GetBody = func() (io.ReadCloser, error) {
 		return ioutil.NopCloser(bytes.NewReader(blob)), nil
 	}
-	return t.doRetry(req)
+	return t.doRetry(req.WithContext(ctx))
 }
 
 func (t *WorkerToken) Ping() error {
-	_, err := t.request(workerrpc.Ping, workerrpc.Request{})
+	return t.PingContext(context.Background())
+}
+
+func (t *WorkerToken) PingContext(ctx context.Context) error {
+	_, err := t.request(ctx, workerrpc.Ping, workerrpc.Request{})
 	return err
 }
 
@@ -65,11 +70,15 @@ func (t *WorkerToken) Config() *config.TokenConfig {
 }
 
 func (t *WorkerToken) GetKey(keyName string) (token.Key, error) {
+	return t.GetKeyContext(context.Background(), keyName)
+}
+
+func (t *WorkerToken) GetKeyContext(ctx context.Context, keyName string) (token.Key, error) {
 	kconf, err := t.config.GetKey(keyName)
 	if err != nil {
 		return nil, err
 	}
-	res, err := t.request(workerrpc.GetKey, workerrpc.Request{KeyName: kconf.Name()})
+	res, err := t.request(ctx, workerrpc.GetKey, workerrpc.Request{KeyName: kconf.Name()})
 	if err != nil {
 		return nil, err
 	}
@@ -121,6 +130,10 @@ func (k *workerKey) GetID() []byte {
 }
 
 func (k *workerKey) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts) ([]byte, error) {
+	return k.SignContext(context.Background(), digest, opts)
+}
+
+func (k *workerKey) SignContext(ctx context.Context, digest []byte, opts crypto.SignerOpts) ([]byte, error) {
 	rr := workerrpc.Request{
 		KeyName: k.kconf.Name(),
 		Digest:  digest,
@@ -129,7 +142,7 @@ func (k *workerKey) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts) 
 	if o, ok := opts.(*rsa.PSSOptions); ok {
 		rr.SaltLength = &o.SaltLength
 	}
-	res, err := k.token.request(workerrpc.Sign, rr)
+	res, err := k.token.request(ctx, workerrpc.Sign, rr)
 	if err != nil {
 		return nil, err
 	}

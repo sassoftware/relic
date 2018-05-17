@@ -17,14 +17,13 @@
 package server
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"net/http"
-	"os"
-	"os/exec"
 	"sync"
 	"time"
+
+	"github.com/sassoftware/relic/token/worker"
 )
 
 var (
@@ -63,16 +62,9 @@ func (s *Server) healthCheck() bool {
 	last := healthStatus
 	healthMu.Unlock()
 	ok := true
-	sawToken := make(map[string]bool)
-	for _, keyConf := range s.Config.Keys {
-		token := keyConf.Token
-		if token == "" || len(keyConf.Roles) == 0 || sawToken[token] {
-			continue
-		}
-		sawToken[token] = true
+	for _, token := range s.tokens {
 		if !s.pingOne(token) {
 			ok = false
-			break
 		}
 	}
 	next := last
@@ -96,24 +88,18 @@ func (s *Server) healthCheck() bool {
 	return ok
 }
 
-func (s *Server) pingOne(tokenName string) bool {
+func (s *Server) pingOne(tok *worker.WorkerToken) bool {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*time.Duration(s.Config.Server.TokenCheckTimeout))
 	defer cancel()
-	var output bytes.Buffer
-	proc := exec.CommandContext(ctx, os.Args[0], "ping", "--config", s.Config.Path(), "--token", tokenName)
-	proc.Stdout = &output
-	proc.Stderr = &output
-	err := proc.Run()
-	if err == nil {
-		return true
+	if err := tok.PingContext(ctx); err != nil {
+		if ctx.Err() != nil {
+			s.Logf("error: health check of token %s timed out", tok.Config().Name())
+		} else {
+			s.Logf("error: health check of token %s failed: %s", tok.Config().Name(), err)
+		}
+		return false
 	}
-	select {
-	case <-ctx.Done():
-		s.Logf("error: health check of token %s timed out", tokenName)
-	default:
-		s.Logf("error: health check of token %s failed: %s\n%s\n", tokenName, err, output.String())
-	}
-	return false
+	return true
 }
 
 func (s *Server) Healthy(request *http.Request) bool {

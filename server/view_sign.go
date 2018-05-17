@@ -17,15 +17,11 @@
 package server
 
 import (
-	"context"
 	"crypto"
 	"fmt"
 	"net/http"
-	"strings"
-	"time"
 
 	"github.com/sassoftware/relic/internal/signinit"
-	"github.com/sassoftware/relic/lib/procutil"
 	"github.com/sassoftware/relic/lib/readercounter"
 	"github.com/sassoftware/relic/lib/x509tools"
 	"github.com/sassoftware/relic/signers"
@@ -104,23 +100,4 @@ func (s *Server) serveSign(request *http.Request, writer http.ResponseWriter) (r
 	}
 	s.Logr(request, "Signed package: filename=%s key=%s%s", filename, keyConf.Name(), extra)
 	return BytesResponse(blob, opts.Audit.GetMimeType()), nil
-}
-
-func (s *Server) showProcError(request *http.Request, cmd *procutil.Command, timeout time.Duration, err error) (Response, error) {
-	switch err {
-	case context.DeadlineExceeded:
-		s.Logr(request, "error: command timed out after %d seconds\nCommand: %s\nOutput:\n%s\n\n",
-			timeout/time.Second, cmd.FormatCmdline(), cmd.Output)
-		return StringResponse(http.StatusGatewayTimeout, "Signing command timed out"), nil
-	case context.Canceled:
-		s.Logr(request, "client hung up during signing operation")
-		return StringResponse(http.StatusGatewayTimeout, "Signing command timed out"), nil
-	}
-	s.Logr(request, "error: invoking signing tool: %s\nCommand: %s\nOutput:\n%s\n\n", err, cmd.FormatCmdline(), cmd.Output)
-	switch {
-	case strings.Contains(cmd.Output, "no certificate of type"):
-		return StringResponse(http.StatusBadRequest, "key does not support signatures of this type"), nil
-	default:
-		return ErrorResponse(http.StatusInternalServerError), nil
-	}
 }
