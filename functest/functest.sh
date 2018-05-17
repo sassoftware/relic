@@ -35,6 +35,19 @@ signed=scratch/signed
 mkdir -p $signed
 echo
 
+set +x
+for x in {1..100}
+do
+    curl -skf https://localhost:6363/health && break
+    if [ i == 100 ]
+    then
+        echo server failed to start
+        exit 1
+    fi
+    sleep 0.1
+done
+set -x
+
 ### RPM
 pkg="zlib-1.2.8-10.fc24.i686.rpm"
 relic verify --cert "testkeys/RPM-GPG-KEY-fedora-25-i386" "packages/$pkg"
