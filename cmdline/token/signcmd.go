@@ -18,6 +18,7 @@ package token
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -79,7 +80,7 @@ func signCmd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return shared.Fail(err)
 	}
-	cert, opts, err := signinit.Init(mod, token, argKeyName, hash, flags)
+	cert, opts, err := signinit.Init(context.Background(), mod, token, argKeyName, hash, flags)
 	if err != nil {
 		return shared.Fail(err)
 	}

@@ -17,6 +17,7 @@
 package signinit
 
 import (
+	"context"
 	"crypto"
 	"fmt"
 	"time"
@@ -31,8 +32,14 @@ import (
 	"github.com/spf13/pflag"
 )
 
-func Init(mod *signers.Signer, tok token.Token, keyName string, hash crypto.Hash, flags *pflag.FlagSet) (*certloader.Certificate, *signers.SignOpts, error) {
-	key, err := tok.GetKey(keyName)
+func Init(ctx context.Context, mod *signers.Signer, tok token.Token, keyName string, hash crypto.Hash, flags *pflag.FlagSet) (*certloader.Certificate, *signers.SignOpts, error) {
+	var key token.Key
+	var err error
+	if tctx, ok := tok.(keyGetter); ok {
+		key, err = tctx.GetKeyContext(ctx, keyName)
+	} else {
+		key, err = tok.GetKey(keyName)
+	}
 	if err != nil {
 		return nil, nil, err
 	}
@@ -91,4 +98,8 @@ func PublishAudit(info *audit.Info) error {
 		}
 	}
 	return nil
+}
+
+type keyGetter interface {
+	GetKeyContext(context.Context, string) (token.Key, error)
 }

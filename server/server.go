@@ -163,7 +163,12 @@ func (s *Server) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	defer lw.Close()
 	response, err := s.callHandler(request, lw)
 	if err != nil {
-		response = s.LogError(lw.r, err, nil)
+		if request.Context().Err() != nil {
+			s.Logr(request, "client disconnected")
+			response = StringResponse(http.StatusBadRequest, "client disconnected")
+		} else {
+			response = s.LogError(lw.r, err, nil)
+		}
 	}
 	if response != nil {
 		for k, v := range response.Headers() {

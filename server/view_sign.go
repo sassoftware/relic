@@ -72,7 +72,7 @@ func (s *Server) serveSign(request *http.Request, writer http.ResponseWriter) (r
 	if tok == nil {
 		return nil, fmt.Errorf("missing token \"%s\" for key \"%s\"", keyConf.Token, keyName)
 	}
-	cert, opts, err := signinit.Init(mod, tok, keyName, hash, flags)
+	cert, opts, err := signinit.Init(request.Context(), mod, tok, keyName, hash, flags)
 	if err != nil {
 		return nil, err
 	}
