@@ -18,23 +18,18 @@ package signers
 
 import (
 	"crypto"
-	"crypto/x509"
 	"errors"
 	"fmt"
 	"io"
-	"net/url"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/spf13/pflag"
 
 	"github.com/sassoftware/relic/lib/audit"
-	"github.com/sassoftware/relic/lib/binpatch"
 	"github.com/sassoftware/relic/lib/certloader"
 	"github.com/sassoftware/relic/lib/magic"
 	"github.com/sassoftware/relic/lib/pgptools"
-	"github.com/sassoftware/relic/lib/pkcs7"
 	"github.com/sassoftware/relic/lib/pkcs9"
 	"github.com/sassoftware/relic/lib/x509tools"
 	"golang.org/x/crypto/openpgp"
@@ -71,39 +66,6 @@ const (
 	CertTypeX509 CertType = 1 << iota
 	CertTypePgp
 )
-
-type SignOpts struct {
-	Path         string
-	Hash         crypto.Hash
-	Time         time.Time
-	Flags        *pflag.FlagSet
-	FlagOverride map[string]string
-	Audit        *audit.Info
-}
-
-// Convenience method to return a binary patch
-func (o SignOpts) SetBinPatch(p *binpatch.PatchSet) ([]byte, error) {
-	o.Audit.SetMimeType(binpatch.MimeType)
-	return p.Dump(), nil
-}
-
-// Convenience method to return a PKCS#7 blob
-func (o SignOpts) SetPkcs7(ts *pkcs9.TimestampedSignature) ([]byte, error) {
-	o.Audit.SetCounterSignature(ts.CounterSignature)
-	o.Audit.SetMimeType(pkcs7.MimeType)
-	return ts.Raw, nil
-}
-
-type VerifyOpts struct {
-	FileName    string
-	TrustedX509 []*x509.Certificate
-	TrustedPgp  openpgp.EntityList
-	TrustedPool *x509.CertPool
-	NoDigests   bool
-	NoChain     bool
-	Content     string
-	Compression magic.CompressionType
-}
 
 type Signature struct {
 	Package       string
@@ -227,89 +189,4 @@ func MergeFlags(fs *pflag.FlagSet) {
 			flagMap[flag.Name] = append(flagMap[flag.Name], s.Name)
 		})
 	}
-}
-
-type FlagValues map[string]pflag.Value
-
-// Copy values back from the command to the module's own FlagSet
-func (s *Signer) GetFlags(fs *pflag.FlagSet) (*pflag.FlagSet, error) {
-	for flag, users := range flagMap {
-		if !fs.Changed(flag) {
-			continue
-		}
-		allowed := false
-		for _, name := range users {
-			if name == s.Name {
-				allowed = true
-				break
-			}
-		}
-		if !allowed {
-			return nil, fmt.Errorf("flag \"%s\" is not allowed for signature type \"%s\"", flag, s.Name)
-		}
-	}
-	if s.flags == nil {
-		return nil, nil
-	}
-	s.flags.VisitAll(func(flag *pflag.Flag) {
-		if fs.Changed(flag.Name) {
-			flag.Value = fs.Lookup(flag.Name).Value
-		}
-	})
-	return s.flags, nil
-}
-
-// Copy module values to URL query parameters
-func (s *Signer) FlagsToQuery(fs *pflag.FlagSet, override map[string]string, q url.Values) error {
-	if s.flags == nil {
-		return nil
-	}
-	fs, err := s.GetFlags(fs)
-	if err != nil {
-		return err
-	}
-	s.flags.VisitAll(func(flag *pflag.Flag) {
-		if value, ok := override[flag.Name]; ok {
-			q.Set(flag.Name, value)
-		} else if fs.Changed(flag.Name) {
-			q.Set(flag.Name, fs.Lookup(flag.Name).Value.String())
-		}
-	})
-	return nil
-}
-
-// FlagsFromQuery parses flags out of a URL
-func (s *Signer) FlagsFromQuery(q url.Values) (*pflag.FlagSet, error) {
-	if s.flags == nil {
-		return nil, nil
-	}
-	s.flags.VisitAll(func(flag *pflag.Flag) {
-		if v := q.Get(flag.Name); v != "" {
-			s.flags.Set(flag.Name, v)
-		}
-	})
-	return s.flags, nil
-}
-
-// Copy URL query parameters to a set of command-line arguments to pass to an
-// invocation of a child process
-func (s *Signer) QueryToCmdline(q url.Values) []string {
-	if s.flags == nil {
-		return nil
-	}
-	var ret []string
-	s.flags.VisitAll(func(flag *pflag.Flag) {
-		v := q.Get(flag.Name)
-		if v == "" {
-			return
-		}
-		if flag.Value.Type() == "bool" {
-			if bv, _ := strconv.ParseBool(v); bv {
-				ret = append(ret, "--"+flag.Name)
-			}
-		} else {
-			ret = append(ret, "--"+flag.Name, v)
-		}
-	})
-	return ret
 }

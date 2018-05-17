@@ -71,13 +71,13 @@ type pgpTransformer struct {
 }
 
 func transform(f *os.File, opts signers.SignOpts) (signers.Transformer, error) {
-	armor, _ := opts.Flags.GetBool("armor")
-	inline, _ := opts.Flags.GetBool("inline")
+	armor := opts.Flags.GetBool("armor")
+	inline := opts.Flags.GetBool("inline")
 	if inline {
 		// always get a non-armored sig from the server
-		opts.Flags.Set("armor", "false")
+		opts.Flags.Values["armor"] = "false"
 	}
-	clearsign, _ := opts.Flags.GetBool("clearsign")
+	clearsign := opts.Flags.GetBool("clearsign")
 	stream := io.ReadSeeker(f)
 	if _, err := f.Seek(0, 0); err != nil {
 		// not seekable so consume it all now
@@ -107,10 +107,10 @@ func (t *pgpTransformer) GetReader() (io.Reader, error) {
 }
 
 func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]byte, error) {
-	armor, _ := opts.Flags.GetBool("armor")
-	clearsign, _ := opts.Flags.GetBool("clearsign")
-	textmode, _ := opts.Flags.GetBool("textmode")
-	if pgpcompat, _ := opts.Flags.GetString("pgp"); pgpcompat == "mini-clear" {
+	armor := opts.Flags.GetBool("armor")
+	clearsign := opts.Flags.GetBool("clearsign")
+	textmode := opts.Flags.GetBool("textmode")
+	if pgpcompat := opts.Flags.GetString("pgp"); pgpcompat == "mini-clear" {
 		clearsign = true
 	}
 	var sf func(io.Writer, *openpgp.Entity, io.Reader, *packet.Config) error
@@ -162,11 +162,13 @@ func (t *pgpTransformer) Apply(dest, mimeType string, result io.Reader) error {
 		} else {
 			err = pgptools.MergeSignature(outfile, sig, t.stream, t.armor, t.filename)
 		}
+		if err != nil {
+			return err
+		}
 	} else {
-		_, err = io.Copy(outfile, result)
-	}
-	if err != nil {
-		return err
+		if _, err := io.Copy(outfile, result); err != nil {
+			return err
+		}
 	}
 	t.closer.Close()
 	return outfile.Commit()

@@ -64,7 +64,7 @@ func signCmd(cmd *cobra.Command, args []string) (err error) {
 		return shared.Fail(errors.New("can't sign this type of file"))
 	}
 	// parse signer-specific flags
-	flags, err := mod.GetFlags(cmd.Flags())
+	flags, err := mod.FlagsFromCmdline(cmd.Flags())
 	if err != nil {
 		return shared.Fail(err)
 	}
@@ -92,10 +92,9 @@ func signCmd(cmd *cobra.Command, args []string) (err error) {
 		return err
 	}
 	opts := signers.SignOpts{
-		Path:         argFile,
-		Hash:         hash,
-		Flags:        flags,
-		FlagOverride: make(map[string]string),
+		Path:  argFile,
+		Hash:  hash,
+		Flags: flags,
 	}
 	transform, err := mod.GetTransform(infile, opts)
 	if err != nil {
@@ -106,7 +105,7 @@ func signCmd(cmd *cobra.Command, args []string) (err error) {
 	values.Add("key", argKeyName)
 	values.Add("filename", filepath.Base(argFile))
 	values.Add("sigtype", mod.Name)
-	if err := mod.FlagsToQuery(cmd.Flags(), opts.FlagOverride, values); err != nil {
+	if err := flags.ToQuery(values); err != nil {
 		return shared.Fail(err)
 	}
 	if err := setDigestQueryParam(values); err != nil {

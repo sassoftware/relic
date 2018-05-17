@@ -68,7 +68,7 @@ func signCmd(cmd *cobra.Command, args []string) error {
 	if mod.Sign == nil {
 		return shared.Fail(errors.New("can't sign this type of file"))
 	}
-	flags, err := mod.GetFlags(cmd.Flags())
+	flags, err := mod.FlagsFromCmdline(cmd.Flags())
 	if err != nil {
 		return shared.Fail(err)
 	}

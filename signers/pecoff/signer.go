@@ -43,10 +43,7 @@ func init() {
 }
 
 func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]byte, error) {
-	pageHashes, err := opts.Flags.GetBool("page-hashes")
-	if err != nil {
-		panic(err)
-	}
+	pageHashes := opts.Flags.GetBool("page-hashes")
 	digest, err := authenticode.DigestPE(r, opts.Hash, pageHashes)
 	if err != nil {
 		return nil, err

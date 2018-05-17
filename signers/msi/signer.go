@@ -58,7 +58,7 @@ func transform(f *os.File, opts signers.SignOpts) (signers.Transformer, error) {
 		return nil, err
 	}
 	var exsig []byte
-	noExtended, _ := opts.Flags.GetBool("no-extended-sig")
+	noExtended := opts.Flags.GetBool("no-extended-sig")
 	if !noExtended {
 		exsig, err = authenticode.PrehashMSI(cdf, opts.Hash)
 		if err != nil {
@@ -105,7 +105,7 @@ func (t *msiTransformer) Apply(dest, mimeType string, result io.Reader) error {
 
 // sign a transformed tarball and return the PKCS#7 blob
 func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]byte, error) {
-	noExtended, _ := opts.Flags.GetBool("no-extended-sig")
+	noExtended := opts.Flags.GetBool("no-extended-sig")
 	sum, err := authenticode.DigestMsiTar(r, opts.Hash, !noExtended)
 	if err != nil {
 		return nil, err

@@ -49,10 +49,10 @@ func init() {
 
 // sign a manifest and return the PKCS#7 blob
 func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]byte, error) {
-	argSectionsOnly, _ := opts.Flags.GetBool("sections-only")
-	argInlineSignature, _ := opts.Flags.GetBool("inline-signature")
-	argApkV2, _ := opts.Flags.GetBool("apk-v2-present")
-	argAlias, _ := opts.Flags.GetString("key-alias")
+	argSectionsOnly := opts.Flags.GetBool("sections-only")
+	argInlineSignature := opts.Flags.GetBool("inline-signature")
+	argApkV2 := opts.Flags.GetBool("apk-v2-present")
+	argAlias := opts.Flags.GetString("key-alias")
 	if argAlias == "" {
 		argAlias = "RELIC"
 	}

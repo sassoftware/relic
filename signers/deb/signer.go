@@ -55,7 +55,7 @@ func formatLog(attrs *audit.Info) string {
 }
 
 func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]byte, error) {
-	role, _ := opts.Flags.GetString("role")
+	role := opts.Flags.GetString("role")
 	if role == "" {
 		role = "builder"
 	}

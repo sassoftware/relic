@@ -50,7 +50,7 @@ func init() {
 }
 
 func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]byte, error) {
-	detachCerts, _ := opts.Flags.GetBool("detach-certs")
+	detachCerts := opts.Flags.GetBool("detach-certs")
 	m, err := mangleZip(r, opts.Hash)
 	if err != nil {
 		return nil, err

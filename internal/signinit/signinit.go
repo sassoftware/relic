@@ -29,10 +29,9 @@ import (
 	"github.com/sassoftware/relic/signers/pkcs"
 	"github.com/sassoftware/relic/signers/sigerrors"
 	"github.com/sassoftware/relic/token"
-	"github.com/spf13/pflag"
 )
 
-func Init(ctx context.Context, mod *signers.Signer, tok token.Token, keyName string, hash crypto.Hash, flags *pflag.FlagSet) (*certloader.Certificate, *signers.SignOpts, error) {
+func Init(ctx context.Context, mod *signers.Signer, tok token.Token, keyName string, hash crypto.Hash, flags *signers.FlagValues) (*certloader.Certificate, *signers.SignOpts, error) {
 	var key token.Key
 	var err error
 	if tctx, ok := tok.(keyGetter); ok {
@@ -81,11 +80,10 @@ func Init(ctx context.Context, mod *signers.Signer, tok token.Token, keyName str
 		cert.Timestamper = pkcs.Timestamper{Config: tsconf}
 	}
 	opts := &signers.SignOpts{
-		Hash:         hash,
-		Time:         now,
-		Audit:        auditInfo,
-		Flags:        flags,
-		FlagOverride: make(map[string]string),
+		Hash:  hash,
+		Time:  now,
+		Audit: auditInfo,
+		Flags: flags,
 	}
 	return cert, opts, nil
 }

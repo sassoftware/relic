@@ -52,16 +52,16 @@ func testPath(fp string) bool {
 
 func transform(f *os.File, opts signers.SignOpts) (signers.Transformer, error) {
 	// detect signature style and explicitly set it for the request
-	argStyle, _ := opts.Flags.GetString("ps-style")
+	argStyle := opts.Flags.GetString("ps-style")
 	if argStyle == "" {
 		argStyle = filepath.Ext(opts.Path)
 	}
-	opts.FlagOverride["ps-style"] = argStyle
+	opts.Flags.Values["ps-style"] = argStyle
 	return signers.DefaultTransform(f), nil
 }
 
 func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]byte, error) {
-	argStyle, _ := opts.Flags.GetString("ps-style")
+	argStyle := opts.Flags.GetString("ps-style")
 	if argStyle == "" {
 		argStyle = opts.Path
 	}
