@@ -34,20 +34,22 @@ import (
 
 type Info struct {
 	Attributes map[string]interface{}
+	StartTime  time.Time
 }
 
 // Create a new audit record, starting with the given key name, signature type,
 // and digest
 func New(keyName, sigType string, hash crypto.Hash) *Info {
+	now := time.Now().UTC()
 	a := make(map[string]interface{})
 	a["sig.type"] = sigType
 	a["sig.keyname"] = keyName
 	a["sig.hash"] = x509tools.HashNames[hash]
-	a["sig.timestamp"] = time.Now().UTC()
+	a["sig.timestamp"] = now
 	if hostname, _ := os.Hostname(); hostname != "" {
 		a["sig.hostname"] = hostname
 	}
-	return &Info{Attributes: a}
+	return &Info{Attributes: a, StartTime: now}
 }
 
 // Set a PGP certificate for this audit record
@@ -98,6 +100,9 @@ func (info *Info) GetMimeType() string {
 
 // Marshal the audit record to JSON
 func (info *Info) Marshal() ([]byte, error) {
+	if info.Attributes["perf.elapsed.ms"] == nil && !info.StartTime.IsZero() {
+		info.Attributes["perf.elapsed.ms"] = time.Since(info.StartTime).Nanoseconds() / 1e6
+	}
 	return json.Marshal(info.Attributes)
 }
 

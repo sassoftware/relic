@@ -250,11 +250,23 @@ func logToFile(info *audit.Info, rowid int64) error {
 }
 
 func fmtRow(info *audit.Info, rowid int64) string {
+	client := info.Attributes["client.name"]
+	if client == nil {
+		client = ""
+	}
+	ip := info.Attributes["client.ip"]
+	if ip == nil {
+		ip = ""
+	}
+	dn := info.Attributes["client.dn"]
+	if dn == nil {
+		dn = ""
+	}
 	return fmt.Sprintf("[%s] client=%s dn=%s ip=%s server=%s sigtype=%s filename=%s key=%s rowid=%d",
 		info.Attributes["sig.timestamp"],
-		info.Attributes["client.name"],
-		info.Attributes["client.dn"],
-		info.Attributes["client.ip"],
+		client,
+		dn,
+		ip,
 		info.Attributes["sig.hostname"],
 		info.Attributes["sig.type"],
 		info.Attributes["client.filename"],

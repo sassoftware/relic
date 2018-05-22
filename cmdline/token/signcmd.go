@@ -22,7 +22,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/sassoftware/relic/cmdline/shared"
 	"github.com/sassoftware/relic/internal/signinit"
@@ -60,7 +59,6 @@ func signCmd(cmd *cobra.Command, args []string) error {
 	if argOutput == "" {
 		argOutput = argFile
 	}
-	startTime := time.Now()
 	mod, err := signers.ByFile(argFile, argSigType)
 	if err != nil {
 		return shared.Fail(err)
@@ -118,8 +116,6 @@ func signCmd(cmd *cobra.Command, args []string) error {
 			return shared.Fail(err)
 		}
 	}
-	duration := time.Since(startTime)
-	opts.Audit.Attributes["perf.elapsed.ms"] = duration.Nanoseconds() / 1e6
 	if err := signinit.PublishAudit(opts.Audit); err != nil {
 		return err
 	}
