@@ -45,7 +45,7 @@ const (
 
 // an arbitarily-chosen set of error codes that indicate that the token session
 // is busted and that the worker should exit and start over
-var fatalErrors = map[pkcs11.Error]bool{
+var fatalErrors = map[pkcs11Error]bool{
 	pkcs11.CKR_CRYPTOKI_NOT_INITIALIZED: true,
 	pkcs11.CKR_DEVICE_REMOVED:           true,
 	pkcs11.CKR_GENERAL_ERROR:            true,
@@ -127,7 +127,7 @@ func (h *handler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		resp.Retryable = true
 		resp.Err = err.Error()
-		if e, ok := err.(pkcs11.Error); ok {
+		if e, ok := err.(pkcs11Error); ok {
 			if fatalErrors[e] {
 				log.Printf("error: terminating worker for token \"%s\" due to error: %s", h.token.Config().Name(), err)
 				go h.shutdown()
