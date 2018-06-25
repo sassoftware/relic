@@ -107,10 +107,11 @@ type RemoteConfig struct {
 }
 
 type TimestampConfig struct {
-	URLs    []string // List of timestamp server URLs
-	MsURLs  []string // List of microsoft-style URLs
-	Timeout int      // Connect timeout in seconds
-	CaCert  string   // Path to CA certificate
+	URLs     []string // List of timestamp server URLs
+	MsURLs   []string // List of microsoft-style URLs
+	Timeout  int      // Connect timeout in seconds
+	CaCert   string   // Path to CA certificate
+	Memcache []string // host:port of memcached to use for caching timestamps
 }
 
 type AmqpConfig struct {
