@@ -11,6 +11,7 @@ RuntimeDirectory=relic
 ExecStart=/usr/libexec/relic-einhorn start
 ExecStop=/usr/libexec/relic-einhorn stop
 ExecReload=/usr/libexec/relic-einhorn reload
+SyslogIdentifier=relic
 
 [Install]
 WantedBy=multi-user.target
