@@ -15,7 +15,7 @@
 # limitations under the License.
 
 set -ex
-version=$(git describe --tags |sed -e 's/-\([0-9]*\).*/.\1/')
+version=$(./scripts/version.sh)
 [ -e build/relic-linux-amd64 ] || ./scripts/build-all.sh
 
 cd build
