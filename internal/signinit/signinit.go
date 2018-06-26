@@ -25,9 +25,7 @@ import (
 	"github.com/sassoftware/relic/cmdline/shared"
 	"github.com/sassoftware/relic/lib/audit"
 	"github.com/sassoftware/relic/lib/certloader"
-	"github.com/sassoftware/relic/lib/pkcs9/timestampcache"
 	"github.com/sassoftware/relic/signers"
-	"github.com/sassoftware/relic/signers/pkcs"
 	"github.com/sassoftware/relic/signers/sigerrors"
 	"github.com/sassoftware/relic/token"
 )
@@ -74,16 +72,9 @@ func Init(ctx context.Context, mod *signers.Signer, tok token.Token, keyName str
 		auditInfo.SetPgpCert(cert.PgpKey)
 	}
 	if kconf.Timestamp {
-		tsconf, err := shared.CurrentConfig.GetTimestampConfig()
+		cert.Timestamper, err = GetTimestamper()
 		if err != nil {
 			return nil, nil, err
-		}
-		cert.Timestamper = pkcs.Timestamper{Config: tsconf}
-		if len(tsconf.Memcache) != 0 {
-			cert.Timestamper, err = timestampcache.New(cert.Timestamper, tsconf.Memcache)
-			if err != nil {
-				return nil, nil, err
-			}
 		}
 	}
 	opts := &signers.SignOpts{
