@@ -17,6 +17,7 @@
 package signers
 
 import (
+	"context"
 	"crypto"
 	"crypto/x509"
 	"fmt"
@@ -39,6 +40,7 @@ type SignOpts struct {
 	Time  time.Time
 	Flags *FlagValues
 	Audit *audit.Info
+	ctx   context.Context
 }
 
 // Convenience method to return a binary patch
@@ -52,6 +54,22 @@ func (o SignOpts) SetPkcs7(ts *pkcs9.TimestampedSignature) ([]byte, error) {
 	o.Audit.SetCounterSignature(ts.CounterSignature)
 	o.Audit.SetMimeType(pkcs7.MimeType)
 	return ts.Raw, nil
+}
+
+// WithContext attaches a context to the signature operation, and can be used to cancel long-running operations.
+func (o SignOpts) WithContext(ctx context.Context) SignOpts {
+	o.ctx = ctx
+	return o
+}
+
+// Context returns the context attached to the signature operation.
+//
+// The returned context is always non-nil; it defaults to the background context.
+func (o SignOpts) Context() context.Context {
+	if o.ctx != nil {
+		return o.ctx
+	}
+	return context.Background()
 }
 
 type VerifyOpts struct {

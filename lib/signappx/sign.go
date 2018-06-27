@@ -18,6 +18,7 @@ package signappx
 
 import (
 	"bytes"
+	"context"
 	"crypto/x509"
 	"errors"
 
@@ -32,7 +33,7 @@ var (
 	appxSipInfo        = authenticode.SpcSipInfo{0x1010000, SpcUUIDSipInfoAppx, 0, 0, 0, 0, 0}
 )
 
-func (i *AppxDigest) Sign(cert *certloader.Certificate) (patch *binpatch.PatchSet, priSig, catSig *pkcs9.TimestampedSignature, err error) {
+func (i *AppxDigest) Sign(ctx context.Context, cert *certloader.Certificate) (patch *binpatch.PatchSet, priSig, catSig *pkcs9.TimestampedSignature, err error) {
 	if err := i.writeManifest(cert.Leaf); err != nil {
 		return nil, nil, nil, err
 	}
@@ -42,11 +43,11 @@ func (i *AppxDigest) Sign(cert *certloader.Certificate) (patch *binpatch.PatchSe
 	if err := i.writeContentTypes(); err != nil {
 		return nil, nil, nil, err
 	}
-	catSig, err = i.writeCodeIntegrity(cert)
+	catSig, err = i.writeCodeIntegrity(ctx, cert)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	ts, err := i.writeSignature(cert)
+	ts, err := i.writeSignature(ctx, cert)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -130,7 +131,7 @@ func (i *AppxDigest) writeContentTypes() error {
 	return nil
 }
 
-func (i *AppxDigest) writeCodeIntegrity(cert *certloader.Certificate) (*pkcs9.TimestampedSignature, error) {
+func (i *AppxDigest) writeCodeIntegrity(ctx context.Context, cert *certloader.Certificate) (*pkcs9.TimestampedSignature, error) {
 	if len(i.peDigests) == 0 {
 		return nil, nil
 	}
@@ -144,7 +145,7 @@ func (i *AppxDigest) writeCodeIntegrity(cert *certloader.Certificate) (*pkcs9.Ti
 			return nil, err
 		}
 	}
-	ts, err := cat.Sign(cert)
+	ts, err := cat.Sign(ctx, cert)
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +159,7 @@ func (i *AppxDigest) writeCodeIntegrity(cert *certloader.Certificate) (*pkcs9.Ti
 	return ts, nil
 }
 
-func (i *AppxDigest) writeSignature(cert *certloader.Certificate) (*pkcs9.TimestampedSignature, error) {
+func (i *AppxDigest) writeSignature(ctx context.Context, cert *certloader.Certificate) (*pkcs9.TimestampedSignature, error) {
 	axcd := i.Hash.New()
 	if err := i.outz.WriteDirectory(axcd, axcd, true); err != nil {
 		return nil, err
@@ -177,7 +178,7 @@ func (i *AppxDigest) writeSignature(cert *certloader.Certificate) (*pkcs9.Timest
 		digest.WriteString("AXCI")
 		digest.Write(i.axci)
 	}
-	ts, err := authenticode.SignSip(digest.Bytes(), i.Hash, appxSipInfo, cert)
+	ts, err := authenticode.SignSip(ctx, digest.Bytes(), i.Hash, appxSipInfo, cert)
 	if err != nil {
 		return nil, err
 	}

@@ -17,6 +17,7 @@
 package authenticode
 
 import (
+	"context"
 	"crypto"
 	"crypto/hmac"
 	"errors"
@@ -92,12 +93,12 @@ func VerifyCab(f io.ReaderAt, skipDigests bool) (*CabSignature, error) {
 }
 
 // Create the Authenticode structure for a CAB file signature using a previously-calculated digest (imprint).
-func SignCabImprint(digest *cabfile.CabinetDigest, cert *certloader.Certificate) (*binpatch.PatchSet, *pkcs9.TimestampedSignature, error) {
+func SignCabImprint(ctx context.Context, digest *cabfile.CabinetDigest, cert *certloader.Certificate) (*binpatch.PatchSet, *pkcs9.TimestampedSignature, error) {
 	indirect, err := makePeIndirect(digest.Imprint, digest.HashFunc, OidSpcCabImageData)
 	if err != nil {
 		return nil, nil, err
 	}
-	ts, err := signIndirect(indirect, digest.HashFunc, cert)
+	ts, err := signIndirect(ctx, indirect, digest.HashFunc, cert)
 	if err != nil {
 		return nil, nil, err
 	}

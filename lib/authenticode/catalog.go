@@ -17,6 +17,7 @@
 package authenticode
 
 import (
+	"context"
 	"crypto"
 	"crypto/x509/pkix"
 	"encoding/asn1"
@@ -64,7 +65,7 @@ func (cat *Catalog) Marshal() ([]byte, error) {
 	return asn1.Marshal(cat.makeCatalog())
 }
 
-func (cat *Catalog) Sign(cert *certloader.Certificate) (*pkcs9.TimestampedSignature, error) {
+func (cat *Catalog) Sign(ctx context.Context, cert *certloader.Certificate) (*pkcs9.TimestampedSignature, error) {
 	sig := pkcs7.NewBuilder(cert.Signer(), cert.Chain(), cat.Hash)
 	if err := sig.SetContent(OidCertTrustList, cat.makeCatalog()); err != nil {
 		return nil, err
@@ -76,7 +77,7 @@ func (cat *Catalog) Sign(cert *certloader.Certificate) (*pkcs9.TimestampedSignat
 	if err != nil {
 		return nil, err
 	}
-	return pkcs9.TimestampAndMarshal(psd, cert.Timestamper, true)
+	return pkcs9.TimestampAndMarshal(ctx, psd, cert.Timestamper, true)
 }
 
 func (cat *Catalog) Add(indirect SpcIndirectDataContentPe) error {

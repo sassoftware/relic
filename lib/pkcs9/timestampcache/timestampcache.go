@@ -14,7 +14,7 @@
 package timestampcache
 
 import (
-	"crypto"
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"log"
@@ -46,64 +46,40 @@ func New(t pkcs9.Timestamper, servers []string) (pkcs9.Timestamper, error) {
 	return &timestampCache{t, mc}, nil
 }
 
-func (c *timestampCache) Timestamp(data []byte, hash crypto.Hash) (token *pkcs7.ContentInfoSignedData, err error) {
-	key := cacheKey("pkcs9", data, hash)
-	token = c.get(key)
-	if token != nil {
-		// hit
-		return
-	}
-	token, err = c.Timestamper.Timestamp(data, hash)
-	if err == nil {
-		c.set(key, token)
-	}
-	return
-}
-
-func (c *timestampCache) LegacyTimestamp(data []byte) (token *pkcs7.ContentInfoSignedData, err error) {
-	key := cacheKey("msft", data, 0)
-	token = c.get(key)
-	if token != nil {
-		// hit
-		return
-	}
-	token, err = c.Timestamper.LegacyTimestamp(data)
-	if err == nil {
-		c.set(key, token)
-	}
-	return
-}
-
-func cacheKey(prefix string, data []byte, hash crypto.Hash) string {
-	d := sha256.New()
-	d.Write(data)
-	return fmt.Sprintf("%s-%d-%x", prefix, hash, d.Sum(nil))
-}
-
-func (c *timestampCache) get(key string) *pkcs7.ContentInfoSignedData {
+func (c *timestampCache) Timestamp(ctx context.Context, req *pkcs9.Request) (*pkcs7.ContentInfoSignedData, error) {
+	key := cacheKey(req)
 	item, err := c.Memcache.Get(key)
-	if err != nil {
-		return nil
-	}
-	token, err := pkcs7.Unmarshal(item.Value)
-	if err != nil {
+	if err == nil {
+		token, err := pkcs7.Unmarshal(item.Value)
+		if err == nil {
+			return token, nil
+		}
 		log.Printf("warning: failed to parse cached value for timestamp with key %s: %s", key, err)
-		return nil
+		// bad cached value, fall through
 	}
-	return token
+	token, err := c.Timestamper.Timestamp(ctx, req)
+	if err == nil {
+		blob, err := token.Marshal()
+		if err != nil {
+			return nil, err
+		}
+		if err := c.Memcache.Set(&memcache.Item{
+			Key:        key,
+			Value:      blob,
+			Expiration: int32(memcacheExpiry / time.Second),
+		}); err != nil {
+			log.Printf("warning: failed to save cached timestamp value: %s", err)
+		}
+	}
+	return token, err
 }
 
-func (c *timestampCache) set(key string, token *pkcs7.ContentInfoSignedData) {
-	blob, err := token.Marshal()
-	if err != nil {
-		log.Printf("warning: failed to save cached timestamp value: %s", err)
-		return
+func cacheKey(req *pkcs9.Request) string {
+	d := sha256.New()
+	d.Write(req.EncryptedDigest)
+	prefix := "pkcs9"
+	if req.Legacy {
+		prefix = "msft"
 	}
-	if err := c.Memcache.Set(&memcache.Item{
-		Key:        key,
-		Value:      blob,
-		Expiration: int32(memcacheExpiry / time.Second),
-	}); err != nil {
-		log.Printf("warning: failed to save cached timestamp value: %s", err)
-	}
+	return fmt.Sprintf("%s-%d-%x", prefix, req.Hash, d.Sum(nil))
 }

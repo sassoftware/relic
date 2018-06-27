@@ -19,6 +19,7 @@ package authenticode
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"crypto"
 	"crypto/hmac"
 	"encoding/base64"
@@ -242,8 +243,8 @@ func VerifyPowershell(r io.ReadSeeker, style PsSigStyle, skipDigests bool) (*pkc
 }
 
 // Sign a previously digested PowerShell script and return the Authenticode structure
-func (pd *PsDigest) Sign(cert *certloader.Certificate) (*binpatch.PatchSet, *pkcs9.TimestampedSignature, error) {
-	ts, err := SignSip(pd.Imprint, pd.HashFunc, psSipInfo, cert)
+func (pd *PsDigest) Sign(ctx context.Context, cert *certloader.Certificate) (*binpatch.PatchSet, *pkcs9.TimestampedSignature, error) {
+	ts, err := SignSip(ctx, pd.Imprint, pd.HashFunc, psSipInfo, cert)
 	if err != nil {
 		return nil, nil, err
 	}

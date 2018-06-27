@@ -64,7 +64,7 @@ func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]b
 	if err != nil {
 		return nil, err
 	}
-	ts, err := pkcs9.TimestampAndMarshal(newpsd, cert.Timestamper, true)
+	ts, err := pkcs9.TimestampAndMarshal(opts.Context(), newpsd, cert.Timestamper, true)
 	if err != nil {
 		return nil, err
 	}

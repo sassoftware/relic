@@ -37,7 +37,7 @@ type MicrosoftTimeStampRequest struct {
 	}
 }
 
-func (t TimestampClient) MicrosoftRequest(encryptedDigest []byte) (*pkcs7.ContentInfoSignedData, error) {
+func NewLegacyRequest(url string, encryptedDigest []byte) (*http.Request, error) {
 	var msg MicrosoftTimeStampRequest
 	msg.CounterSignatureType = OidSpcTimeStampRequest
 	msg.Content.ContentType = pkcs7.OidData
@@ -46,15 +46,15 @@ func (t TimestampClient) MicrosoftRequest(encryptedDigest []byte) (*pkcs7.Conten
 	if err != nil {
 		return nil, err
 	}
-	req, err := http.NewRequest("POST", t.URL, bytes.NewReader(blob))
+	req, err := http.NewRequest("POST", url, bytes.NewReader(blob))
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/octet-stream")
-	body, err := t.do(req)
-	if err != nil {
-		return nil, err
-	}
+	return req, nil
+}
+
+func ParseLegacyResponse(body []byte) (*pkcs7.ContentInfoSignedData, error) {
 	rblob, err := base64.StdEncoding.DecodeString(string(bytes.TrimRight(body, "\x00")))
 	if err != nil {
 		return nil, err

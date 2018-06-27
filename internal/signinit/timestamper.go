@@ -18,9 +18,7 @@ import (
 
 	"github.com/sassoftware/relic/cmdline/shared"
 	"github.com/sassoftware/relic/lib/pkcs9"
-	"github.com/sassoftware/relic/lib/pkcs9/ratelimit"
-	"github.com/sassoftware/relic/lib/pkcs9/timestampcache"
-	"github.com/sassoftware/relic/signers/pkcs"
+	"github.com/sassoftware/relic/lib/pkcs9/tsclient"
 )
 
 var (
@@ -43,15 +41,9 @@ func newTimestamper() (timestamper pkcs9.Timestamper, err error) {
 	if err != nil {
 		return nil, err
 	}
-	timestamper = pkcs.Timestamper{Config: tsconf}
-	if tsconf.RateLimit != 0 {
-		timestamper = ratelimit.New(timestamper, tsconf.RateLimit, tsconf.RateBurst)
-	}
-	if len(tsconf.Memcache) != 0 {
-		timestamper, err = timestampcache.New(timestamper, tsconf.Memcache)
-		if err != nil {
-			return nil, err
-		}
+	timestamper, err = tsclient.New(tsconf)
+	if err != nil {
+		return
 	}
 	return timestamper, nil
 }

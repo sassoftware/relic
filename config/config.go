@@ -256,8 +256,6 @@ func (config *Config) GetTimestampConfig() (*TimestampConfig, error) {
 	tconf := config.Timestamp
 	if tconf == nil {
 		return nil, errors.New("No timestamp section exists in the configuration")
-	} else if len(tconf.URLs) == 0 {
-		return nil, errors.New("No timestamp urls are defined in the configuration")
 	}
 	return tconf, nil
 }

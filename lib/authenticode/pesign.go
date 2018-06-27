@@ -18,6 +18,7 @@ package authenticode
 
 import (
 	"bytes"
+	"context"
 	"crypto"
 	"debug/pe"
 	"encoding/asn1"
@@ -30,12 +31,12 @@ import (
 )
 
 // Sign the digest and return an Authenticode structure
-func (pd *PEDigest) Sign(cert *certloader.Certificate) (*binpatch.PatchSet, *pkcs9.TimestampedSignature, error) {
+func (pd *PEDigest) Sign(ctx context.Context, cert *certloader.Certificate) (*binpatch.PatchSet, *pkcs9.TimestampedSignature, error) {
 	indirect, err := pd.GetIndirect()
 	if err != nil {
 		return nil, nil, err
 	}
-	ts, err := signIndirect(indirect, pd.Hash, cert)
+	ts, err := signIndirect(ctx, indirect, pd.Hash, cert)
 	if err != nil {
 		return nil, nil, err
 	}

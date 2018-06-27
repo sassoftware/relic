@@ -19,6 +19,7 @@ package signjar
 import (
 	"archive/zip"
 	"bytes"
+	"context"
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/rsa"
@@ -36,7 +37,7 @@ import (
 	"github.com/sassoftware/relic/lib/zipslicer"
 )
 
-func (jd *JarDigest) Sign(cert *certloader.Certificate, alias string, sectionsOnly, inlineSignature, apkV2 bool) (*binpatch.PatchSet, *pkcs9.TimestampedSignature, error) {
+func (jd *JarDigest) Sign(ctx context.Context, cert *certloader.Certificate, alias string, sectionsOnly, inlineSignature, apkV2 bool) (*binpatch.PatchSet, *pkcs9.TimestampedSignature, error) {
 	// Create sigfile from the manifest
 	sf, err := DigestManifest(jd.Manifest, jd.Hash, sectionsOnly, apkV2)
 	if err != nil {
@@ -51,7 +52,7 @@ func (jd *JarDigest) Sign(cert *certloader.Certificate, alias string, sectionsOn
 	if err != nil {
 		return nil, nil, err
 	}
-	ts, err := pkcs9.TimestampAndMarshal(psd, cert.Timestamper, false)
+	ts, err := pkcs9.TimestampAndMarshal(ctx, psd, cert.Timestamper, false)
 	if err != nil {
 		return nil, nil, err
 	}

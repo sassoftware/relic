@@ -29,6 +29,7 @@ import (
 	"github.com/sassoftware/relic/lib/audit"
 	"github.com/sassoftware/relic/lib/certloader"
 	"github.com/sassoftware/relic/lib/magic"
+	"github.com/sassoftware/relic/lib/pkcs9"
 	"github.com/sassoftware/relic/signers"
 )
 
@@ -63,7 +64,11 @@ func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]b
 		return nil, err
 	}
 	if cert.Timestamper != nil {
-		token, err := cert.Timestamper.LegacyTimestamp(signed.EncryptedDigest)
+		tsreq := &pkcs9.Request{
+			EncryptedDigest: signed.EncryptedDigest,
+			Legacy:          true,
+		}
+		token, err := cert.Timestamper.Timestamp(opts.Context(), tsreq)
 		if err != nil {
 			return nil, err
 		}

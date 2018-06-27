@@ -18,6 +18,7 @@ package pkcs9
 
 import (
 	"bytes"
+	"context"
 	"crypto"
 	"crypto/x509"
 	"errors"
@@ -28,34 +29,24 @@ import (
 	"github.com/sassoftware/relic/lib/x509tools"
 )
 
-type Timestamper interface {
-	// PKCS#9 timestamp
-	Timestamp(data []byte, hash crypto.Hash) (token *pkcs7.ContentInfoSignedData, err error)
-	// Old "Microsoft" style counter-signature
-	LegacyTimestamp(data []byte) (token *pkcs7.ContentInfoSignedData, err error)
-}
-
-func TimestampAndMarshal(psd *pkcs7.ContentInfoSignedData, timestamper Timestamper, authenticode bool) (*TimestampedSignature, error) {
+func TimestampAndMarshal(ctx context.Context, psd *pkcs7.ContentInfoSignedData, timestamper Timestamper, authenticode bool) (*TimestampedSignature, error) {
 	if timestamper != nil {
 		signerInfo := &psd.Content.SignerInfos[0]
 		hash, ok := x509tools.PkixDigestToHash(signerInfo.DigestAlgorithm)
 		if !ok {
 			return nil, errors.New("unknown digest algorithm")
 		}
-		token, err := timestamper.Timestamp(signerInfo.EncryptedDigest, hash)
+		token, err := timestamper.Timestamp(ctx, &Request{EncryptedDigest: signerInfo.EncryptedDigest, Hash: hash})
 		if err != nil {
 			return nil, err
 		}
-		if token != nil {
-			var err error
-			if authenticode {
-				err = AddStampToSignedAuthenticode(signerInfo, *token)
-			} else {
-				err = AddStampToSignedData(signerInfo, *token)
-			}
-			if err != nil {
-				return nil, err
-			}
+		if authenticode {
+			err = AddStampToSignedAuthenticode(signerInfo, *token)
+		} else {
+			err = AddStampToSignedData(signerInfo, *token)
+		}
+		if err != nil {
+			return nil, err
 		}
 	}
 	verified, err := psd.Content.Verify(nil, false)

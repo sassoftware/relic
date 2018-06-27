@@ -60,7 +60,7 @@ func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]b
 	if err != nil {
 		return nil, err
 	}
-	patch, ts, err := digest.Sign(cert, argAlias, argSectionsOnly, argInlineSignature, argApkV2)
+	patch, ts, err := digest.Sign(opts.Context(), cert, argAlias, argSectionsOnly, argInlineSignature, argApkV2)
 	if err != nil {
 		return nil, err
 	}

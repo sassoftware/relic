@@ -17,6 +17,7 @@
 package authenticode
 
 import (
+	"context"
 	"crypto"
 	"encoding/asn1"
 	"errors"
@@ -40,7 +41,7 @@ func makePeIndirect(imprint []byte, hash crypto.Hash, oid asn1.ObjectIdentifier)
 	return
 }
 
-func signIndirect(indirect interface{}, hash crypto.Hash, cert *certloader.Certificate) (*pkcs9.TimestampedSignature, error) {
+func signIndirect(ctx context.Context, indirect interface{}, hash crypto.Hash, cert *certloader.Certificate) (*pkcs9.TimestampedSignature, error) {
 	sig := pkcs7.NewBuilder(cert.Signer(), cert.Chain(), hash)
 	if err := sig.SetContent(OidSpcIndirectDataContent, indirect); err != nil {
 		return nil, err
@@ -52,7 +53,7 @@ func signIndirect(indirect interface{}, hash crypto.Hash, cert *certloader.Certi
 	if err != nil {
 		return nil, err
 	}
-	return pkcs9.TimestampAndMarshal(psd, cert.Timestamper, true)
+	return pkcs9.TimestampAndMarshal(ctx, psd, cert.Timestamper, true)
 }
 
 func addOpusAttrs(sig *pkcs7.SignatureBuilder) error {
@@ -65,7 +66,7 @@ func addOpusAttrs(sig *pkcs7.SignatureBuilder) error {
 	return nil
 }
 
-func SignSip(imprint []byte, hash crypto.Hash, sipInfo SpcSipInfo, cert *certloader.Certificate) (*pkcs9.TimestampedSignature, error) {
+func SignSip(ctx context.Context, imprint []byte, hash crypto.Hash, sipInfo SpcSipInfo, cert *certloader.Certificate) (*pkcs9.TimestampedSignature, error) {
 	alg, ok := x509tools.PkixDigestAlgorithm(hash)
 	if !ok {
 		return nil, errors.New("unsupported digest algorithm")
@@ -75,5 +76,5 @@ func SignSip(imprint []byte, hash crypto.Hash, sipInfo SpcSipInfo, cert *certloa
 	indirect.Data.Value = sipInfo
 	indirect.MessageDigest.Digest = imprint
 	indirect.MessageDigest.DigestAlgorithm = alg
-	return signIndirect(indirect, hash, cert)
+	return signIndirect(ctx, indirect, hash, cert)
 }

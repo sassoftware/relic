@@ -57,7 +57,7 @@ func Verify(tst *pkcs7.ContentInfoSignedData, data []byte, certs []*x509.Certifi
 		certs = append(certs, tsicerts...)
 	}
 	// verify the imprint in the TSTInfo
-	tstinfo, err := UnpackTokenInfo(tst)
+	tstinfo, err := unpackTokenInfo(tst)
 	if err != nil {
 		return nil, err
 	}

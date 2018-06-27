@@ -20,73 +20,24 @@ import (
 	"bytes"
 	"crypto"
 	"crypto/hmac"
-	"crypto/tls"
 	"encoding/asn1"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
-	"time"
 
 	"github.com/sassoftware/relic/lib/pkcs7"
 	"github.com/sassoftware/relic/lib/x509tools"
 )
 
-// RFC 3161 HTTP client
-type TimestampClient struct {
-	URL       string
-	Timeout   time.Duration
-	UserAgent string
-	CaFile    string
-}
+// RFC 3161 timestamping
 
-func (t TimestampClient) do(req *http.Request) ([]byte, error) {
-	tconf := &tls.Config{}
-	if err := x509tools.LoadCertPool(t.CaFile, tconf); err != nil {
-		return nil, err
-	}
-	client := &http.Client{
-		Timeout: t.Timeout,
-		Transport: &http.Transport{
-			TLSClientConfig:   tconf,
-			DisableKeepAlives: true,
-		},
-	}
-	if t.UserAgent != "" {
-		req.Header.Set("User-Agent", t.UserAgent)
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("%s: HTTP %s\n%s", t.URL, resp.Status, body)
-	}
-	return body, nil
-}
-
-// Request a RFC 3161 timestamp token from the server and return the sanity-checked token
-func (t TimestampClient) Request(hash crypto.Hash, hashValue []byte) (*pkcs7.ContentInfoSignedData, error) {
-	msg, req, err := MakeHTTPRequest(t.URL, hash, hashValue)
-	if err != nil {
-		return nil, err
-	}
-	body, err := t.do(req)
-	if err != nil {
-		return nil, err
-	}
-	return ParseHTTPResponse(msg, body)
-}
-
-// Create a timestamp request using the given digest
-func NewRequest(hash crypto.Hash, hashValue []byte) (*TimeStampReq, error) {
+// Create a HTTP request to request a token from the given URL
+func NewRequest(url string, hash crypto.Hash, hashValue []byte) (msg *TimeStampReq, req *http.Request, err error) {
 	alg, ok := x509tools.PkixDigestAlgorithm(hash)
 	if !ok {
-		return nil, errors.New("unknown digest algorithm")
+		return nil, nil, errors.New("unknown digest algorithm")
 	}
-	return &TimeStampReq{
+	msg = &TimeStampReq{
 		Version: 1,
 		MessageImprint: MessageImprint{
 			HashAlgorithm: alg,
@@ -94,14 +45,6 @@ func NewRequest(hash crypto.Hash, hashValue []byte) (*TimeStampReq, error) {
 		},
 		Nonce:   x509tools.MakeSerial(),
 		CertReq: true,
-	}, nil
-}
-
-// Create a HTTP request to request a token from the given URL
-func MakeHTTPRequest(url string, hash crypto.Hash, hashValue []byte) (msg *TimeStampReq, req *http.Request, err error) {
-	msg, err = NewRequest(hash, hashValue)
-	if err != nil {
-		return
 	}
 	reqbytes, err := asn1.Marshal(*msg)
 	if err != nil {
@@ -116,7 +59,7 @@ func MakeHTTPRequest(url string, hash crypto.Hash, hashValue []byte) (msg *TimeS
 }
 
 // Parse a timestamp token from a HTTP response, sanity checking it against the original request nonce
-func ParseHTTPResponse(msg *TimeStampReq, body []byte) (*pkcs7.ContentInfoSignedData, error) {
+func (req *TimeStampReq) ParseResponse(body []byte) (*pkcs7.ContentInfoSignedData, error) {
 	respmsg := new(TimeStampResp)
 	if rest, err := asn1.Unmarshal(body, respmsg); err != nil {
 		return nil, fmt.Errorf("pkcs9: unmarshalling response: %s", err)
@@ -125,18 +68,18 @@ func ParseHTTPResponse(msg *TimeStampReq, body []byte) (*pkcs7.ContentInfoSigned
 	} else if respmsg.Status.Status > StatusGrantedWithMods {
 		return nil, fmt.Errorf("pkcs9: request denied: status=%d failureInfo=%x", respmsg.Status.Status, respmsg.Status.FailInfo.Bytes)
 	}
-	if err := SanityCheckToken(msg, &respmsg.TimeStampToken); err != nil {
+	if err := req.SanityCheckToken(&respmsg.TimeStampToken); err != nil {
 		return nil, fmt.Errorf("pkcs9: token sanity check failed: %s", err)
 	}
 	return &respmsg.TimeStampToken, nil
 }
 
 // Sanity check a timestamp token against the nonce in the original request
-func SanityCheckToken(req *TimeStampReq, psd *pkcs7.ContentInfoSignedData) error {
+func (req *TimeStampReq) SanityCheckToken(psd *pkcs7.ContentInfoSignedData) error {
 	if _, err := psd.Content.Verify(nil, false); err != nil {
 		return err
 	}
-	info, err := UnpackTokenInfo(psd)
+	info, err := unpackTokenInfo(psd)
 	if err != nil {
 		return err
 	}
@@ -150,7 +93,7 @@ func SanityCheckToken(req *TimeStampReq, psd *pkcs7.ContentInfoSignedData) error
 }
 
 // Unpack TSTInfo from a timestamp token
-func UnpackTokenInfo(psd *pkcs7.ContentInfoSignedData) (*TSTInfo, error) {
+func unpackTokenInfo(psd *pkcs7.ContentInfoSignedData) (*TSTInfo, error) {
 	infobytes, err := psd.Content.ContentInfo.Bytes()
 	if err != nil {
 		return nil, fmt.Errorf("unpack TSTInfo: %s", err)

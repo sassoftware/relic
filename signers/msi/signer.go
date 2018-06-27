@@ -110,7 +110,7 @@ func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]b
 	if err != nil {
 		return nil, err
 	}
-	ts, err := authenticode.SignMSIImprint(sum, opts.Hash, cert)
+	ts, err := authenticode.SignMSIImprint(opts.Context(), sum, opts.Hash, cert)
 	if err != nil {
 		return nil, err
 	}

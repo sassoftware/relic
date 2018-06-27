@@ -17,6 +17,7 @@
 package authenticode
 
 import (
+	"context"
 	"crypto"
 
 	"github.com/sassoftware/relic/lib/certloader"
@@ -25,8 +26,8 @@ import (
 )
 
 // Create the Authenticode structure for a MSI file signature using a previously-calculated digest (imprint).
-func SignMSIImprint(digest []byte, hash crypto.Hash, cert *certloader.Certificate) (*pkcs9.TimestampedSignature, error) {
-	return SignSip(digest, hash, msiSipInfo, cert)
+func SignMSIImprint(ctx context.Context, digest []byte, hash crypto.Hash, cert *certloader.Certificate) (*pkcs9.TimestampedSignature, error) {
+	return SignSip(ctx, digest, hash, msiSipInfo, cert)
 }
 
 // Add a signature blob to an open MSI file. The extended signature blob is

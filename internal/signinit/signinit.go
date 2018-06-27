@@ -77,13 +77,14 @@ func Init(ctx context.Context, mod *signers.Signer, tok token.Token, keyName str
 			return nil, nil, err
 		}
 	}
-	opts := &signers.SignOpts{
+	opts := signers.SignOpts{
 		Hash:  hash,
 		Time:  now,
 		Audit: auditInfo,
 		Flags: flags,
 	}
-	return cert, opts, nil
+	opts = opts.WithContext(ctx)
+	return cert, &opts, nil
 }
 
 func PublishAudit(info *audit.Info) error {

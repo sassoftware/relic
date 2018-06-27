@@ -235,7 +235,8 @@ func (m *mangler) makeSignature(cert *certloader.Certificate, opts signers.SignO
 	// timestamp
 	if cert.Timestamper != nil {
 		encryptedDigest, _ := base64.StdEncoding.DecodeString(sigel.SelectElement("SignatureValue").Text())
-		tst, err := cert.Timestamper.Timestamp(encryptedDigest, opts.Hash)
+		req := &pkcs9.Request{EncryptedDigest: encryptedDigest, Hash: opts.Hash}
+		tst, err := cert.Timestamper.Timestamp(opts.Context(), req)
 		if err != nil {
 			return nil, fmt.Errorf("failed to timestamp signature: %s", err)
 		}

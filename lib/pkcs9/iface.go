@@ -11,34 +11,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package ratelimit
+package pkcs9
 
 import (
 	"context"
+	"crypto"
 
 	"github.com/sassoftware/relic/lib/pkcs7"
-	"github.com/sassoftware/relic/lib/pkcs9"
-	"golang.org/x/time/rate"
 )
 
-type limiter struct {
-	Timestamper pkcs9.Timestamper
-	Limit       *rate.Limiter
+// Timestamper is the common interface for the timestamp client and middleware
+type Timestamper interface {
+	Timestamp(ctx context.Context, req *Request) (*pkcs7.ContentInfoSignedData, error)
 }
 
-func New(t pkcs9.Timestamper, r float64, burst int) pkcs9.Timestamper {
-	if r == 0 {
-		return t
-	}
-	if burst < 1 {
-		burst = 1
-	}
-	return &limiter{t, rate.NewLimiter(rate.Limit(r), burst)}
-}
-
-func (l *limiter) Timestamp(ctx context.Context, req *pkcs9.Request) (*pkcs7.ContentInfoSignedData, error) {
-	if err := l.Limit.Wait(ctx); err != nil {
-		return nil, err
-	}
-	return l.Timestamper.Timestamp(ctx, req)
+// Request holds parameters for a timestamp operation
+type Request struct {
+	// EncryptedDigest is the raw encrypted signature value
+	EncryptedDigest []byte
+	// Hash is the desired hash function for the timestamp. Ignored for legacy requests.
+	Hash crypto.Hash
+	// Legacy indicates a nonstandard microsoft timestamp request, otherwise RFC 3161 is used
+	Legacy bool
 }
