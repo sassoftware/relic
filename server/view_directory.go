@@ -21,13 +21,22 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
+	"net/url"
 	"time"
 )
 
-func (s *Server) serveDirectory() (Response, error) {
+func (s *Server) serveDirectory(req *http.Request) (Response, error) {
 	sibs := s.Config.Server.Siblings
 	if len(sibs) == 0 {
-		return ErrorResponse(http.StatusNotFound), nil
+		u := new(url.URL)
+		*u = *req.URL
+		if req.TLS != nil {
+			u.Scheme = "https"
+		} else {
+			u.Scheme = "http"
+		}
+		u.Host = req.Host
+		sibs = []string{u.String()}
 	}
 	var buf bytes.Buffer
 	shuf := rand.New(rand.NewSource(time.Now().UnixNano()))
