@@ -38,11 +38,6 @@ import (
 	"github.com/sassoftware/relic/token"
 )
 
-const (
-	defaultInterval = 60 * time.Second
-	defaultTimeout  = 30 * time.Second
-)
-
 // an arbitarily-chosen set of error codes that indicate that the token session
 // is busted and that the worker should exit and start over
 var fatalErrors = map[pkcs11Error]bool{
@@ -59,16 +54,8 @@ var fatalErrors = map[pkcs11Error]bool{
 }
 
 func (h *handler) healthCheck() {
-	interval := defaultInterval
-	timeout := defaultTimeout
-	if shared.CurrentConfig.Server != nil {
-		if shared.CurrentConfig.Server.TokenCheckInterval != 0 {
-			interval = time.Duration(shared.CurrentConfig.Server.TokenCheckInterval) * time.Second
-		}
-		if shared.CurrentConfig.Server.TokenCheckTimeout != 0 {
-			timeout = time.Duration(shared.CurrentConfig.Server.TokenCheckTimeout) * time.Second
-		}
-	}
+	interval := time.Duration(shared.CurrentConfig.Server.TokenCheckInterval) * time.Second
+	timeout := time.Duration(shared.CurrentConfig.Server.TokenCheckTimeout) * time.Second
 	ppid := os.Getppid()
 	tick := time.NewTicker(interval)
 	tmt := time.NewTimer(timeout)

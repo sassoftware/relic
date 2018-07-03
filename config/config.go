@@ -200,6 +200,17 @@ func (config *Config) Normalize(path string) error {
 			keyConf.token = config.Tokens[keyConf.Token]
 		}
 	}
+	if s := config.Server; s != nil {
+		if s.TokenCheckInterval == 0 {
+			s.TokenCheckInterval = 60
+		}
+		if s.TokenCheckTimeout == 0 {
+			s.TokenCheckTimeout = 60
+		}
+		if s.TokenCheckFailures == 0 {
+			s.TokenCheckFailures = 3
+		}
+	}
 	return nil
 }
 

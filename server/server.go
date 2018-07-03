@@ -214,7 +214,7 @@ func (s *Server) ReopenLogger() error {
 	return nil
 }
 
-func New(config *config.Config, force bool) (*Server, error) {
+func New(config *config.Config) (*Server, error) {
 	closed := make(chan bool)
 	s := &Server{
 		Config:   config,
@@ -236,7 +236,7 @@ func New(config *config.Config, force bool) (*Server, error) {
 		}
 		s.tokens[name] = tok
 	}
-	if err := s.startHealthCheck(force); err != nil {
+	if err := s.startHealthCheck(); err != nil {
 		return nil, err
 	}
 	return s, nil

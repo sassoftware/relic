@@ -79,8 +79,8 @@ func getListener(laddr string, tconf *tls.Config) (net.Listener, error) {
 	return listener, err
 }
 
-func New(config *config.Config, force, test bool) (*Daemon, error) {
-	srv, err := server.New(config, force)
+func New(config *config.Config, test bool) (*Daemon, error) {
+	srv, err := server.New(config)
 	if err != nil {
 		return nil, err
 	}

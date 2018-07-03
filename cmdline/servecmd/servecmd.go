@@ -36,11 +36,11 @@ var ServeCmd = &cobra.Command{
 	RunE:  serveCmd,
 }
 
-var argForce, argTest bool
+var argTest bool
 
 func init() {
 	shared.RootCmd.AddCommand(ServeCmd)
-	ServeCmd.Flags().BoolVarP(&argForce, "force", "f", false, "Start even if the initial health check fails")
+	ServeCmd.Flags().BoolP("force", "f", false, "(ignored)")
 	ServeCmd.Flags().BoolVarP(&argTest, "test", "t", false, "Test configuration and exit")
 }
 
@@ -63,7 +63,7 @@ func MakeServer() (*daemon.Daemon, error) {
 	if shared.CurrentConfig.Server.Listen == "" {
 		shared.CurrentConfig.Server.Listen = ":6300"
 	}
-	return daemon.New(shared.CurrentConfig, argForce, argTest)
+	return daemon.New(shared.CurrentConfig, argTest)
 }
 
 func listenDebug() error {

@@ -18,7 +18,6 @@ package server
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"sync"
 	"time"
@@ -32,25 +31,25 @@ var (
 	healthMu       sync.Mutex
 )
 
-func (s *Server) startHealthCheck(force bool) error {
-	if s.Config.Server.TokenCheckInterval > 0 {
-		healthStatus = s.Config.Server.TokenCheckFailures
-		if !s.healthCheck() && !force {
-			return errors.New("health check failed")
-		}
-		go s.healthCheckLoop()
-	}
+func (s *Server) healthCheckInterval() time.Duration {
+	return time.Second * time.Duration(s.Config.Server.TokenCheckInterval)
+}
+
+func (s *Server) startHealthCheck() error {
+	healthStatus = s.Config.Server.TokenCheckFailures
+	go s.healthCheckLoop()
 	return nil
 }
 
 func (s *Server) healthCheckLoop() {
-	t := time.NewTimer(time.Second * time.Duration(s.Config.Server.TokenCheckInterval))
+	interval := s.healthCheckInterval()
+	t := time.NewTimer(0)
 	defer t.Stop()
 	for {
 		select {
 		case <-t.C:
 			s.healthCheck()
-			t.Reset(time.Second * time.Duration(s.Config.Server.TokenCheckInterval))
+			t.Reset(time.Second * time.Duration(interval))
 		case <-s.Closed:
 			break
 		}
@@ -106,12 +105,9 @@ func (s *Server) Healthy(request *http.Request) bool {
 	if s.Config.Server.Disabled {
 		return false
 	}
-	if s.Config.Server.TokenCheckInterval <= 0 {
-		return true
-	}
 	healthMu.Lock()
 	defer healthMu.Unlock()
-	if time.Since(healthLastPing) > 3*time.Second*time.Duration(s.Config.Server.TokenCheckInterval) {
+	if time.Since(healthLastPing) > 3*s.healthCheckInterval() {
 		if request != nil {
 			s.Logr(request, "error: health check AWOL for %d seconds", time.Since(healthLastPing)/time.Second)
 		}
