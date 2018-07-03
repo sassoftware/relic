@@ -15,6 +15,8 @@ package ratelimit
 
 import (
 	"context"
+	"log"
+	"time"
 
 	"github.com/sassoftware/relic/lib/pkcs7"
 	"github.com/sassoftware/relic/lib/pkcs9"
@@ -37,8 +39,12 @@ func New(t pkcs9.Timestamper, r float64, burst int) pkcs9.Timestamper {
 }
 
 func (l *limiter) Timestamp(ctx context.Context, req *pkcs9.Request) (*pkcs7.ContentInfoSignedData, error) {
+	start := time.Now()
 	if err := l.Limit.Wait(ctx); err != nil {
 		return nil, err
+	}
+	if waited := time.Now().Sub(start); waited > 50*time.Millisecond {
+		log.Printf("timestamper: waited %s due to rate limit", waited)
 	}
 	return l.Timestamper.Timestamp(ctx, req)
 }
