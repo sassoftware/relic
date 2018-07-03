@@ -44,7 +44,7 @@ type ReaderGetter interface {
 
 // Make a single API request to a named endpoint, handling directory lookup and failover automatically.
 func CallRemote(endpoint, method string, query *url.Values, body ReaderGetter) (*http.Response, error) {
-	if err := shared.InitConfig(); err != nil {
+	if err := shared.InitClientConfig(); err != nil {
 		return nil, err
 	}
 	if shared.CurrentConfig.Remote == nil {
@@ -121,7 +121,7 @@ func buildRequest(base, endpoint, method, encoding string, query *url.Values, bo
 
 // Build TLS config based on client configuration
 func makeTLSConfig() (*tls.Config, error) {
-	err := shared.InitConfig()
+	err := shared.InitClientConfig()
 	if err != nil {
 		return nil, err
 	}
