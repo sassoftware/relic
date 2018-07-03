@@ -76,8 +76,6 @@ func (s *Server) callHandler(request *http.Request, lw *loggingWriter) (response
 		return s.serveHealth(request)
 	} else if GetClientName(request) == "" {
 		return AccessDeniedResponse, nil
-	} else if !s.Healthy(request) {
-		return ErrorResponse(http.StatusServiceUnavailable), nil
 	}
 	if strings.HasPrefix(request.URL.Path, "/keys/") {
 		return s.serveGetKey(request)
