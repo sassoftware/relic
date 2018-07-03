@@ -15,6 +15,9 @@ tokens:
     pin: 123456
     #pin: "" # blank PIN, without prompting
 
+    # If true, try to save the PIN in the system keyring (command-line only)
+    #usekeyring: false
+
     # Optional login user. Useful values:
     # 0 - CKU_SO
     # 1 - CKU_USER (default)
@@ -23,7 +26,7 @@ tokens:
     #user: 1
 
     # Optional parameters for server mode
-    #timeout: 60  # Terminate each attempt after this N seconds (default: 60)
+    #timeout: 60  # Terminate each attempt after N seconds (default: 60)
     #retries: 5   # Retry failed commands N times (default: 5)
 
   # Use GnuPG scdaemon as a token
@@ -93,6 +96,11 @@ keys:
     timestamp: false
     roles: ['somegroup']
 
+  aliased_key:
+    # When alias is set, this key name becomes an alias for the other key.
+    # Alises cannot override any parameters of the key, including roles.
+    alias: my_token_key
+
 # Server-specific configuration
 server:
   # What port to listen on. Defaults to :6300.
@@ -114,7 +122,17 @@ server:
   logfile: /var/log/relic/server.log
 
   # How many worker subprocesses to spawn per token. Usually only 1 is required.
-  # numworkers: 1
+  #numworkers: 1
+
+  # Set the frequency and tolerance of token health checks
+  #tokencheckinterval: 60  # ping the token every N seconds
+  #tokenchecktimeout: 30   # fail a ping if it is stuck for N seconds
+  #tokencheckfailures: 3   # the server will report "not healthy" after N failed pings
+
+  # Optional list of URLs that are part of a cluster of servers
+  #siblings:
+  #- https://relic1:6300
+  #- https://relic2:6300
 
 # Instead of including token PINs in this file, you can specify an alternate
 # "pin file" which is a YAML file holding key-value pairs where the key is the
@@ -139,13 +157,26 @@ timestamp:
   # Optional alternate CA certificate file for contacting timestamp servers
   # cacert: /etc/pki/tls/mychain.pem
 
+  # Optional memcache servers for memoizing timestamp requests
+  #memcache:
+  # - 127.0.0.1:11211
+
+  # Optional rate limit for timestamp requests
+  #ratelimit: 1  # requests per second
+  #rateburst: 10 # burst capacity
+
 # AMQP broker used to submit audit logs
 amqp:
   # Optional audit logging to an AMQP broker
   #url: amqp://guest:guest@127.0.0.1:5672
 
+  # Optional TLS parameters
+  #cacert:
+  #keyfile:
+  #certfile:
+
   # "fanout" type exchange to send audit messages to, default relic.signatures
-  # sigsXchg: relic.signatures
+  #sigsXchg: relic.signatures
 
 # Authentication to the server is via client certificate. Certificates are
 # identified by their fingerprint. Fingerprints can be obtained by using the
