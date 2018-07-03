@@ -18,6 +18,7 @@ package server
 
 import (
 	"net/http"
+	"sort"
 )
 
 func (s *Server) serveListKeys(request *http.Request) (res Response, err error) {
@@ -30,5 +31,6 @@ func (s *Server) serveListKeys(request *http.Request) (res Response, err error) 
 			keys = append(keys, key)
 		}
 	}
+	sort.Strings(keys)
 	return JSONResponse(keys)
 }
