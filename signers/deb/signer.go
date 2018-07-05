@@ -26,7 +26,6 @@ import (
 	"github.com/sassoftware/relic/lib/audit"
 	"github.com/sassoftware/relic/lib/certloader"
 	"github.com/sassoftware/relic/lib/magic"
-	"github.com/sassoftware/relic/lib/pgptools"
 	"github.com/sassoftware/relic/lib/signdeb"
 	"github.com/sassoftware/relic/signers"
 	"github.com/sassoftware/relic/signers/sigerrors"
@@ -71,9 +70,7 @@ func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]b
 
 func verify(f *os.File, opts signers.VerifyOpts) ([]*signers.Signature, error) {
 	sigmap, err := signdeb.Verify(f, opts.TrustedPgp, opts.NoDigests)
-	if _, ok := err.(pgptools.ErrNoKey); ok {
-		return nil, fmt.Errorf("%s; use --cert to specify known keys", err)
-	} else if err != nil {
+	if err != nil {
 		return nil, err
 	}
 	if len(sigmap) == 0 {

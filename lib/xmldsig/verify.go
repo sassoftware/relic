@@ -30,6 +30,7 @@ import (
 	"strings"
 
 	"github.com/sassoftware/relic/lib/x509tools"
+	"github.com/sassoftware/relic/signers/sigerrors"
 
 	"github.com/beevik/etree"
 )
@@ -56,7 +57,7 @@ func Verify(root *etree.Element, sigpath string, extraCerts []*x509.Certificate)
 	root = root.Copy()
 	sigs := root.FindElements(sigpath)
 	if len(sigs) == 0 {
-		return nil, errors.New("xmldsig: signature not found")
+		return nil, sigerrors.NotSignedError{Type: "xmldsig"}
 	} else if len(sigs) > 1 {
 		return nil, errors.New("xmldsig: multiple signatures found")
 	}

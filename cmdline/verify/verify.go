@@ -25,6 +25,7 @@ import (
 	"github.com/sassoftware/relic/cmdline/shared"
 	"github.com/sassoftware/relic/lib/certloader"
 	"github.com/sassoftware/relic/lib/magic"
+	"github.com/sassoftware/relic/lib/pgptools"
 	"github.com/sassoftware/relic/lib/x509tools"
 	"github.com/sassoftware/relic/signers"
 	"github.com/spf13/cobra"
@@ -108,6 +109,9 @@ func verifyOne(path string, opts signers.VerifyOpts) error {
 		sigs, err = mod.Verify(f, opts)
 	}
 	if err != nil {
+		if _, ok := err.(pgptools.ErrNoKey); ok {
+			return fmt.Errorf("%s; use --cert to specify known keys", err)
+		}
 		return err
 	}
 	for _, sig := range sigs {

@@ -31,6 +31,7 @@ import (
 	"github.com/sassoftware/relic/lib/binpatch"
 	"github.com/sassoftware/relic/lib/certloader"
 	"github.com/sassoftware/relic/lib/magic"
+	"github.com/sassoftware/relic/lib/pgptools"
 	"github.com/sassoftware/relic/signers"
 	"github.com/sassoftware/relic/signers/sigerrors"
 )
@@ -102,7 +103,7 @@ func verify(f *os.File, opts signers.VerifyOpts) ([]*signers.Signature, error) {
 		}
 		if sig.Signer == nil {
 			if !opts.NoChain {
-				return nil, fmt.Errorf("unknown keyId %x; use --cert to specify known keys", sig.KeyId)
+				return nil, pgptools.ErrNoKey(sig.KeyId)
 			}
 			rsig.Signer = fmt.Sprintf("UNKNOWN(%x)", sig.KeyId)
 		} else {

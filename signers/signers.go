@@ -32,6 +32,7 @@ import (
 	"github.com/sassoftware/relic/lib/pgptools"
 	"github.com/sassoftware/relic/lib/pkcs9"
 	"github.com/sassoftware/relic/lib/x509tools"
+	"github.com/sassoftware/relic/signers/sigerrors"
 	"golang.org/x/crypto/openpgp"
 )
 
@@ -189,4 +190,26 @@ func MergeFlags(fs *pflag.FlagSet) {
 			flagMap[flag.Name] = append(flagMap[flag.Name], s.Name)
 		})
 	}
+}
+
+// IsSigned checks if a file contains a signature
+func (s *Signer) IsSigned(f *os.File) (bool, error) {
+	var err error
+	if s.VerifyStream != nil {
+		_, err = s.VerifyStream(f, VerifyOpts{NoDigests: true, NoChain: true})
+	} else if s.Verify != nil {
+		_, err = s.Verify(f, VerifyOpts{NoDigests: true, NoChain: true})
+	} else {
+		return false, errors.New("cannot check if this type of file is signed")
+	}
+	if err == nil {
+		return true, nil
+	}
+	switch err.(type) {
+	case sigerrors.NotSignedError:
+		return false, nil
+	case pgptools.ErrNoKey:
+		return true, nil
+	}
+	return false, err
 }

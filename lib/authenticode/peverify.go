@@ -30,6 +30,7 @@ import (
 	"github.com/sassoftware/relic/lib/pkcs7"
 	"github.com/sassoftware/relic/lib/pkcs9"
 	"github.com/sassoftware/relic/lib/x509tools"
+	"github.com/sassoftware/relic/signers/sigerrors"
 )
 
 type PESignature struct {
@@ -46,7 +47,7 @@ func VerifyPE(r io.ReadSeeker, skipDigests bool) ([]PESignature, error) {
 	if err != nil {
 		return nil, err
 	} else if hvals.certSize == 0 {
-		return nil, errors.New("image does not contain any signatures")
+		return nil, sigerrors.NotSignedError{Type: "PECOFF"}
 	}
 	// Read certificate table
 	sigblob := make([]byte, hvals.certSize)

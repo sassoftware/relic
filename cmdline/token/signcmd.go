@@ -36,8 +36,9 @@ var SignCmd = &cobra.Command{
 }
 
 var (
-	argSigType string
-	argOutput  string
+	argIfUnsigned bool
+	argSigType    string
+	argOutput     string
 )
 
 func init() {
@@ -46,6 +47,7 @@ func init() {
 	SignCmd.Flags().StringVarP(&argFile, "file", "f", "", "Input file to sign")
 	SignCmd.Flags().StringVarP(&argOutput, "output", "o", "", "Output file")
 	SignCmd.Flags().StringVarP(&argSigType, "sig-type", "T", "", "Specify signature type (default: auto-detect)")
+	SignCmd.Flags().BoolVar(&argIfUnsigned, "if-unsigned", false, "Skip signing if the file already has a signature")
 	shared.AddDigestFlag(SignCmd)
 	shared.AddLateHook(func() {
 		signers.MergeFlags(SignCmd.Flags())
@@ -88,6 +90,17 @@ func signCmd(cmd *cobra.Command, args []string) error {
 		return shared.Fail(err)
 	}
 	defer infile.Close()
+	if argIfUnsigned {
+		if signed, err := mod.IsSigned(infile); err != nil {
+			return shared.Fail(err)
+		} else if signed {
+			fmt.Fprintf(os.Stderr, "skipping already-signed file: %s\n", argFile)
+			return nil
+		}
+		if _, err := infile.Seek(0, 0); err != nil {
+			return shared.Fail(fmt.Errorf("failed to rewind input file: %s", err))
+		}
+	}
 	// transform the input, sign the stream, and apply the result
 	transform, err := mod.GetTransform(infile, *opts)
 	if err != nil {

@@ -27,6 +27,7 @@ import (
 	"github.com/sassoftware/relic/lib/pkcs9"
 	"github.com/sassoftware/relic/lib/x509tools"
 	"github.com/sassoftware/relic/lib/xmldsig"
+	"github.com/sassoftware/relic/signers/sigerrors"
 )
 
 type ManifestSignature struct {
@@ -46,14 +47,20 @@ func Verify(manifest []byte) (*ManifestSignature, error) {
 	root := doc.Root()
 	primary, err := xmldsig.Verify(root, "Signature", nil)
 	if err != nil {
+		if _, ok := err.(sigerrors.NotSignedError); ok {
+			return nil, err
+		}
 		return nil, fmt.Errorf("invalid primary signature: %s", err)
 	}
 	license := root.FindElement("Signature/KeyInfo/msrel:RelData/r:license")
 	if license == nil {
-		return nil, fmt.Errorf("invalid authenticode signature: %s", "signature is missing")
+		return nil, sigerrors.NotSignedError{Type: "application manifest"}
 	}
 	secondary, err := xmldsig.Verify(license, "issuer/Signature", nil)
 	if err != nil {
+		if _, ok := err.(sigerrors.NotSignedError); ok {
+			return nil, err
+		}
 		return nil, fmt.Errorf("invalid authenticode signature: %s", err)
 	}
 	if !x509tools.SameKey(primary.PublicKey, secondary.PublicKey) {
