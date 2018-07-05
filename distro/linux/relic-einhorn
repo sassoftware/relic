@@ -29,7 +29,6 @@ case "$1" in
             -d $sock \
             -e /run/relic/einhorn.pid \
             -f /run/relic/einhorn.lock \
-            -n $(nproc) \
             -m manual \
             -q \
             -b 0.0.0.0:6300,r \

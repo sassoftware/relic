@@ -49,7 +49,7 @@ func (s *Server) healthCheckLoop() {
 		select {
 		case <-t.C:
 			s.healthCheck()
-			t.Reset(time.Second * time.Duration(interval))
+			t.Reset(interval)
 		case <-s.Closed:
 			break
 		}
