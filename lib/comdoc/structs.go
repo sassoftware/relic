@@ -53,7 +53,8 @@ type Header struct {
 	ByteOrder        uint16
 	SectorSize       uint16 // power of 2
 	ShortSectorSize  uint16 // power of 2
-	Reserved1        [10]byte
+	Reserved1        [6]byte
+	DirSectorCount   uint32 // undocumented?
 	SATSectors       uint32
 	DirNextSector    SecID
 	Reserved2        uint32
