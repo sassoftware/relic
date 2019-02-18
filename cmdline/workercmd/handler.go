@@ -63,7 +63,7 @@ func (h *handler) healthCheck() {
 	for {
 		// check if parent process went away
 		if os.Getppid() != ppid {
-			log.Println("error: parent process disappeared, worker stopping")
+			log.Println("error: parent process disappeared, worker stopping", ppid, os.Getppid())
 			h.shutdown()
 			return
 		}
