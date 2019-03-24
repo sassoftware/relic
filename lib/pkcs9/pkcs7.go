@@ -23,6 +23,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/sassoftware/relic/lib/pkcs7"
@@ -182,7 +183,8 @@ func VerifyMicrosoftToken(token *pkcs7.ContentInfoSignedData, encryptedDigest []
 		return nil, err
 	}
 	if !bytes.Equal(content, encryptedDigest) {
-		return nil, errors.New("timestamp does not match the enclosing signature")
+		// return nil, errors.New("timestamp does not match the enclosing signature")
+		log.Printf("warning: timestamp does not match the enclosing signature")
 	}
 	hash, _ := x509tools.PkixDigestToHash(sig.SignerInfo.DigestAlgorithm)
 	var signingTime time.Time

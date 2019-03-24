@@ -66,7 +66,8 @@ func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]b
 	if cert.Timestamper != nil {
 		tsreq := &pkcs9.Request{
 			EncryptedDigest: signed.EncryptedDigest,
-			Legacy:          true,
+			Legacy:          false,
+			Hash:		 opts.Hash,
 		}
 		token, err := cert.Timestamper.Timestamp(opts.Context(), tsreq)
 		if err != nil {
