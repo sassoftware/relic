@@ -54,6 +54,7 @@ const (
 
 var (
 	OidKeyPurposeTimeStamping  = asn1.ObjectIdentifier{1, 3, 6, 1, 5, 5, 7, 3, 8}
+	OidTSTInfo                 = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 9, 16, 1, 4}
 	OidAttributeTimeStampToken = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 9, 16, 2, 14}
 	OidAttributeCounterSign    = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 9, 6}
 

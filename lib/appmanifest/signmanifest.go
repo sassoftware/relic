@@ -209,7 +209,7 @@ func (m *SignedManifest) AddTimestamp(token *pkcs7.ContentInfoSignedData) error 
 	if err != nil {
 		return err
 	}
-	cs, err := pkcs9.VerifyMicrosoftToken(token, m.EncryptedDigest)
+	cs, err := VerifyTimestamp(token, m.EncryptedDigest, m.Signature.Intermediates)
 	if err != nil {
 		return fmt.Errorf("failed to validate timestamp: %s", err)
 	}
