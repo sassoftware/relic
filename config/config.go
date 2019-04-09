@@ -99,11 +99,13 @@ type ClientConfig struct {
 }
 
 type RemoteConfig struct {
-	URL          string `,omitempty` // URL of remote server
-	DirectoryURL string `,omitempty` // URL of directory server
-	KeyFile      string `,omitempty` // Path to TLS client key file
-	CertFile     string `,omitempty` // Path to TLS client certificate
-	CaCert       string `,omitempty` // Path to CA certificate
+	URL            string `,omitempty` // URL of remote server
+	DirectoryURL   string `,omitempty` // URL of directory server
+	KeyFile        string `,omitempty` // Path to TLS client key file
+	CertFile       string `,omitempty` // Path to TLS client certificate
+	CaCert         string `,omitempty` // Path to CA certificate
+	ConnectTimeout int    `,omitempty` // Connection timeout in seconds
+	Retries        int    `,omitempty` // Attempt an operation (at least) N times
 }
 
 type TimestampConfig struct {
@@ -209,6 +211,14 @@ func (config *Config) Normalize(path string) error {
 		}
 		if s.TokenCheckFailures == 0 {
 			s.TokenCheckFailures = 3
+		}
+	}
+	if r := config.Remote; r != nil {
+		if r.ConnectTimeout == 0 {
+			r.ConnectTimeout = 15
+		}
+		if r.Retries == 0 {
+			r.Retries = 3
 		}
 	}
 	return nil

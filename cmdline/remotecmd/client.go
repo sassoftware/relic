@@ -36,8 +36,6 @@ import (
 	"golang.org/x/net/http2"
 )
 
-const connectTimeout = time.Second * 15
-
 type ReaderGetter interface {
 	GetReader() (io.Reader, error)
 }
@@ -151,12 +149,23 @@ func doRequest(bases []string, endpoint, method, encodings string, query *url.Va
 	if err != nil {
 		return nil, err
 	}
-	dialer := &net.Dialer{Timeout: connectTimeout}
+	dialer := &net.Dialer{
+		Timeout: time.Duration(shared.CurrentConfig.Remote.ConnectTimeout) * time.Second,
+	}
 	transport := &http.Transport{TLSClientConfig: tconf, DialContext: dialer.DialContext}
 	if err := http2.ConfigureTransport(transport); err != nil {
 		return nil, err
 	}
 	client := &http.Client{Transport: transport}
+
+	minAttempts := shared.CurrentConfig.Remote.Retries
+	if len(bases) < minAttempts {
+		var repeated []string
+		for len(repeated) < minAttempts {
+			repeated = append(repeated, bases...)
+		}
+		bases = repeated
+	}
 
 loop:
 	for i, base := range bases {
