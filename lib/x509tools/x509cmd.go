@@ -231,7 +231,10 @@ func SignCSR(csrBytes []byte, rand io.Reader, key crypto.Signer, cacert *x509.Ce
 	template := &x509.Certificate{Subject: csr.Subject}
 	if copyExtensions {
 		template.ExtraExtensions = csr.Extensions
-		copyNames(template, csr)
+		template.DNSNames = csr.DNSNames
+		template.EmailAddresses = csr.EmailAddresses
+		template.IPAddresses = csr.IPAddresses
+		template.URIs = csr.URIs
 	}
 	if err := fillCertFields(template, csr.PublicKey, key.Public()); err != nil {
 		return "", err

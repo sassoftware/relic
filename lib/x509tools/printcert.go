@@ -39,18 +39,21 @@ var keyUsageNames = map[x509.KeyUsage]string{
 }
 
 var extKeyUsageNames = map[x509.ExtKeyUsage]string{
-	x509.ExtKeyUsageAny:                        "any",
-	x509.ExtKeyUsageServerAuth:                 "serverAuth",
-	x509.ExtKeyUsageClientAuth:                 "clientAuth",
-	x509.ExtKeyUsageCodeSigning:                "codeSigning",
-	x509.ExtKeyUsageEmailProtection:            "emailProtection",
-	x509.ExtKeyUsageIPSECEndSystem:             "ipsecEndSystem",
-	x509.ExtKeyUsageIPSECTunnel:                "ipsecTunnel",
-	x509.ExtKeyUsageIPSECUser:                  "ipsecUser",
-	x509.ExtKeyUsageTimeStamping:               "timeStamping",
-	x509.ExtKeyUsageOCSPSigning:                "OCSPSigning",
-	x509.ExtKeyUsageMicrosoftServerGatedCrypto: "msServerGatedCrypto",
-	x509.ExtKeyUsageNetscapeServerGatedCrypto:  "nsServerGatedCrypto",
+	x509.ExtKeyUsageAny:             "any",
+	x509.ExtKeyUsageServerAuth:      "serverAuth",
+	x509.ExtKeyUsageClientAuth:      "clientAuth",
+	x509.ExtKeyUsageCodeSigning:     "codeSigning",
+	x509.ExtKeyUsageEmailProtection: "emailProtection",
+	x509.ExtKeyUsageIPSECEndSystem:  "ipsecEndSystem",
+	x509.ExtKeyUsageIPSECTunnel:     "ipsecTunnel",
+	x509.ExtKeyUsageIPSECUser:       "ipsecUser",
+	x509.ExtKeyUsageTimeStamping:    "timeStamping",
+	x509.ExtKeyUsageOCSPSigning:     "OCSPSigning",
+
+	x509.ExtKeyUsageMicrosoftServerGatedCrypto:     "msServerGatedCrypto",
+	x509.ExtKeyUsageNetscapeServerGatedCrypto:      "nsServerGatedCrypto",
+	x509.ExtKeyUsageMicrosoftCommercialCodeSigning: "msCodeCom",
+	x509.ExtKeyUsageMicrosoftKernelCodeSigning:     "msKernCode",
 }
 
 var knownExtensions = []asn1.ObjectIdentifier{
@@ -220,5 +223,53 @@ func subDate(end, start time.Time) string {
 		return approx + "1 day"
 	default:
 		return dur.String()
+	}
+}
+
+func printSAN(w io.Writer, cert *x509.Certificate) {
+	if len(cert.DNSNames) != 0 || len(cert.EmailAddresses) != 0 || len(cert.IPAddresses) != 0 || len(cert.URIs) != 0 {
+		fmt.Fprintln(w, "  Subject alternate names:")
+		for _, s := range cert.DNSNames {
+			fmt.Fprintln(w, "    dns:"+s)
+		}
+		for _, s := range cert.EmailAddresses {
+			fmt.Fprintln(w, "    email:"+s)
+		}
+		for _, s := range cert.IPAddresses {
+			fmt.Fprintln(w, "    ip:"+s.String())
+		}
+		for _, s := range cert.URIs {
+			fmt.Fprintln(w, "    uri:"+s.String())
+		}
+	}
+}
+
+func printNameConstraints(w io.Writer, cert *x509.Certificate) {
+	if len(cert.PermittedDNSDomains) != 0 || len(cert.ExcludedDNSDomains) != 0 || len(cert.PermittedIPRanges) != 0 || len(cert.ExcludedIPRanges) != 0 || len(cert.PermittedEmailAddresses) != 0 || len(cert.ExcludedEmailAddresses) != 0 || len(cert.PermittedURIDomains) != 0 || len(cert.ExcludedURIDomains) != 0 {
+		fmt.Fprintln(w, "  Name constraints:")
+		for _, s := range cert.PermittedDNSDomains {
+			fmt.Fprintln(w, "     Permitted DNS domain:", s)
+		}
+		for _, s := range cert.ExcludedDNSDomains {
+			fmt.Fprintln(w, "     Excluded DNS domain:", s)
+		}
+		for _, s := range cert.PermittedIPRanges {
+			fmt.Fprintln(w, "     Permitted IP range:", s)
+		}
+		for _, s := range cert.ExcludedIPRanges {
+			fmt.Fprintln(w, "     Excluded IP range:", s)
+		}
+		for _, s := range cert.PermittedEmailAddresses {
+			fmt.Fprintln(w, "     Permitted Email Addresses:", s)
+		}
+		for _, s := range cert.ExcludedEmailAddresses {
+			fmt.Fprintln(w, "     Excluded Email Addresses:", s)
+		}
+		for _, s := range cert.PermittedURIDomains {
+			fmt.Fprintln(w, "     Permitted URI domain:", s)
+		}
+		for _, s := range cert.ExcludedURIDomains {
+			fmt.Fprintln(w, "     Excluded URI domain:", s)
+		}
 	}
 }
