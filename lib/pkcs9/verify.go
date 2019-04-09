@@ -20,19 +20,19 @@ import (
 	"crypto"
 	"crypto/hmac"
 	"crypto/x509"
-	"errors"
 	"fmt"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/sassoftware/relic/lib/pkcs7"
 	"github.com/sassoftware/relic/lib/x509tools"
 )
 
 // Verify that the digest (imprint) in a timestamp token matches the given data
 func (i MessageImprint) Verify(data []byte) error {
-	hash, ok := x509tools.PkixDigestToHash(i.HashAlgorithm)
-	if !ok || !hash.Available() {
-		return errors.New("pkcs9: unknown digest algorithm")
+	hash, err := x509tools.PkixDigestToHashE(i.HashAlgorithm)
+	if err != nil {
+		return errors.Wrap(err, "pkcs9")
 	}
 	w := hash.New()
 	w.Write(data)

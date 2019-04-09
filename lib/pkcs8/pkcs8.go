@@ -46,8 +46,8 @@ func MarshalPKCS8PrivateKey(priv crypto.PrivateKey) ([]byte, error) {
 		return asn1.Marshal(privateKeyInfo{
 			Version: 0,
 			PrivateKeyAlgorithm: pkix.AlgorithmIdentifier{
-				x509tools.OidPublicKeyRSA,
-				asn1.NullRawValue,
+				Algorithm:  x509tools.OidPublicKeyRSA,
+				Parameters: asn1.NullRawValue,
 			},
 			PrivateKey: x509.MarshalPKCS1PrivateKey(pkey),
 		})
@@ -63,8 +63,8 @@ func MarshalPKCS8PrivateKey(priv crypto.PrivateKey) ([]byte, error) {
 		return asn1.Marshal(privateKeyInfo{
 			Version: 0,
 			PrivateKeyAlgorithm: pkix.AlgorithmIdentifier{
-				x509tools.OidPublicKeyECDSA,
-				asn1.RawValue{FullBytes: curve.ToDer()},
+				Algorithm:  x509tools.OidPublicKeyECDSA,
+				Parameters: asn1.RawValue{FullBytes: curve.ToDer()},
 			},
 			PrivateKey: eckey,
 		})

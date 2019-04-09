@@ -68,9 +68,9 @@ func VerifyCab(f io.ReaderAt, skipDigests bool) (*CabSignature, error) {
 	if err := psd.Content.ContentInfo.Unmarshal(indirect); err != nil {
 		return nil, err
 	}
-	hash, ok := x509tools.PkixDigestToHash(indirect.MessageDigest.DigestAlgorithm)
-	if !ok || !hash.Available() {
-		return nil, fmt.Errorf("unsupported hash algorithm %s", indirect.MessageDigest.DigestAlgorithm)
+	hash, err := x509tools.PkixDigestToHashE(indirect.MessageDigest.DigestAlgorithm)
+	if err != nil {
+		return nil, err
 	}
 	cabsig := &CabSignature{
 		TimestampedSignature: ts,

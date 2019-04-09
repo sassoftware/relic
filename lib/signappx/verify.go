@@ -106,9 +106,9 @@ func readSignature(zf *zip.File) (*AppxSignature, error) {
 	if err := psd.Content.ContentInfo.Unmarshal(indirect); err != nil {
 		return nil, fmt.Errorf("invalid appx signature: %s", err)
 	}
-	hash, ok := x509tools.PkixDigestToHash(indirect.MessageDigest.DigestAlgorithm)
-	if !ok || !hash.Available() {
-		return nil, fmt.Errorf("unsupported hash algorithm %s", indirect.MessageDigest.DigestAlgorithm)
+	hash, err := x509tools.PkixDigestToHashE(indirect.MessageDigest.DigestAlgorithm)
+	if err != nil {
+		return nil, err
 	}
 	digests := indirect.MessageDigest.Digest
 	if !bytes.HasPrefix(digests, []byte("APPX")) {

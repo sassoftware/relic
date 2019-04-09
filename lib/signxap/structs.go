@@ -24,7 +24,7 @@ const (
 
 var (
 	SpcUUIDSipInfoXap = []byte{0x6F, 0xA6, 0x08, 0xBA, 0x3B, 0x11, 0x58, 0x4D, 0x93, 0x29, 0xA1, 0xB3, 0x7A, 0xF3, 0x0F, 0x0E}
-	xapSipInfo        = authenticode.SpcSipInfo{1, SpcUUIDSipInfoXap, 0, 0, 0, 0, 0}
+	xapSipInfo        = authenticode.SpcSipInfo{A: 1, UUID: SpcUUIDSipInfoXap}
 )
 
 type xapTrailer struct {

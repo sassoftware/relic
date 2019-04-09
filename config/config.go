@@ -99,13 +99,13 @@ type ClientConfig struct {
 }
 
 type RemoteConfig struct {
-	URL            string `,omitempty` // URL of remote server
-	DirectoryURL   string `,omitempty` // URL of directory server
-	KeyFile        string `,omitempty` // Path to TLS client key file
-	CertFile       string `,omitempty` // Path to TLS client certificate
-	CaCert         string `,omitempty` // Path to CA certificate
-	ConnectTimeout int    `,omitempty` // Connection timeout in seconds
-	Retries        int    `,omitempty` // Attempt an operation (at least) N times
+	URL            string `yaml:",omitempty"` // URL of remote server
+	DirectoryURL   string `yaml:",omitempty"` // URL of directory server
+	KeyFile        string `yaml:",omitempty"` // Path to TLS client key file
+	CertFile       string `yaml:",omitempty"` // Path to TLS client certificate
+	CaCert         string `yaml:",omitempty"` // Path to CA certificate
+	ConnectTimeout int    `yaml:",omitempty"` // Connection timeout in seconds
+	Retries        int    `yaml:",omitempty"` // Attempt an operation (at least) N times
 }
 
 type TimestampConfig struct {
@@ -127,15 +127,15 @@ type AmqpConfig struct {
 }
 
 type Config struct {
-	Tokens    map[string]*TokenConfig  `,omitempty`
-	Keys      map[string]*KeyConfig    `,omitempty`
-	Server    *ServerConfig            `,omitempty`
-	Clients   map[string]*ClientConfig `,omitempty`
-	Remote    *RemoteConfig            `,omitempty`
-	Timestamp *TimestampConfig         `,omitempty`
-	Amqp      *AmqpConfig              `,omitempty`
+	Tokens    map[string]*TokenConfig  `yaml:",omitempty"`
+	Keys      map[string]*KeyConfig    `yaml:",omitempty"`
+	Server    *ServerConfig            `yaml:",omitempty"`
+	Clients   map[string]*ClientConfig `yaml:",omitempty"`
+	Remote    *RemoteConfig            `yaml:",omitempty"`
+	Timestamp *TimestampConfig         `yaml:",omitempty"`
+	Amqp      *AmqpConfig              `yaml:",omitempty"`
 
-	PinFile string `,omitempty` // Optional YAML file with additional token PINs
+	PinFile string `yaml:",omitempty"` // Optional YAML file with additional token PINs
 
 	path string
 }

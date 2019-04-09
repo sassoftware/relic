@@ -100,7 +100,7 @@ func checkManifest(files zipFiles, manifest *etree.Element) error {
 			return errors.New("validation failed: invalid digest")
 		}
 		if !hmac.Equal(refv, refCalc) {
-			return fmt.Errorf("validation failed: digest mismatch for %s: calculated %x, found %x", refCalc, refv)
+			return fmt.Errorf("validation failed: digest mismatch for %s: calculated %x, found %x", p, refCalc, refv)
 		}
 	}
 	return nil

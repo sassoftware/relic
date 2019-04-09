@@ -138,6 +138,15 @@ func PkixDigestToHash(alg pkix.AlgorithmIdentifier) (hash crypto.Hash, ok bool) 
 	return 0, false
 }
 
+// Convert a X.509 AlgorithmIdentifier to a crypto.Hash
+func PkixDigestToHashE(alg pkix.AlgorithmIdentifier) (hash crypto.Hash, err error) {
+	hash, ok := PkixDigestToHash(alg)
+	if ok && hash.Available() {
+		return hash, nil
+	}
+	return 0, UnknownDigestError{Algorithm: alg.Algorithm}
+}
+
 // Convert a crypto.PublicKey to a X.509 AlgorithmIdentifier
 func PkixPublicKeyAlgorithm(pub crypto.PublicKey) (alg pkix.AlgorithmIdentifier, ok bool) {
 	_, alg, err := PkixAlgorithms(pub, nil)
@@ -146,9 +155,9 @@ func PkixPublicKeyAlgorithm(pub crypto.PublicKey) (alg pkix.AlgorithmIdentifier,
 
 // Verify a signature using the algorithm specified by the given X.509 AlgorithmIdentifier
 func PkixVerify(pub crypto.PublicKey, digestAlg, sigAlg pkix.AlgorithmIdentifier, digest, sig []byte) error {
-	hash, ok := PkixDigestToHash(digestAlg)
-	if !ok {
-		return fmt.Errorf("unknown hash with OID %s", digestAlg.Algorithm)
+	hash, err := PkixDigestToHashE(digestAlg)
+	if err != nil {
+		return err
 	}
 	var info sigAlgInfo
 	for _, a := range sigAlgInfos {
@@ -189,4 +198,12 @@ func PkixVerify(pub crypto.PublicKey, digestAlg, sigAlg pkix.AlgorithmIdentifier
 	default:
 		return errors.New("unsupported public key algorithm")
 	}
+}
+
+type UnknownDigestError struct {
+	Algorithm asn1.ObjectIdentifier
+}
+
+func (e UnknownDigestError) Error() string {
+	return fmt.Sprintf("unsupported hash algorithm %s", e.Algorithm)
 }

@@ -84,9 +84,9 @@ func Verify(r io.ReaderAt, size int64, skipDigests bool) (*XapSignature, error) 
 	if err := psd.Content.ContentInfo.Unmarshal(indirect); err != nil {
 		return nil, fmt.Errorf("invalid signature: %s", err)
 	}
-	hash, ok := x509tools.PkixDigestToHash(indirect.MessageDigest.DigestAlgorithm)
-	if !ok || !hash.Available() {
-		return nil, fmt.Errorf("unsupported hash algorithm %s", indirect.MessageDigest.DigestAlgorithm)
+	hash, err := x509tools.PkixDigestToHashE(indirect.MessageDigest.DigestAlgorithm)
+	if err != nil {
+		return nil, err
 	}
 	if !skipDigests {
 		d := hash.New()

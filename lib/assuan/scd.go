@@ -33,7 +33,7 @@ import (
 )
 
 type ScdConn struct {
-	Conn
+	*Conn
 	Serial string
 }
 
@@ -51,7 +51,7 @@ func DialScd(path string) (*ScdConn, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &ScdConn{Conn: *conn}, nil
+	return &ScdConn{Conn: conn}, nil
 }
 
 // Invoke LEARN and return info about the keys in the token

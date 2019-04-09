@@ -21,10 +21,10 @@ import (
 	"crypto/hmac"
 	"crypto/rsa"
 	"crypto/x509"
-	"errors"
 	"fmt"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/sassoftware/relic/lib/x509tools"
 )
 
@@ -91,9 +91,9 @@ func (si *SignerInfo) FindCertificate(certs []*x509.Certificate) (*x509.Certific
 // Verify the signature contained in this SignerInfo and return the leaf
 // certificate. X509 chains are not validated.
 func (si *SignerInfo) Verify(content []byte, skipDigests bool, certs []*x509.Certificate) (*x509.Certificate, error) {
-	hash, ok := x509tools.PkixDigestToHash(si.DigestAlgorithm)
-	if !ok || !hash.Available() {
-		return nil, fmt.Errorf("pkcs7: unknown hash with OID %s", si.DigestAlgorithm.Algorithm)
+	hash, err := x509tools.PkixDigestToHashE(si.DigestAlgorithm)
+	if err != nil {
+		return nil, errors.Wrap(err, "pkcs7")
 	}
 	var digest []byte
 	if !skipDigests {

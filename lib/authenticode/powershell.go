@@ -223,9 +223,9 @@ func VerifyPowershell(r io.ReadSeeker, style PsSigStyle, skipDigests bool) (*pkc
 	if err := psd.Content.ContentInfo.Unmarshal(indirect); err != nil {
 		return nil, err
 	}
-	hash, ok := x509tools.PkixDigestToHash(indirect.MessageDigest.DigestAlgorithm)
-	if !ok || !hash.Available() {
-		return nil, fmt.Errorf("unsupported hash algorithm %s", indirect.MessageDigest.DigestAlgorithm.Algorithm)
+	hash, err := x509tools.PkixDigestToHashE(indirect.MessageDigest.DigestAlgorithm)
+	if err != nil {
+		return nil, err
 	}
 	if !skipDigests {
 		if _, err := r.Seek(0, 0); err != nil {

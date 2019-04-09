@@ -46,13 +46,13 @@ func Init(ctx context.Context, mod *signers.Signer, tok token.Token, keyName str
 	var x509cert, pgpcert string
 	if mod.CertTypes&signers.CertTypeX509 != 0 {
 		if kconf.X509Certificate == "" {
-			return nil, nil, sigerrors.ErrNoCertificate{"x509"}
+			return nil, nil, sigerrors.ErrNoCertificate{Type: "x509"}
 		}
 		x509cert = kconf.X509Certificate
 	}
 	if mod.CertTypes&signers.CertTypePgp != 0 {
 		if kconf.PgpCertificate == "" {
-			return nil, nil, sigerrors.ErrNoCertificate{"pgp"}
+			return nil, nil, sigerrors.ErrNoCertificate{Type: "pgp"}
 		}
 		pgpcert = kconf.PgpCertificate
 	}

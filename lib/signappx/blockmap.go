@@ -51,7 +51,7 @@ type blockMap struct {
 	File       []blockFile
 
 	Hash            crypto.Hash `xml:"-"`
-	unverifiedSizes bool        `xml:"-"`
+	unverifiedSizes bool
 }
 
 type blockFile struct {

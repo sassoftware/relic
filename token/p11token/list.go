@@ -158,7 +158,7 @@ func (tok *Token) printCertificate(opts token.ListOptions, handle pkcs11.ObjectH
 	}
 	cert, err := x509.ParseCertificate(blob)
 	if err != nil {
-		fmt.Fprintln(opts.Output, "certificate is invalid: %s", err)
+		fmt.Fprintln(opts.Output, "certificate is invalid:", err)
 	}
 	d := crypto.SHA1.New()
 	d.Write(blob)

@@ -32,9 +32,9 @@ import (
 func TimestampAndMarshal(ctx context.Context, psd *pkcs7.ContentInfoSignedData, timestamper Timestamper, authenticode bool) (*TimestampedSignature, error) {
 	if timestamper != nil {
 		signerInfo := &psd.Content.SignerInfos[0]
-		hash, ok := x509tools.PkixDigestToHash(signerInfo.DigestAlgorithm)
-		if !ok {
-			return nil, errors.New("unknown digest algorithm")
+		hash, err := x509tools.PkixDigestToHashE(signerInfo.DigestAlgorithm)
+		if err != nil {
+			return nil, err
 		}
 		token, err := timestamper.Timestamp(ctx, &Request{EncryptedDigest: signerInfo.EncryptedDigest, Hash: hash})
 		if err != nil {

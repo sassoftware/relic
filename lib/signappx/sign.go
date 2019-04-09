@@ -30,7 +30,7 @@ import (
 
 var (
 	SpcUUIDSipInfoAppx = []byte{0x4B, 0xDF, 0xC5, 0x0A, 0x07, 0xCE, 0xE2, 0x4D, 0xB7, 0x6E, 0x23, 0xC8, 0x39, 0xA0, 0x9F, 0xD1}
-	appxSipInfo        = authenticode.SpcSipInfo{0x1010000, SpcUUIDSipInfoAppx, 0, 0, 0, 0, 0}
+	appxSipInfo        = authenticode.SpcSipInfo{A: 0x1010000, UUID: SpcUUIDSipInfoAppx}
 )
 
 func (i *AppxDigest) Sign(ctx context.Context, cert *certloader.Certificate) (patch *binpatch.PatchSet, priSig, catSig *pkcs9.TimestampedSignature, err error) {
