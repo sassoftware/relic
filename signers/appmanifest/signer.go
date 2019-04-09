@@ -43,6 +43,7 @@ var AppSigner = &signers.Signer{
 }
 
 func init() {
+	AppSigner.Flags().Bool("rfc3161-timestamp", true, "(APPMANIFEST) Timestamp with RFC3161 server")
 	signers.Register(AppSigner)
 }
 
@@ -66,8 +67,10 @@ func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]b
 	if cert.Timestamper != nil {
 		tsreq := &pkcs9.Request{
 			EncryptedDigest: signed.EncryptedDigest,
-			Legacy:          true,
+			Legacy:          !opts.Flags.GetBool("rfc3161-timestamp"),
+			Hash:            opts.Hash,
 		}
+
 		token, err := cert.Timestamper.Timestamp(opts.Context(), tsreq)
 		if err != nil {
 			return nil, err

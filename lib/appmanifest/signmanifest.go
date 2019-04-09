@@ -155,7 +155,7 @@ func makeLicense(asi *etree.Element, subjectName, manifestHash string) (*etree.E
 // ManifestInformation contains a hash value which is, for some inane reason,
 // the same hash that the outer signature references but in reverse byte order.
 func makeManifestHash(sig *etree.Element) string {
-	dv := sig.FindElement("//DigestValue")
+	dv := sig.FindElement(".//DigestValue")
 	blob, _ := base64.StdEncoding.DecodeString(dv.Text())
 	for i := 0; i < len(blob)/2; i++ {
 		j := len(blob) - i - 1
@@ -209,7 +209,7 @@ func (m *SignedManifest) AddTimestamp(token *pkcs7.ContentInfoSignedData) error 
 	if err != nil {
 		return err
 	}
-	cs, err := pkcs9.VerifyMicrosoftToken(token, m.EncryptedDigest)
+	cs, err := VerifyTimestamp(token, m.EncryptedDigest, m.Signature.Intermediates)
 	if err != nil {
 		return fmt.Errorf("failed to validate timestamp: %s", err)
 	}

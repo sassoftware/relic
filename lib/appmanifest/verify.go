@@ -18,6 +18,7 @@ package appmanifest
 
 import (
 	"crypto"
+	"crypto/x509"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -91,7 +92,8 @@ func Verify(manifest []byte) (*ManifestSignature, error) {
 		if err != nil {
 			return nil, fmt.Errorf("invalid timestamp: %s", err)
 		}
-		cs, err := pkcs9.VerifyMicrosoftToken(timestamp, secondary.EncryptedDigest)
+
+		cs, err := VerifyTimestamp(timestamp, secondary.EncryptedDigest, secondary.Certificates)
 		if err != nil {
 			return nil, fmt.Errorf("invalid timestamp: %s", err)
 		}
@@ -104,4 +106,19 @@ func Verify(manifest []byte) (*ManifestSignature, error) {
 		Hash:            primary.Hash,
 		PublicKeyToken:  token,
 	}, nil
+}
+
+func VerifyTimestamp(timestamp *pkcs7.ContentInfoSignedData, encryptedDigest []byte, extraCerts []*x509.Certificate) (*pkcs9.CounterSignature, error) {
+	var cs *pkcs9.CounterSignature
+	var err error
+
+	if timestamp.Content.ContentInfo.ContentType.Equal(pkcs9.OidTSTInfo) {
+		// pkcs9 timestamp
+		cs, err = pkcs9.Verify(timestamp, encryptedDigest, extraCerts)
+	} else {
+		// legacy timestamp
+		cs, err = pkcs9.VerifyMicrosoftToken(timestamp, encryptedDigest)
+	}
+
+	return cs, err
 }
