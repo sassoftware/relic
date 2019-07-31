@@ -18,6 +18,7 @@ set -ex -o pipefail
 version=$(./scripts/version.sh)
 commit=$(git rev-parse HEAD)
 ldflags="-s -w -X github.com/sassoftware/relic/config.Version=$version -X github.com/sassoftware/relic/config.Commit=$commit"
+goversion=1.12.7
 
 rm -rf build
 mkdir build
@@ -27,6 +28,8 @@ docker rmi relic-build 2>/dev/null ||:
 docker build \
     -f scripts/Dockerfile.clientbuild \
     --build-arg ldflags="$ldflags" \
+    --build-arg GOPROXY=$GOPROXY \
+    --build-arg goversion=$goversion \
     -t relic-build .
 container=$(docker create relic-build)
 docker cp $container:out build/
@@ -34,17 +37,16 @@ docker rm $container
 docker rmi relic-build
 
 ## cgo build of full program
-# build libtool-ltdl as a static library so no deps other than libc are needed
-xgo \
-    --targets=linux/amd64,darwin/amd64,windows/amd64 \
-    --deps="http://ftpmirror.gnu.org/libtool/libtool-2.4.6.tar.gz" \
-    --depsargs=--disable-shared \
-    --out="build/relic" \
-    -ldflags "$ldflags" \
-    .
-sudo chown $(id -u) build/*
+docker build \
+    -f scripts/Dockerfile.fullbuild \
+    --build-arg ldflags="$ldflags" \
+    --build-arg GOPROXY=$GOPROXY \
+    --build-arg goversion=$goversion \
+    -t relic-build .
+container=$(docker create relic-build)
+docker cp $container:out build/
+docker rm $container
+docker rmi relic-build
 
-mv build/relic-darwin-*-amd64 build/relic-darwin-amd64
-mv build/relic-windows-*-amd64.exe build/relic-windows-amd64.exe
 mv build/out/* build/
 rmdir build/out
