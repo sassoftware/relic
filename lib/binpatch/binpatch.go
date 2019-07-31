@@ -137,15 +137,15 @@ func (p *PatchSet) Dump() []byte {
 // output will be written to a temporary file then renamed over the destination
 // path.
 func (p *PatchSet) Apply(infile *os.File, outpath string) error {
-	ininfo, err := infile.Stat()
-	if err != nil {
-		return err
-	}
 	if outpath == "" {
 		outpath = infile.Name()
 	}
 	// Determine if an in-place overwrite is possible. If any test fails then
 	// fall back to doing a full copy (write-rename).
+	ininfo, err := infile.Stat()
+	if err != nil {
+		return p.applyRewrite(infile, outpath)
+	}
 	outinfo, err := os.Lstat(outpath)
 	if err != nil || !canOverwrite(ininfo, outinfo) {
 		return p.applyRewrite(infile, outpath)
