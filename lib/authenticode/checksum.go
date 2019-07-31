@@ -51,6 +51,7 @@ func FixPEChecksum(f *os.File) error {
 type peChecksum struct {
 	cksumPos  int
 	sum, size uint32
+	odd       bool
 }
 
 // Hasher that calculates the undocumented, non-CRC checksum used in PE images.
@@ -62,7 +63,7 @@ func NewPEChecksum(peStart int) hash.Hash {
 	} else {
 		cksumPos = peStart + 88
 	}
-	return &peChecksum{cksumPos, 0, 0}
+	return &peChecksum{cksumPos: cksumPos}
 }
 
 func (peChecksum) Size() int {
@@ -80,18 +81,25 @@ func (h *peChecksum) Reset() {
 }
 
 func (h *peChecksum) Write(d []byte) (int, error) {
-	if len(d)%2 != 0 {
+	// tolerate odd-sized files by adding a final zero byte, but odd writes anywhere but the end are an error
+	n := len(d)
+	if h.odd {
 		return 0, errors.New("odd write")
+	} else if n%2 != 0 {
+		h.odd = true
+		d2 := make([]byte, n+1)
+		copy(d2, d)
+		d = d2
 	}
 	ckpos := -1
-	if h.cksumPos > len(d) {
-		h.cksumPos -= len(d)
+	if h.cksumPos > n {
+		h.cksumPos -= n
 	} else if h.cksumPos >= 0 {
 		ckpos = h.cksumPos
 		h.cksumPos = -1
 	}
 	sum := h.sum
-	for i := 0; i < len(d); i += 2 {
+	for i := 0; i < n; i += 2 {
 		val := uint32(d[i+1])<<8 | uint32(d[i])
 		if i == ckpos || i == ckpos+2 {
 			val = 0
@@ -100,8 +108,8 @@ func (h *peChecksum) Write(d []byte) (int, error) {
 		sum = 0xffff & (sum + (sum >> 16))
 	}
 	h.sum = sum
-	h.size += uint32(len(d))
-	return len(d), nil
+	h.size += uint32(n)
+	return n, nil
 }
 
 func (h *peChecksum) Sum(buf []byte) []byte {
