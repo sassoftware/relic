@@ -19,6 +19,7 @@ package pkcs7
 import (
 	"encoding/asn1"
 	"fmt"
+	"time"
 )
 
 type ErrNoAttribute struct {
@@ -85,4 +86,12 @@ func (l *AttributeList) Add(oid asn1.ObjectIdentifier, obj interface{}) error {
 			Bytes:      value,
 		}})
 	return nil
+}
+
+func (i SignerInfo) SigningTime() (time.Time, error) {
+	var raw asn1.RawValue
+	if err := i.AuthenticatedAttributes.GetOne(OidAttributeSigningTime, &raw); err != nil {
+		return time.Time{}, err
+	}
+	return ParseTime(raw)
 }

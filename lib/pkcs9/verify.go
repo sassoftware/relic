@@ -70,17 +70,22 @@ func Verify(tst *pkcs7.ContentInfoSignedData, data []byte, certs []*x509.Certifi
 	if err != nil {
 		return nil, err
 	}
-	return finishVerify(&tsi, verifyBlob, certs, imprintHash)
+
+	return finishVerify(&tsi, verifyBlob, certs, imprintHash, tstinfo)
 }
 
-func finishVerify(tsi *pkcs7.SignerInfo, blob []byte, certs []*x509.Certificate, hash crypto.Hash) (*CounterSignature, error) {
+type timeSource interface {
+	SigningTime() (time.Time, error)
+}
+
+func finishVerify(tsi *pkcs7.SignerInfo, blob []byte, certs []*x509.Certificate, hash crypto.Hash, timeSource timeSource) (*CounterSignature, error) {
 	cert, err := tsi.Verify(blob, false, certs)
 	if err != nil {
 		return nil, err
 	}
-	var signingTime time.Time
-	if err := tsi.AuthenticatedAttributes.GetOne(pkcs7.OidAttributeSigningTime, &signingTime); err != nil {
-		return nil, err
+	signingTime, err := timeSource.SigningTime()
+	if err != nil {
+		return nil, errors.Wrap(err, "parsing timestamp")
 	}
 	return &CounterSignature{
 		Signature: pkcs7.Signature{

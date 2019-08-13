@@ -22,6 +22,7 @@ import (
 	"encoding/asn1"
 	"errors"
 	"fmt"
+	"time"
 )
 
 // Parse a signature from bytes
@@ -71,4 +72,26 @@ func (raw RawCertificates) Parse() ([]*x509.Certificate, error) {
 		return nil, err
 	}
 	return x509.ParseCertificates(val.Bytes)
+}
+
+// ParseTime parses a GeneralizedTime or UTCTime value that potentially has a fractional seconds part
+func ParseTime(raw asn1.RawValue) (ret time.Time, err error) {
+	// as of go 1.12 fractional timestamps fail to parse with a "did not serialize back to the original value" error, so this implementation without the serialize check is needed
+	s := string(raw.Bytes)
+	switch raw.Tag {
+	case asn1.TagGeneralizedTime:
+		formatStr := "20060102150405Z0700"
+		return time.Parse(formatStr, s)
+	case asn1.TagUTCTime:
+		formatStr := "0601021504Z0700"
+		ret, err = time.Parse(formatStr, s)
+		if err != nil {
+			formatStr = "060102150405Z0700"
+			ret, err = time.Parse(formatStr, s)
+		}
+		return
+	default:
+		err = fmt.Errorf("unknown tag %d in timestamp field", raw.Tag)
+		return
+	}
 }

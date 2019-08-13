@@ -106,8 +106,8 @@ func VerifyPkcs7(sig pkcs7.Signature) (*CounterSignature, error) {
 		// that digests the parent signature blob
 		return Verify(&tst, sig.SignerInfo.EncryptedDigest, sig.Intermediates)
 	} else if _, ok := err.(pkcs7.ErrNoAttribute); ok {
-		var tsi pkcs7.SignerInfo
-		if err := sig.SignerInfo.UnauthenticatedAttributes.GetOne(OidAttributeCounterSign, &tsi); err != nil {
+		tsi := new(pkcs7.SignerInfo)
+		if err := sig.SignerInfo.UnauthenticatedAttributes.GetOne(OidAttributeCounterSign, tsi); err != nil {
 			if _, ok := err.(pkcs7.ErrNoAttribute); ok {
 				return nil, nil
 			}
@@ -117,7 +117,7 @@ func VerifyPkcs7(sig pkcs7.Signature) (*CounterSignature, error) {
 		// included in the parent structure, and the timestamp signs the
 		// signature blob from the parent signerinfo
 		imprintHash, _ = x509tools.PkixDigestToHash(sig.SignerInfo.DigestAlgorithm)
-		return finishVerify(&tsi, sig.SignerInfo.EncryptedDigest, sig.Intermediates, imprintHash)
+		return finishVerify(tsi, sig.SignerInfo.EncryptedDigest, sig.Intermediates, imprintHash, tsi)
 	}
 	return nil, err
 }
@@ -185,8 +185,8 @@ func VerifyMicrosoftToken(token *pkcs7.ContentInfoSignedData, encryptedDigest []
 		return nil, errors.New("timestamp does not match the enclosing signature")
 	}
 	hash, _ := x509tools.PkixDigestToHash(sig.SignerInfo.DigestAlgorithm)
-	var signingTime time.Time
-	if err := sig.SignerInfo.AuthenticatedAttributes.GetOne(pkcs7.OidAttributeSigningTime, &signingTime); err != nil {
+	signingTime, err := sig.SignerInfo.SigningTime()
+	if err != nil {
 		return nil, err
 	}
 	return &CounterSignature{
