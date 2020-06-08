@@ -19,13 +19,14 @@ package p11token
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"io"
 	"math/big"
 	"strings"
 )
 
 func makeKeyID() []byte {
 	keyID := make([]byte, 20)
-	if n, err := rand.Reader.Read(keyID); err != nil || n != 20 {
+	if _, err := io.ReadFull(rand.Reader, keyID); err != nil {
 		return nil
 	}
 	return keyID

@@ -23,6 +23,7 @@ import (
 	"crypto/rsa"
 	"encoding/hex"
 	"errors"
+	"io"
 
 	"github.com/miekg/pkcs11"
 	"github.com/sassoftware/relic/lib/pkcs8"
@@ -63,7 +64,7 @@ func (tok *Token) importPkcs8(pk8 []byte, attrs []*pkcs11.Attribute) error {
 	defer tok.ctx.DestroyObject(tok.sh, wrapKey)
 	// Encrypt key
 	iv := make([]byte, 8)
-	if _, err := rand.Reader.Read(iv); err != nil {
+	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
 		return err
 	}
 	encMech := []*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_DES3_CBC_PAD, iv)}

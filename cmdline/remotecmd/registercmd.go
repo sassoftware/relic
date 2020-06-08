@@ -26,6 +26,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math/big"
 	"os"
@@ -168,7 +169,7 @@ func readKeyPair(keyPath string) error {
 
 func selfSign(key *ecdsa.PrivateKey) ([]byte, string, error) {
 	blob := make([]byte, 12)
-	if n, err := rand.Reader.Read(blob); err != nil || n != len(blob) {
+	if _, err := io.ReadFull(rand.Reader, blob); err != nil {
 		return nil, "", errors.New("failed to make serial number")
 	}
 	hostname, _ := os.Hostname()
