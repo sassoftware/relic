@@ -52,6 +52,7 @@ var (
 	argCaCert    string
 	argDirectory bool
 	argForce     bool
+	argEmbed     bool
 )
 
 func init() {
@@ -60,6 +61,7 @@ func init() {
 	RegisterCmd.Flags().StringVarP(&argCaCert, "ca-cert", "C", "", "Path to CA certificate file (will be copied)")
 	RegisterCmd.Flags().BoolVarP(&argDirectory, "directory", "D", false, "Remote URL is a cluster directory")
 	RegisterCmd.Flags().BoolVarP(&argForce, "force", "f", false, "Overwrite existing configuration file")
+	RegisterCmd.Flags().BoolVarP(&argEmbed, "embed", "E", false, "Embed certificate in config file")
 }
 
 func registerCmd(cmd *cobra.Command, args []string) error {
@@ -76,32 +78,50 @@ func registerCmd(cmd *cobra.Command, args []string) error {
 		fmt.Fprintf(os.Stderr, "Config file %s already exists\n", shared.ArgConfig)
 		return nil
 	}
-	defaultDir := filepath.Dir(shared.ArgConfig)
-	keyPath := filepath.Join(defaultDir, "client.pem")
-	if fileExists(keyPath) {
-		if !argForce {
-			return shared.Fail(fmt.Errorf("Key file %s already exists", keyPath))
-		}
-		if err := readKeyPair(keyPath); err != nil {
-			return shared.Fail(err)
-		}
-	} else {
-		if err := writeKeyPair(keyPath); err != nil {
-			return shared.Fail(err)
-		}
-	}
-	var capath string
+	var cacert []byte
+	var err error
 	if argCaCert != "" {
-		cacert, err := ioutil.ReadFile(argCaCert)
+		cacert, err = ioutil.ReadFile(argCaCert)
 		if err != nil {
 			return shared.Fail(fmt.Errorf("Error reading cacert: %s", err))
 		}
-		capath = filepath.Join(defaultDir, "cacert.pem")
-		if err := ioutil.WriteFile(capath, cacert, 0644); err != nil {
+	}
+	var certPath, keyPath, capath string
+	if argEmbed {
+		// embed generated PEM into config
+		certPEM, keyPEM, fingerprint, err := genKeyPair()
+		if err != nil {
 			return shared.Fail(err)
 		}
+		fmt.Println("New key fingerprint:", fingerprint)
+		certPath = string(certPEM)
+		keyPath = string(keyPEM)
+		capath = string(cacert)
+	} else {
+		// write generated PEM to file
+		defaultDir := filepath.Dir(shared.ArgConfig)
+		keyPath = filepath.Join(defaultDir, "client.pem")
+		certPath = keyPath
+		if fileExists(keyPath) {
+			if !argForce {
+				return shared.Fail(fmt.Errorf("Key file %s already exists", keyPath))
+			}
+			if err := readKeyPair(keyPath); err != nil {
+				return shared.Fail(err)
+			}
+		} else {
+			if err := writeKeyPair(keyPath); err != nil {
+				return shared.Fail(err)
+			}
+		}
+		if len(cacert) != 0 {
+			capath = filepath.Join(defaultDir, "cacert.pem")
+			if err := ioutil.WriteFile(capath, cacert, 0644); err != nil {
+				return shared.Fail(err)
+			}
+		}
 	}
-	if err := writeConfig(shared.ArgConfig, argRemoteURL, keyPath, capath); err != nil {
+	if err := writeConfig(shared.ArgConfig, argRemoteURL, certPath, keyPath, capath); err != nil {
 		return shared.Fail(err)
 	}
 	return nil
@@ -112,19 +132,23 @@ func fileExists(path string) bool {
 	return err == nil
 }
 
-func writeConfig(cfgPath, url, keyPath, caPath string) error {
+func writeConfig(cfgPath, url, certPath, keyPath, caPath string) error {
 	newConfig := &config.Config{Remote: &config.RemoteConfig{}}
 	if argDirectory {
 		newConfig.Remote.DirectoryURL = url
 	} else {
 		newConfig.Remote.URL = url
 	}
-	newConfig.Remote.CertFile = keyPath
+	newConfig.Remote.CertFile = certPath
 	newConfig.Remote.KeyFile = keyPath
 	newConfig.Remote.CaCert = caPath
 	cfgblob, err := yaml.Marshal(newConfig)
 	if err != nil {
 		return err
+	}
+	if cfgPath == "-" {
+		os.Stdout.Write(cfgblob)
+		return nil
 	}
 	if err = os.MkdirAll(filepath.Dir(cfgPath), 0755); err != nil {
 		return err
@@ -132,20 +156,22 @@ func writeConfig(cfgPath, url, keyPath, caPath string) error {
 	return ioutil.WriteFile(cfgPath, cfgblob, 0600)
 }
 
-func writeKeyPair(keyPath string) error {
+func genKeyPair() (certPEM, keyPEM []byte, fingerprint string, err error) {
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
-		return err
+		return
 	}
-	cert, fingerprint, err := selfSign(key)
+	certPEM, fingerprint, err = selfSign(key)
 	if err != nil {
-		return err
+		return
 	}
-	pemdata, err := serializeKey(key)
-	if err != nil {
-		return err
-	}
-	pemdata = append(pemdata, cert...)
+	keyPEM, err = serializeKey(key)
+	return
+}
+
+func writeKeyPair(keyPath string) error {
+	certPEM, keyPEM, fingerprint, err := genKeyPair()
+	pemdata := append(keyPEM, certPEM...)
 	if err = os.MkdirAll(filepath.Dir(keyPath), 0755); err != nil {
 		return err
 	}

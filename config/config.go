@@ -102,8 +102,8 @@ type RemoteConfig struct {
 	URL            string `yaml:",omitempty"` // URL of remote server
 	DirectoryURL   string `yaml:",omitempty"` // URL of directory server
 	KeyFile        string `yaml:",omitempty"` // Path to TLS client key file
-	CertFile       string `yaml:",omitempty"` // Path to TLS client certificate
-	CaCert         string `yaml:",omitempty"` // Path to CA certificate
+	CertFile       string `yaml:",omitempty"` // Path to TLS client certificate or embedded certificate
+	CaCert         string `yaml:",omitempty"` // Path to CA certificate or embedded certificate
 	ConnectTimeout int    `yaml:",omitempty"` // Connection timeout in seconds
 	Retries        int    `yaml:",omitempty"` // Attempt an operation (at least) N times
 }

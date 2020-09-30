@@ -131,7 +131,24 @@ func makeTLSConfig() (*tls.Config, error) {
 	} else if config.Remote.CertFile == "" || config.Remote.KeyFile == "" {
 		return nil, errors.New("certfile and keyfile are required settings in 'remote' section of configuration")
 	}
-	tlscert, err := tls.LoadX509KeyPair(config.Remote.CertFile, config.Remote.KeyFile)
+	var certBytes, keyBytes []byte
+	if strings.Contains(config.Remote.CertFile, "-----BEGIN") {
+		certBytes = []byte(config.Remote.CertFile)
+	} else {
+		certBytes, err = ioutil.ReadFile(config.Remote.CertFile)
+		if err != nil {
+			return nil, fmt.Errorf("remote.certfile: %w", err)
+		}
+	}
+	if strings.Contains(config.Remote.KeyFile, "-----BEGIN") {
+		keyBytes = []byte(config.Remote.KeyFile)
+	} else {
+		keyBytes, err = ioutil.ReadFile(config.Remote.KeyFile)
+		if err != nil {
+			return nil, fmt.Errorf("remote.keyfile: %w", err)
+		}
+	}
+	tlscert, err := tls.X509KeyPair(certBytes, keyBytes)
 	if err != nil {
 		return nil, err
 	}
