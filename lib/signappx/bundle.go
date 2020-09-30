@@ -53,11 +53,11 @@ type bundlePackage struct {
 func verifyBundle(r io.ReaderAt, files zipFiles, sig *AppxSignature, skipDigests bool) error {
 	blob, err := readZipFile(files[bundleManifestFile])
 	if err != nil {
-		return fmt.Errorf("bundle manifest: %s", err)
+		return fmt.Errorf("bundle manifest: %w", err)
 	}
 	var bundle bundleManifest
 	if err := xml.Unmarshal(blob, &bundle); err != nil {
-		return fmt.Errorf("bundle manifest: %s", err)
+		return fmt.Errorf("bundle manifest: %w", err)
 	}
 	packages := make(map[string]int)
 	for i, pkg := range bundle.Packages {
@@ -85,7 +85,7 @@ func verifyBundle(r io.ReaderAt, files zipFiles, sig *AppxSignature, skipDigests
 
 		offset, err := zf.DataOffset()
 		if err != nil {
-			return fmt.Errorf("bundle manifest: %s", err)
+			return fmt.Errorf("bundle manifest: %w", err)
 		}
 		if pkg.Offset != offset {
 			return fmt.Errorf("bundle manifest: %s claimed offset of %d but actual offset is %d", zf.Name, pkg.Offset, offset)
@@ -95,7 +95,7 @@ func verifyBundle(r io.ReaderAt, files zipFiles, sig *AppxSignature, skipDigests
 		nested := io.NewSectionReader(r, offset, int64(zf.UncompressedSize64))
 		nestedSig, err := Verify(nested, int64(zf.UncompressedSize64), skipDigests)
 		if err != nil {
-			return fmt.Errorf("bundled file %s: %s", zf.Name, err)
+			return fmt.Errorf("bundled file %s: %w", zf.Name, err)
 		}
 		if !bytes.Equal(nestedSig.Signature.Certificate.Raw, sig.Signature.Certificate.Raw) {
 			return fmt.Errorf("bundled file %s signed by different publisher", zf.Name)

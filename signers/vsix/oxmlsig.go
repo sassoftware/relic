@@ -66,11 +66,11 @@ func checkManifest(files zipFiles, manifest *etree.Element) error {
 	doc.SetRoot(manifest.Copy())
 	blob, err := doc.WriteToBytes()
 	if err != nil {
-		return fmt.Errorf("validation failed: %s", err)
+		return fmt.Errorf("validation failed: %w", err)
 	}
 	var m oxmlManifest
 	if err := xml.Unmarshal(blob, &m); err != nil {
-		return fmt.Errorf("validation failed: %s", err)
+		return fmt.Errorf("validation failed: %w", err)
 	}
 	for _, ref := range m.References {
 		p := path.Join("./" + ref.URI)
@@ -84,7 +84,7 @@ func checkManifest(files zipFiles, manifest *etree.Element) error {
 		}
 		f, err := zf.Open()
 		if err != nil {
-			return fmt.Errorf("validation failed: %s", err)
+			return fmt.Errorf("validation failed: %w", err)
 		}
 		_, hash := xmldsig.HashAlgorithm(ref.DigestMethod.Algorithm)
 		if !hash.Available() {
@@ -113,11 +113,11 @@ func checkTimestamp(root *etree.Element, encryptedDigest []byte) (*pkcs9.Counter
 	}
 	blob, err := base64.StdEncoding.DecodeString(tsEl.Text())
 	if err != nil {
-		return nil, fmt.Errorf("timestamp check failed: %s", err)
+		return nil, fmt.Errorf("timestamp check failed: %w", err)
 	}
 	tst, err := pkcs7.Unmarshal(blob)
 	if err != nil {
-		return nil, fmt.Errorf("timestamp check failed: %s", err)
+		return nil, fmt.Errorf("timestamp check failed: %w", err)
 	}
 	return pkcs9.Verify(tst, encryptedDigest, nil)
 }
@@ -175,7 +175,7 @@ func readSignature(files zipFiles) ([]byte, []*x509.Certificate, error) {
 			}
 			certs2, err := x509.ParseCertificates(blob)
 			if err != nil {
-				return nil, nil, fmt.Errorf("failed to parse certificate %s: %s", p, err)
+				return nil, nil, fmt.Errorf("failed to parse certificate %s: %w", p, err)
 			}
 			certs = append(certs, certs2...)
 		}
@@ -238,11 +238,11 @@ func (m *mangler) makeSignature(cert *certloader.Certificate, opts signers.SignO
 		req := &pkcs9.Request{EncryptedDigest: encryptedDigest, Hash: opts.Hash}
 		tst, err := cert.Timestamper.Timestamp(opts.Context(), req)
 		if err != nil {
-			return nil, fmt.Errorf("failed to timestamp signature: %s", err)
+			return nil, fmt.Errorf("failed to timestamp signature: %w", err)
 		}
 		blob, err := tst.Marshal()
 		if err != nil {
-			return nil, fmt.Errorf("failed to timestamp signature: %s", err)
+			return nil, fmt.Errorf("failed to timestamp signature: %w", err)
 		}
 		tsob := sigel.CreateElement("Object")
 		tsob.CreateAttr("xmlns", xmldsig.NsXMLDsig)

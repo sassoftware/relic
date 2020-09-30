@@ -211,7 +211,7 @@ func (m *SignedManifest) AddTimestamp(token *pkcs7.ContentInfoSignedData) error 
 	}
 	cs, err := VerifyTimestamp(token, m.EncryptedDigest, m.Signature.Intermediates)
 	if err != nil {
-		return fmt.Errorf("failed to validate timestamp: %s", err)
+		return fmt.Errorf("failed to validate timestamp: %w", err)
 	}
 	m.Signed = signed
 	m.Signature.CounterSignature = cs

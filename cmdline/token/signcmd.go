@@ -98,7 +98,7 @@ func signCmd(cmd *cobra.Command, args []string) error {
 			return nil
 		}
 		if _, err := infile.Seek(0, 0); err != nil {
-			return shared.Fail(fmt.Errorf("failed to rewind input file: %s", err))
+			return shared.Fail(fmt.Errorf("rewinding input file: %w", err))
 		}
 	}
 	// transform the input, sign the stream, and apply the result

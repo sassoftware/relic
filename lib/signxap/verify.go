@@ -67,14 +67,14 @@ func Verify(r io.ReaderAt, size int64, skipDigests bool) (*XapSignature, error) 
 	}
 	psd, err := pkcs7.Unmarshal(blob)
 	if err != nil {
-		return nil, fmt.Errorf("invalid signature: %s", err)
+		return nil, fmt.Errorf("invalid signature: %w", err)
 	}
 	if !psd.Content.ContentInfo.ContentType.Equal(authenticode.OidSpcIndirectDataContent) {
 		return nil, fmt.Errorf("invalid signature: %s", "not an authenticode signature")
 	}
 	pksig, err := psd.Content.Verify(nil, false)
 	if err != nil {
-		return nil, fmt.Errorf("invalid signature: %s", err)
+		return nil, fmt.Errorf("invalid signature: %w", err)
 	}
 	ts, err := pkcs9.VerifyOptionalTimestamp(pksig)
 	if err != nil {
@@ -82,7 +82,7 @@ func Verify(r io.ReaderAt, size int64, skipDigests bool) (*XapSignature, error) 
 	}
 	indirect := new(authenticode.SpcIndirectDataContentMsi)
 	if err := psd.Content.ContentInfo.Unmarshal(indirect); err != nil {
-		return nil, fmt.Errorf("invalid signature: %s", err)
+		return nil, fmt.Errorf("invalid signature: %w", err)
 	}
 	hash, err := x509tools.PkixDigestToHashE(indirect.MessageDigest.DigestAlgorithm)
 	if err != nil {

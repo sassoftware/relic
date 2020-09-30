@@ -73,7 +73,7 @@ func auditCmd(cmd *cobra.Command, args []string) error {
 	// start listeners for each broker
 	for _, cfg := range configs {
 		if err := startListener(cfg, db); err != nil {
-			return fmt.Errorf("%s: %s", cfg.Path(), err)
+			return fmt.Errorf("%s: %w", cfg.Path(), err)
 		}
 	}
 	activation.DaemonReady()

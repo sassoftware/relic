@@ -90,7 +90,7 @@ func (c tsClient) Timestamp(ctx context.Context, req *pkcs9.Request) (*pkcs7.Con
 			return token, nil
 		}
 	}
-	return nil, fmt.Errorf("timestamping failed: %s", err)
+	return nil, fmt.Errorf("timestamping failed: %w", err)
 }
 
 func (c tsClient) do(ctx context.Context, url string, req *pkcs9.Request, imprint []byte) (*pkcs7.ContentInfoSignedData, error) {

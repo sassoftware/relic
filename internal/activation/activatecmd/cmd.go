@@ -59,13 +59,13 @@ func NewListenerSet(listeners []net.Listener) (*ListenerSet, error) {
 		}
 		f, err := lf.File()
 		if err != nil {
-			return nil, fmt.Errorf("unable to get file from listener %d: %s", i, err)
+			return nil, fmt.Errorf("unable to get file from listener %d: %w", i, err)
 		}
 		// File() puts the file description into blocking mode. Put it back and
 		// leave it that way, otherwise it will race with child processes
 		// trying to accept from it.
 		if err := syscall.SetNonblock(int(f.Fd()), true); err != nil {
-			return nil, fmt.Errorf("unable to get file from listener %d: %s", i, err)
+			return nil, fmt.Errorf("unable to get file from listener %d: %w", i, err)
 		}
 		s.files = append(s.files, f)
 	}

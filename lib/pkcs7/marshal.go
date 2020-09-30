@@ -45,7 +45,7 @@ func (psd *ContentInfoSignedData) Marshal() ([]byte, error) {
 func (psd *ContentInfoSignedData) Detach() ([]byte, error) {
 	content, err := psd.Content.ContentInfo.Bytes()
 	if err != nil {
-		return nil, fmt.Errorf("pkcs7: %s", err)
+		return nil, fmt.Errorf("pkcs7: %w", err)
 	}
 	psd.Content.ContentInfo, _ = NewContentInfo(psd.Content.ContentInfo.ContentType, nil)
 	return content, nil

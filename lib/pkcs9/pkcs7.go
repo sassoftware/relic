@@ -51,11 +51,11 @@ func TimestampAndMarshal(ctx context.Context, psd *pkcs7.ContentInfoSignedData, 
 	}
 	verified, err := psd.Content.Verify(nil, false)
 	if err != nil {
-		return nil, fmt.Errorf("pkcs7: failed signature self-check: %s", err)
+		return nil, fmt.Errorf("pkcs7: failed signature self-check: %w", err)
 	}
 	ts, err := VerifyOptionalTimestamp(verified)
 	if err != nil {
-		return nil, fmt.Errorf("pkcs7: failed signature self-check: %s", err)
+		return nil, fmt.Errorf("pkcs7: failed signature self-check: %w", err)
 	}
 	blob, err := psd.Marshal()
 	if err != nil {
@@ -163,7 +163,7 @@ func (sig TimestampedSignature) VerifyChain(roots *x509.CertPool, extraCerts []*
 	var signingTime time.Time
 	if sig.CounterSignature != nil {
 		if err := sig.CounterSignature.VerifyChain(roots, extraCerts); err != nil {
-			return fmt.Errorf("validating timestamp: %s", err)
+			return fmt.Errorf("validating timestamp: %w", err)
 		}
 		signingTime = sig.CounterSignature.SigningTime
 	}

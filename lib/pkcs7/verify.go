@@ -21,10 +21,10 @@ import (
 	"crypto/hmac"
 	"crypto/rsa"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/sassoftware/relic/lib/x509tools"
 )
 
@@ -61,7 +61,7 @@ func (sd *SignedData) Verify(externalContent []byte, skipDigests bool) (Signatur
 	}
 	certs, err := sd.Certificates.Parse()
 	if err != nil {
-		return Signature{}, fmt.Errorf("pkcs7: %s", err)
+		return Signature{}, fmt.Errorf("pkcs7: %w", err)
 	} else if len(certs) == 0 {
 		return Signature{}, errors.New("pkcs7: certificate missing from signedData")
 	}
@@ -93,7 +93,7 @@ func (si *SignerInfo) FindCertificate(certs []*x509.Certificate) (*x509.Certific
 func (si *SignerInfo) Verify(content []byte, skipDigests bool, certs []*x509.Certificate) (*x509.Certificate, error) {
 	hash, err := x509tools.PkixDigestToHashE(si.DigestAlgorithm)
 	if err != nil {
-		return nil, errors.Wrap(err, "pkcs7")
+		return nil, fmt.Errorf("pkcs7: %w", err)
 	}
 	var digest []byte
 	if !skipDigests {

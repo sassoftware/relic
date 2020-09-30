@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/bradfitz/gomemcache/memcache"
-	"github.com/pkg/errors"
 	"github.com/sassoftware/relic/lib/pkcs7"
 	"github.com/sassoftware/relic/lib/pkcs9"
 )
@@ -39,7 +38,7 @@ type timestampCache struct {
 func New(t pkcs9.Timestamper, servers []string) (pkcs9.Timestamper, error) {
 	selector := new(memcache.ServerList)
 	if err := selector.SetServers(servers...); err != nil {
-		return nil, errors.Wrap(err, "parsing memcache servers")
+		return nil, fmt.Errorf("parsing memcache servers: %w", err)
 	}
 	mc := memcache.NewFromSelector(selector)
 	mc.Timeout = memcacheTimeout

@@ -83,7 +83,7 @@ func registerCmd(cmd *cobra.Command, args []string) error {
 	if argCaCert != "" {
 		cacert, err = ioutil.ReadFile(argCaCert)
 		if err != nil {
-			return shared.Fail(fmt.Errorf("Error reading cacert: %s", err))
+			return shared.Fail(fmt.Errorf("reading cacert: %w", err))
 		}
 	}
 	var certPath, keyPath, capath string

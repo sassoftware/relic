@@ -21,9 +21,9 @@ import (
 	"crypto"
 	"crypto/rand"
 	"encoding/binary"
+	"errors"
 	"io"
 
-	"github.com/pkg/errors"
 	"github.com/sassoftware/relic/lib/binpatch"
 	"github.com/sassoftware/relic/lib/certloader"
 	"github.com/sassoftware/relic/lib/x509tools"

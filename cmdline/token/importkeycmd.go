@@ -100,7 +100,7 @@ func importKeyCmd(cmd *cobra.Command, args []string) error {
 		if err == sigerrors.ErrExist {
 			fmt.Fprintln(os.Stderr, "Certificate already exists:", name)
 		} else if err != nil {
-			return shared.Fail(fmt.Errorf("failed to import %s: %s", name, err))
+			return shared.Fail(fmt.Errorf("importing %s: %w", name, err))
 		} else {
 			fmt.Fprintln(os.Stderr, "Imported", name)
 			didSomething = true
@@ -114,7 +114,7 @@ func importKeyCmd(cmd *cobra.Command, args []string) error {
 			if err == sigerrors.ErrExist {
 				fmt.Fprintln(os.Stderr, "Certificate already exists:", name)
 			} else if err != nil {
-				return shared.Fail(fmt.Errorf("failed to import %s: %s", name, err))
+				return shared.Fail(fmt.Errorf("importing %s: %w", name, err))
 			} else {
 				fmt.Fprintln(os.Stderr, "Imported", name)
 				didSomething = true

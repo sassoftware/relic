@@ -51,7 +51,7 @@ func Verify(manifest []byte) (*ManifestSignature, error) {
 		if _, ok := err.(sigerrors.NotSignedError); ok {
 			return nil, err
 		}
-		return nil, fmt.Errorf("invalid primary signature: %s", err)
+		return nil, fmt.Errorf("invalid primary signature: %w", err)
 	}
 	license := root.FindElement("Signature/KeyInfo/msrel:RelData/r:license")
 	if license == nil {
@@ -62,7 +62,7 @@ func Verify(manifest []byte) (*ManifestSignature, error) {
 		if _, ok := err.(sigerrors.NotSignedError); ok {
 			return nil, err
 		}
-		return nil, fmt.Errorf("invalid authenticode signature: %s", err)
+		return nil, fmt.Errorf("invalid authenticode signature: %w", err)
 	}
 	if !x509tools.SameKey(primary.PublicKey, secondary.PublicKey) {
 		return nil, errors.New("signatures were made with different keys")
@@ -86,16 +86,16 @@ func Verify(manifest []byte) (*ManifestSignature, error) {
 	if tse := license.FindElement("r:issuer/Signature/Object/as:Timestamp"); tse != nil {
 		blob, err := base64.StdEncoding.DecodeString(tse.Text())
 		if err != nil {
-			return nil, fmt.Errorf("invalid timestamp: %s", err)
+			return nil, fmt.Errorf("invalid timestamp: %w", err)
 		}
 		timestamp, err := pkcs7.Unmarshal(blob)
 		if err != nil {
-			return nil, fmt.Errorf("invalid timestamp: %s", err)
+			return nil, fmt.Errorf("invalid timestamp: %w", err)
 		}
 
 		cs, err := VerifyTimestamp(timestamp, secondary.EncryptedDigest, secondary.Certificates)
 		if err != nil {
-			return nil, fmt.Errorf("invalid timestamp: %s", err)
+			return nil, fmt.Errorf("invalid timestamp: %w", err)
 		}
 		ts.CounterSignature = cs
 	}

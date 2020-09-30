@@ -224,7 +224,7 @@ func New(config *config.Config) (*Server, error) {
 		tokens:   make(map[string]*worker.WorkerToken),
 	}
 	if err := s.ReopenLogger(); err != nil {
-		return nil, fmt.Errorf("failed to open logfile: %s", err)
+		return nil, fmt.Errorf("failed to open logfile: %w", err)
 	}
 	for _, name := range config.ListServedTokens() {
 		tok, err := worker.New(config, name)

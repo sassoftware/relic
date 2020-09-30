@@ -50,12 +50,12 @@ func DigestXapTar(r io.Reader, hash crypto.Hash, doPageHash bool) (*XapDigest, e
 		if err == io.EOF {
 			return nil, errors.New("invalid tarzip")
 		} else if err != nil {
-			return nil, fmt.Errorf("error reading tar: %s", err)
+			return nil, fmt.Errorf("reading tar: %w", err)
 		}
 		if hdr.Name == zipslicer.TarMemberCD {
 			cd, err = ioutil.ReadAll(tr)
 			if err != nil {
-				return nil, fmt.Errorf("error reading tar: %s", err)
+				return nil, fmt.Errorf("reading tar: %w", err)
 			}
 		} else if hdr.Name == zipslicer.TarMemberZip {
 			totalSize = hdr.Size

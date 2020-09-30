@@ -213,7 +213,7 @@ func verifyPgp(sig *pgptools.PgpSignature, name string, err error) ([]*signers.S
 			SignerPgp:    sig.Key.Entity,
 		}}, nil
 	} else if sig != nil {
-		return nil, fmt.Errorf("bad signature from %s(%x) [%s]: %s", pgptools.EntityName(sig.Key.Entity), sig.Key.PublicKey.KeyId, sig.CreationTime, err)
+		return nil, fmt.Errorf("bad signature from %s(%x) [%s]: %w", pgptools.EntityName(sig.Key.Entity), sig.Key.PublicKey.KeyId, sig.CreationTime, err)
 	}
 	return nil, err
 }

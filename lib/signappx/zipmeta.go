@@ -48,7 +48,7 @@ func verifyMeta(r io.ReaderAt, size int64, sig *AppxSignature, skipDigests bool)
 	// AXCD is a hash of the zip central directory with the signature file removed
 	axcd := sig.Hash.New()
 	if err := dir.Truncate(sigIdx, sink, axcd); err != nil {
-		return fmt.Errorf("verifying zip metadata: %s", err)
+		return fmt.Errorf("verifying zip metadata: %w", err)
 	}
 	if !skipDigests {
 		calc := axpc.Sum(nil)

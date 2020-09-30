@@ -20,8 +20,8 @@ import (
 	"bytes"
 	"crypto"
 	"encoding/binary"
+	"errors"
 
-	"github.com/pkg/errors"
 	"github.com/sassoftware/relic/lib/zipslicer"
 )
 

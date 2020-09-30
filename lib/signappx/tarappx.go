@@ -200,7 +200,7 @@ func setupPeDigest(name string, hash crypto.Hash, doPageHash bool) (io.WriteClos
 	go func() {
 		digest, err := authenticode.DigestPE(r, hash, doPageHash)
 		if err != nil {
-			err = fmt.Errorf("failed to update CodeIntegrity catalog for %s: %s", name, err)
+			err = fmt.Errorf("failed to update CodeIntegrity catalog for %s: %w", name, err)
 		}
 		ch <- peDigestResult{digest, err}
 		r.CloseWithError(err)

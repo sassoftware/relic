@@ -163,7 +163,7 @@ func finishSignature(signature, signedinfo *etree.Element, hash crypto.Hash, pri
 func hashCanon(root *etree.Element, hash crypto.Hash) ([]byte, error) {
 	canon, err := SerializeCanonical(root)
 	if err != nil {
-		return nil, fmt.Errorf("xmldsig: %s", err)
+		return nil, fmt.Errorf("xmldsig: %w", err)
 	}
 	d := hash.New()
 	d.Write(canon)

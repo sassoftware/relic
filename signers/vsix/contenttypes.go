@@ -33,7 +33,7 @@ func (m *mangler) parseTypes(f *zipslicer.MangleFile) error {
 		return err
 	}
 	if err := m.ctypes.Parse(blob); err != nil {
-		return fmt.Errorf("error parsing %s: %s", f.Name, err)
+		return fmt.Errorf("parsing %s: %w", f.Name, err)
 	}
 	return nil
 }

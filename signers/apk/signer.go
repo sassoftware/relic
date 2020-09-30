@@ -17,9 +17,9 @@
 package apk
 
 import (
+	"errors"
 	"io"
 
-	"github.com/pkg/errors"
 	"github.com/sassoftware/relic/lib/certloader"
 	"github.com/sassoftware/relic/lib/magic"
 	"github.com/sassoftware/relic/signers"

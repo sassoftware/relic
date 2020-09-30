@@ -78,7 +78,7 @@ func verifyBlockMap(inz *zip.Reader, files zipFiles, skipDigests bool) error {
 	}
 	var bm blockMap
 	if err := xml.Unmarshal(blob, &bm); err != nil {
-		return fmt.Errorf("error parsing block map: %s", err)
+		return fmt.Errorf("error parsing block map: %w", err)
 	}
 	var hash crypto.Hash
 	for hash2, alg := range hashAlgs {
@@ -131,7 +131,7 @@ func verifyBlockMap(inz *zip.Reader, files zipFiles, skipDigests bool) error {
 			calc := d.Sum(nil)
 			expected, err := base64.StdEncoding.DecodeString(block.Hash)
 			if err != nil {
-				return fmt.Errorf("blockmap: %s", err)
+				return fmt.Errorf("blockmap: %w", err)
 			}
 			if !hmac.Equal(calc, expected) {
 				return fmt.Errorf("blockmap: digest mismatch for %s block %d: calculated %x != found %x", name, i, calc, expected)
@@ -163,7 +163,7 @@ func (b *blockMap) SetHash(hash crypto.Hash) error {
 func (b *blockMap) CopySizes(blob []byte) error {
 	var orig blockMap
 	if err := xml.Unmarshal(blob, &orig); err != nil {
-		return fmt.Errorf("error parsing block map: %s", err)
+		return fmt.Errorf("error parsing block map: %w", err)
 	}
 	for i, oldf := range orig.File {
 		zipName := dosToZip(oldf.Name)
@@ -190,7 +190,7 @@ func (b *blockMap) AddFile(f *zipslicer.File, raw, cooked io.Writer) error {
 	bmf := blockFile{Name: zipToDos(f.Name)}
 	lfh, err := f.GetLocalHeader()
 	if err != nil {
-		return fmt.Errorf("hashing zip metadata: %s", err)
+		return fmt.Errorf("hashing zip metadata: %w", err)
 	}
 	bmf.LfhSize = len(lfh)
 	if raw != nil {
@@ -198,7 +198,7 @@ func (b *blockMap) AddFile(f *zipslicer.File, raw, cooked io.Writer) error {
 	}
 	rc, err := f.OpenAndTeeRaw(raw)
 	if err != nil {
-		return fmt.Errorf("hashing zip metadata: %s", err)
+		return fmt.Errorf("hashing zip metadata: %w", err)
 	}
 	// Copy 64K of uncompressed data at a time, adding block elements as we go
 	for {
@@ -224,7 +224,7 @@ func (b *blockMap) AddFile(f *zipslicer.File, raw, cooked io.Writer) error {
 	}
 	dd, err := f.GetDataDescriptor()
 	if err != nil {
-		return fmt.Errorf("hashing zip metadata: %s", err)
+		return fmt.Errorf("hashing zip metadata: %w", err)
 	}
 	if raw != nil {
 		raw.Write(dd)

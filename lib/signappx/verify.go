@@ -89,14 +89,14 @@ func readSignature(zf *zip.File) (*AppxSignature, error) {
 	}
 	psd, err := pkcs7.Unmarshal(blob[4:])
 	if err != nil {
-		return nil, fmt.Errorf("invalid appx signature: %s", err)
+		return nil, fmt.Errorf("invalid appx signature: %w", err)
 	}
 	if !psd.Content.ContentInfo.ContentType.Equal(authenticode.OidSpcIndirectDataContent) {
 		return nil, fmt.Errorf("invalid appx signature: %s", "not an authenticode signature")
 	}
 	pksig, err := psd.Content.Verify(nil, false)
 	if err != nil {
-		return nil, fmt.Errorf("invalid appx signature: %s", err)
+		return nil, fmt.Errorf("invalid appx signature: %w", err)
 	}
 	ts, err := pkcs9.VerifyOptionalTimestamp(pksig)
 	if err != nil {
@@ -104,7 +104,7 @@ func readSignature(zf *zip.File) (*AppxSignature, error) {
 	}
 	indirect := new(authenticode.SpcIndirectDataContentMsi)
 	if err := psd.Content.ContentInfo.Unmarshal(indirect); err != nil {
-		return nil, fmt.Errorf("invalid appx signature: %s", err)
+		return nil, fmt.Errorf("invalid appx signature: %w", err)
 	}
 	hash, err := x509tools.PkixDigestToHashE(indirect.MessageDigest.DigestAlgorithm)
 	if err != nil {
@@ -191,18 +191,18 @@ func verifyCatalog(zf *zip.File, sig *AppxSignature) error {
 	}
 	psd, err := pkcs7.Unmarshal(blob)
 	if err != nil {
-		return fmt.Errorf("security catalog: %s", err)
+		return fmt.Errorf("security catalog: %w", err)
 	}
 	if !psd.Content.ContentInfo.ContentType.Equal(authenticode.OidCertTrustList) {
 		return fmt.Errorf("security catalog: %s", "not a security catalog")
 	}
 	pksig, err := psd.Content.Verify(nil, false)
 	if err != nil {
-		return fmt.Errorf("security catalog: %s", err)
+		return fmt.Errorf("security catalog: %w", err)
 	}
 	ts, err := pkcs9.VerifyOptionalTimestamp(pksig)
 	if err != nil {
-		return fmt.Errorf("security catalog: %s", err)
+		return fmt.Errorf("security catalog: %w", err)
 	}
 	if !bytes.Equal(ts.Certificate.Raw, sig.Signature.Certificate.Raw) {
 		return fmt.Errorf("security catalog: %s", "catalog signed by different certificate than appx")

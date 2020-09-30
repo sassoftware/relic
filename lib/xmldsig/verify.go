@@ -65,11 +65,11 @@ func Verify(root *etree.Element, sigpath string, extraCerts []*x509.Certificate)
 	// parse signature tree
 	sigbytes, err := SerializeCanonical(sigEl)
 	if err != nil {
-		return nil, fmt.Errorf("xmldsig: %s", err)
+		return nil, fmt.Errorf("xmldsig: %w", err)
 	}
 	var sig signature
 	if err := xml.Unmarshal(sigbytes, &sig); err != nil {
-		return nil, fmt.Errorf("xmldsig: %s", err)
+		return nil, fmt.Errorf("xmldsig: %w", err)
 	}
 	// parse algorithms
 	if sig.CanonicalizationMethod.Algorithm != AlgXMLExcC14n && sig.CanonicalizationMethod.Algorithm != AlgXMLExcC14nRec {
@@ -97,7 +97,7 @@ func Verify(root *etree.Element, sigpath string, extraCerts []*x509.Certificate)
 		}
 		cert, err := x509.ParseCertificate(der)
 		if err != nil {
-			return nil, fmt.Errorf("xmldsig: invalid X509 certificate: %s", err)
+			return nil, fmt.Errorf("xmldsig: invalid X509 certificate: %w", err)
 		}
 		certs = append(certs, cert)
 	}
@@ -139,7 +139,7 @@ func Verify(root *etree.Element, sigpath string, extraCerts []*x509.Certificate)
 		err = x509tools.Verify(pubkey, hash, siCalc, sigv)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("xmldsig: %s", err)
+		return nil, fmt.Errorf("xmldsig: %w", err)
 	}
 	// check reference digest
 	var reference *etree.Element
@@ -247,7 +247,7 @@ func parseKey(kv *keyValue, pubtype string) (crypto.PublicKey, error) {
 		}
 		curve, err := x509tools.CurveByOidString(kv.NamedCurve.URN[8:])
 		if err != nil {
-			return nil, fmt.Errorf("xmldsig: %s", err)
+			return nil, fmt.Errorf("xmldsig: %w", err)
 		}
 		x, ok := new(big.Int).SetString(kv.X.Value, 10)
 		if !ok {

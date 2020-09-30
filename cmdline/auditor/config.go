@@ -72,7 +72,7 @@ func getServerConfs() ([]*config.Config, error) {
 			cpath := filepath.Join(auditConfig.ConfigDir, name)
 			cfg, err := config.ReadFile(cpath)
 			if err != nil {
-				return nil, fmt.Errorf("%s: %s", cpath, err)
+				return nil, fmt.Errorf("%s: %w", cpath, err)
 			}
 			if cfg.Amqp == nil || cfg.Amqp.URL == "" {
 				return nil, fmt.Errorf("%s has no amqp server", cpath)

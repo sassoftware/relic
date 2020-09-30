@@ -61,11 +61,11 @@ func parseManifest(blob []byte) (*appxPackage, error) {
 func checkManifest(files zipFiles, sig *AppxSignature) error {
 	blob, err := readZipFile(files[appxManifest])
 	if err != nil {
-		return fmt.Errorf("appx manifest: %s", err)
+		return fmt.Errorf("appx manifest: %w", err)
 	}
 	var manifest appxPackage
 	if err := xml.Unmarshal(blob, &manifest); err != nil {
-		return fmt.Errorf("appx manifest: %s", err)
+		return fmt.Errorf("appx manifest: %w", err)
 	}
 	sig.Name = manifest.Identity.Name
 	sig.DisplayName = manifest.DisplayName

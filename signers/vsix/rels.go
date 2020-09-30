@@ -44,7 +44,7 @@ func readZip(files zipFiles, path string) ([]byte, error) {
 	}
 	f, err := zf.Open()
 	if err != nil {
-		return nil, fmt.Errorf("failed to read zip file %s: %s", path, err)
+		return nil, fmt.Errorf("failed to read zip file %s: %w", path, err)
 	}
 	return ioutil.ReadAll(f)
 }
@@ -56,7 +56,7 @@ func parseRels(files zipFiles, path string) (*oxfRelationships, error) {
 	}
 	rels := new(oxfRelationships)
 	if err := xml.Unmarshal(blob, rels); err != nil {
-		return nil, fmt.Errorf("error parsing rels: %s", err)
+		return nil, fmt.Errorf("error parsing rels: %w", err)
 	}
 	return rels, nil
 }

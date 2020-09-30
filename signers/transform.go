@@ -65,7 +65,7 @@ type fileProducer struct {
 
 func (p fileProducer) GetReader() (io.Reader, error) {
 	if _, err := p.f.Seek(0, io.SeekStart); err != nil {
-		return nil, fmt.Errorf("failed to seek input file: %s", err)
+		return nil, fmt.Errorf("seeking input file: %w", err)
 	}
 	return p.f, nil
 }

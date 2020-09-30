@@ -68,7 +68,7 @@ func selectOrGenerate(path string) (crypto.PrivateKey, error) {
 		fmt.Fprintf(os.Stderr, "Using existing private key at %s\n", path)
 		return key, nil
 	} else if !os.IsNotExist(err) {
-		return nil, fmt.Errorf("failed to read private key: %s", err)
+		return nil, fmt.Errorf("reading private key: %w", err)
 	}
 	var block *pem.Block
 	if argRsaBits != 0 {
@@ -96,7 +96,7 @@ func selectOrGenerate(path string) (crypto.PrivateKey, error) {
 	}
 	pemData := pem.EncodeToMemory(block)
 	if err := ioutil.WriteFile(path, pemData, 0600); err != nil {
-		return nil, fmt.Errorf("failed to write new private key: %s", err)
+		return nil, fmt.Errorf("writing new private key: %w", err)
 	}
 	fmt.Fprintf(os.Stderr, "Wrote new private key to %s\n", path)
 	return key, nil

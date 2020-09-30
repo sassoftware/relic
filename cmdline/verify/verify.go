@@ -110,7 +110,7 @@ func verifyOne(path string, opts signers.VerifyOpts) error {
 	}
 	if err != nil {
 		if _, ok := err.(pgptools.ErrNoKey); ok {
-			return fmt.Errorf("%s; use --cert to specify known keys", err)
+			return fmt.Errorf("%w; use --cert to specify known keys", err)
 		}
 		return err
 	}

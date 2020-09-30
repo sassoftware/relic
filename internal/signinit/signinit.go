@@ -91,7 +91,7 @@ func PublishAudit(info *audit.Info) error {
 	aconf := shared.CurrentConfig.Amqp
 	if aconf != nil && aconf.URL != "" {
 		if err := info.Publish(aconf); err != nil {
-			return fmt.Errorf("failed to publish audit log: %s", err)
+			return fmt.Errorf("failed to publish audit log: %w", err)
 		}
 	}
 	return nil

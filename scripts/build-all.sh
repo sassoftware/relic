@@ -18,7 +18,7 @@ set -ex -o pipefail
 version=$(./scripts/version.sh)
 commit=$(git rev-parse HEAD)
 ldflags="-s -w -X github.com/sassoftware/relic/config.Version=$version -X github.com/sassoftware/relic/config.Commit=$commit"
-goversion=1.12.7
+goversion=1.14.9
 
 rm -rf build
 mkdir build
@@ -27,6 +27,7 @@ mkdir build
 docker rmi relic-build 2>/dev/null ||:
 docker build \
     -f scripts/Dockerfile.clientbuild \
+    --pull \
     --build-arg ldflags="$ldflags" \
     --build-arg GOPROXY=$GOPROXY \
     --build-arg goversion=$goversion \
@@ -39,6 +40,7 @@ docker rmi relic-build
 ## cgo build of full program
 docker build \
     -f scripts/Dockerfile.fullbuild \
+    --pull \
     --build-arg ldflags="$ldflags" \
     --build-arg GOPROXY=$GOPROXY \
     --build-arg goversion=$goversion \

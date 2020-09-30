@@ -20,10 +20,10 @@ import (
 	"crypto"
 	"crypto/hmac"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/sassoftware/relic/lib/pkcs7"
 	"github.com/sassoftware/relic/lib/x509tools"
 )
@@ -32,7 +32,7 @@ import (
 func (i MessageImprint) Verify(data []byte) error {
 	hash, err := x509tools.PkixDigestToHashE(i.HashAlgorithm)
 	if err != nil {
-		return errors.Wrap(err, "pkcs9")
+		return fmt.Errorf("pkcs9: %w", err)
 	}
 	w := hash.New()
 	w.Write(data)
@@ -62,7 +62,7 @@ func Verify(tst *pkcs7.ContentInfoSignedData, data []byte, certs []*x509.Certifi
 		return nil, err
 	}
 	if err := tstinfo.MessageImprint.Verify(data); err != nil {
-		return nil, fmt.Errorf("failed to verify timestamp imprint: %s", err)
+		return nil, fmt.Errorf("verifying timestamp imprint: %w", err)
 	}
 	imprintHash, _ := x509tools.PkixDigestToHash(tstinfo.MessageImprint.HashAlgorithm)
 	// now the signature is over the TSTInfo blob
@@ -85,7 +85,7 @@ func finishVerify(tsi *pkcs7.SignerInfo, blob []byte, certs []*x509.Certificate,
 	}
 	signingTime, err := timeSource.SigningTime()
 	if err != nil {
-		return nil, errors.Wrap(err, "parsing timestamp")
+		return nil, fmt.Errorf("parsing timestamp: %w", err)
 	}
 	return &CounterSignature{
 		Signature: pkcs7.Signature{

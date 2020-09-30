@@ -90,7 +90,7 @@ func buildRequest(base, endpoint, method, encoding string, query *url.Values, bo
 	}
 	url, err := url.Parse(base)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to parse remote URL: %s", err)
+		return nil, fmt.Errorf("parsing remote URL: %w", err)
 	}
 	url = url.ResolveReference(eurl)
 	if query != nil {

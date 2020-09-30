@@ -60,7 +60,7 @@ func (s *ScdConn) Learn() ([]*ScdKey, error) {
 		return "", nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to enumerate token: %s", err)
+		return nil, fmt.Errorf("failed to enumerate token: %w", err)
 	}
 	var keyids, keygrips []string
 	fingerprints := make(map[string]string)
@@ -124,7 +124,7 @@ func (s *ScdConn) CheckPin(pin string) error {
 	if eres, ok := err.(Response); ok && strings.Contains(eres.StatusMessage, "Bad PIN") {
 		return sigerrors.PinIncorrectError{}
 	} else if err != nil {
-		return fmt.Errorf("failed to validate PIN: %s", err)
+		return fmt.Errorf("failed to validate PIN: %w", err)
 	}
 	return nil
 }
@@ -203,7 +203,7 @@ func (k *ScdKey) Sign(hashValue []byte, opts crypto.SignerOpts, pin string) ([]b
 	if eres, ok := err.(Response); ok && strings.Contains(eres.StatusMessage, "Bad PIN") {
 		return nil, sigerrors.PinIncorrectError{}
 	} else if err != nil {
-		return nil, fmt.Errorf("failed to sign: %s", err)
+		return nil, fmt.Errorf("failed to sign: %w", err)
 	}
 	return res.Blob, nil
 }

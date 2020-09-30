@@ -58,7 +58,7 @@ func logGraylog(info *audit.Info, rowid int64) error {
 	if err != nil {
 		return err
 	} else if resp.StatusCode >= 300 {
-		return fmt.Errorf("error posting to graylog: %s", resp.Status)
+		return fmt.Errorf("posting to graylog: %s", resp.Status)
 	}
 	resp.Body.Close()
 	return nil

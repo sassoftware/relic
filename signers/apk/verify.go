@@ -25,12 +25,12 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/sassoftware/relic/lib/pkcs7"
 	"github.com/sassoftware/relic/lib/pkcs9"
 	"github.com/sassoftware/relic/lib/signjar"
@@ -64,14 +64,14 @@ func verify(f *os.File, opts signers.VerifyOpts) ([]*signers.Signature, error) {
 		}
 		var signerList []apkSigner
 		if err := unmarshal(partBlob, &signerList); err != nil {
-			return nil, errors.Wrap(err, "parsing signature block")
+			return nil, fmt.Errorf("parsing signature block: %w", err)
 		} else if len(signerList) == 0 {
 			return nil, errors.New("empty APK signing block")
 		}
 		for i, signer := range signerList {
 			sig, err := signer.Verify(nil)
 			if err != nil {
-				return nil, errors.Wrapf(err, "APK signature #%d", i+1)
+				return nil, fmt.Errorf("APK signature #%d: %w", i+1, err)
 			}
 			allSigs = append(allSigs, sig)
 		}

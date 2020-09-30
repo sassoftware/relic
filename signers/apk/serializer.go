@@ -18,11 +18,10 @@ package apk
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"reflect"
-
-	"github.com/pkg/errors"
 )
 
 // implement the uint32-prefixed structure of a APK Signature Scheme v2 Block
