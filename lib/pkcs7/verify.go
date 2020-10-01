@@ -111,9 +111,9 @@ func (si *SignerInfo) Verify(content []byte, skipDigests bool, certs []*x509.Cer
 		}
 		// now pivot to verifying the hash over the authenticated attributes
 		w := hash.New()
-		attrbytes, err := si.AuthenticatedAttributes.Bytes()
+		attrbytes, err := si.AuthenticatedAttributesBytes()
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("verifying authenticated attributes: %w", err)
 		}
 		w.Write(attrbytes)
 		digest = w.Sum(nil)

@@ -18,7 +18,7 @@ set -ex -o pipefail
 version=$(./scripts/version.sh)
 commit=$(git rev-parse HEAD)
 ldflags="-s -w -X github.com/sassoftware/relic/config.Version=$version -X github.com/sassoftware/relic/config.Commit=$commit"
-goversion=1.14.9
+goversion=1.15.2
 
 rm -rf build
 mkdir build

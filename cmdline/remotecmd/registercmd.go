@@ -93,7 +93,7 @@ func registerCmd(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return shared.Fail(err)
 		}
-		fmt.Println("New key fingerprint:", fingerprint)
+		fmt.Fprintln(os.Stderr, "New key fingerprint:", fingerprint)
 		certPath = string(certPEM)
 		keyPath = string(keyPEM)
 		capath = string(cacert)
@@ -178,7 +178,7 @@ func writeKeyPair(keyPath string) error {
 	if err = ioutil.WriteFile(keyPath, pemdata, 0600); err != nil {
 		return err
 	}
-	fmt.Println("New key fingerprint:", fingerprint)
+	fmt.Fprintln(os.Stderr, "New key fingerprint:", fingerprint)
 	return nil
 }
 

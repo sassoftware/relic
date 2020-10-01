@@ -70,6 +70,8 @@ type Attribute struct {
 type AttributeList []Attribute
 
 type SignerInfo struct {
+	RawContent asn1.RawContent
+
 	Version                   int                      `asn1:"default:1"`
 	IssuerAndSerialNumber     IssuerAndSerial          ``
 	DigestAlgorithm           pkix.AlgorithmIdentifier ``
