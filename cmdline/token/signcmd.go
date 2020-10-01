@@ -85,12 +85,20 @@ func signCmd(cmd *cobra.Command, args []string) error {
 		return shared.Fail(err)
 	}
 	opts.Path = argFile
-	infile, err := os.OpenFile(argFile, os.O_RDWR, 0)
+	infile, err := shared.OpenForPatching(argFile, argOutput)
 	if err != nil {
 		return shared.Fail(err)
+	} else if infile == os.Stdin {
+		if !mod.AllowStdin {
+			return shared.Fail(errors.New("this signature type does not support reading from stdin"))
+		}
+	} else {
+		defer infile.Close()
 	}
-	defer infile.Close()
 	if argIfUnsigned {
+		if infile == os.Stdin {
+			return shared.Fail(errors.New("cannot use --if-unsigned with standard input"))
+		}
 		if signed, err := mod.IsSigned(infile); err != nil {
 			return shared.Fail(err)
 		} else if signed {

@@ -83,6 +83,18 @@ func OpenFile(path string) (*os.File, error) {
 	return os.Open(path)
 }
 
+func OpenForPatching(inpath, outpath string) (*os.File, error) {
+	switch {
+	case inpath == "-":
+		return os.Stdin, nil
+	case inpath == outpath:
+		// open for writing so in-place patch works
+		return os.OpenFile(inpath, os.O_RDWR, 0)
+	default:
+		return os.Open(inpath)
+	}
+}
+
 func Fail(err error) error {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "ERROR:", err)
