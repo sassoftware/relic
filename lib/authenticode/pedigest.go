@@ -32,6 +32,7 @@ import (
 
 type PEDigest struct {
 	OrigSize   int64
+	CertStart  int64
 	Imprint    []byte
 	PageHashes []byte
 	Hash       crypto.Hash
@@ -85,11 +86,18 @@ func DigestPE(r io.Reader, hash crypto.Hash, doPageHash bool) (*PEDigest, error)
 	if err != nil {
 		return nil, err
 	}
+	certStart := origSize
+	if n := origSize % 8; n != 0 {
+		// pad to 8 bytes
+		padding := 8 - n
+		digester.imageDigest.Write(make([]byte, padding))
+		certStart += padding
+	}
 	imprint, pagehashes, err := digester.finish()
 	if err != nil {
 		return nil, err
 	}
-	return &PEDigest{origSize, imprint, pagehashes, hash, hvals}, nil
+	return &PEDigest{origSize, certStart, imprint, pagehashes, hash, hvals}, nil
 }
 
 type imageHasher struct {

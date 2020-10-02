@@ -98,17 +98,21 @@ func (pd *PEDigest) MakePatch(sig []byte) (*binpatch.PatchSet, error) {
 		CertificateType: 0x0002,
 	}
 	var buf bytes.Buffer
+	padding := pd.CertStart - pd.OrigSize
+	if padding != 0 {
+		buf.Write(make([]byte, padding))
+	}
 	binary.Write(&buf, binary.LittleEndian, info)
 	buf.Write(sig)
 	buf.Write(make([]byte, padded-len(sig)))
 	// pack data directory
 	certTbl := buf.Bytes()
 	var dd pe.DataDirectory
-	if pd.OrigSize >= (1 << 32) {
+	if pd.CertStart >= (1 << 32) {
 		return nil, errors.New("PE file is too big")
 	}
-	dd.VirtualAddress = uint32(pd.OrigSize)
-	dd.Size = uint32(len(certTbl))
+	dd.VirtualAddress = uint32(pd.CertStart)
+	dd.Size = uint32(len(certTbl)) - uint32(padding)
 	var buf2 bytes.Buffer
 	binary.Write(&buf2, binary.LittleEndian, dd)
 	// make patch
