@@ -100,6 +100,7 @@ func Verify(inz *zip.Reader, skipDigests bool) ([]*JarSignature, error) {
 		if err != nil {
 			return nil, err
 		}
+		ts.Raw = pkcs
 		hdr, err := verifySigFile(sigfile, manifest)
 		if err != nil {
 			return nil, err
