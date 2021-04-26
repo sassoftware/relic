@@ -124,6 +124,9 @@ func verifyOne(path string, opts signers.VerifyOpts) error {
 		}
 		if sig.X509Signature != nil && !opts.NoChain {
 			if err := sig.X509Signature.VerifyChain(opts.TrustedPool, nil, x509.ExtKeyUsageAny); err != nil {
+				if e := new(x509.UnknownAuthorityError); errors.As(err, e) {
+					fmt.Printf("While validating certificate:\n Subject: %s\n Issuer:  %s\n Serial:  %X\n", x509tools.FormatSubject(e.Cert), x509tools.FormatIssuer(e.Cert), e.Cert.SerialNumber)
+				}
 				return err
 			}
 		}

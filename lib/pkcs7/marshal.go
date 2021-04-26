@@ -53,25 +53,43 @@ func (psd *ContentInfoSignedData) Detach() ([]byte, error) {
 
 // dump raw certificates to structure
 func marshalCertificates(certs []*x509.Certificate) RawCertificates {
-	var buf bytes.Buffer
-	for _, cert := range certs {
-		buf.Write(cert.Raw)
+	c := make(RawCertificates, len(certs))
+	for i, cert := range certs {
+		c[i] = asn1.RawValue{FullBytes: cert.Raw}
 	}
-	val := asn1.RawValue{Bytes: buf.Bytes(), Class: 2, Tag: 0, IsCompound: true}
-	b, _ := asn1.Marshal(val)
-	return RawCertificates{Raw: b}
+	return c
 }
 
-// parse raw certificates from structure
+// Parse raw certificates from structure. If any cert is invalid, the remaining valid certs are returned along with a CertificateError.
 func (raw RawCertificates) Parse() ([]*x509.Certificate, error) {
-	var val asn1.RawValue
-	if len(raw.Raw) == 0 {
-		return nil, nil
+	var invalid CertificateError
+	var certs []*x509.Certificate
+	for _, rawCert := range raw {
+		cert, err := x509.ParseCertificate(rawCert.FullBytes)
+		if err != nil {
+			invalid.Invalid = append(invalid.Invalid, rawCert.FullBytes)
+			invalid.Err = err
+		} else {
+			certs = append(certs, cert)
+		}
 	}
-	if _, err := asn1.Unmarshal(raw.Raw, &val); err != nil {
-		return nil, err
+	if invalid.Err != nil {
+		return certs, invalid
 	}
-	return x509.ParseCertificates(val.Bytes)
+	return certs, nil
+}
+
+type CertificateError struct {
+	Invalid [][]byte
+	Err     error
+}
+
+func (c CertificateError) Error() string {
+	return c.Err.Error()
+}
+
+func (c CertificateError) Unwrap() error {
+	return c.Err
 }
 
 // ParseTime parses a GeneralizedTime or UTCTime value that potentially has a fractional seconds part

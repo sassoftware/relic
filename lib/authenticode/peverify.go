@@ -139,22 +139,22 @@ func checkSignatures(blob []byte, image io.ReadSeeker) ([]PESignature, error) {
 func checkSignature(der []byte) (*PESignature, error) {
 	psd, err := pkcs7.Unmarshal(der)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unmarshaling authenticode signature: %w", err)
 	}
 	if !psd.Content.ContentInfo.ContentType.Equal(OidSpcIndirectDataContent) {
 		return nil, errors.New("not an authenticode signature")
 	}
 	sig, err := psd.Content.Verify(nil, false)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("verifying indirect signature: %w", err)
 	}
 	ts, err := pkcs9.VerifyOptionalTimestamp(sig)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("verifying timestamp: %w", err)
 	}
 	indirect := new(SpcIndirectDataContentPe)
 	if err := psd.Content.ContentInfo.Unmarshal(indirect); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unmarshaling SpcIndirectDataContentPe: %w", err)
 	}
 	hash, err := x509tools.PkixDigestToHashE(indirect.MessageDigest.DigestAlgorithm)
 	if err != nil {
@@ -180,11 +180,11 @@ func readPageHashes(sig *PESignature) error {
 	// unnecessary SET wrapped around the solitary attribute SEQ
 	var attrRaw asn1.RawValue
 	if _, err := asn1.Unmarshal(serObj.SerializedData, &attrRaw); err != nil {
-		return err
+		return fmt.Errorf("unmarshaling page hashes: %w", err)
 	}
 	var attr SpcAttributePageHashes
 	if _, err := asn1.Unmarshal(attrRaw.Bytes, &attr); err != nil {
-		return err
+		return fmt.Errorf("unmarshaling SpcAttributePageHashes: %w", err)
 	}
 	switch {
 	case attr.Type.Equal(OidSpcPageHashV1):

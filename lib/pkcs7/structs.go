@@ -58,9 +58,7 @@ type SignedData struct {
 	SignerInfos                []SignerInfo               `asn1:"set"`
 }
 
-type RawCertificates struct {
-	Raw asn1.RawContent
-}
+type RawCertificates []asn1.RawValue
 
 type Attribute struct {
 	Type   asn1.ObjectIdentifier

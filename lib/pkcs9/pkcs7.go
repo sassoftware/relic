@@ -117,7 +117,7 @@ func VerifyPkcs7(sig pkcs7.Signature) (*CounterSignature, error) {
 		// included in the parent structure, and the timestamp signs the
 		// signature blob from the parent signerinfo
 		imprintHash, _ = x509tools.PkixDigestToHash(sig.SignerInfo.DigestAlgorithm)
-		return finishVerify(tsi, sig.SignerInfo.EncryptedDigest, sig.Intermediates, imprintHash, tsi)
+		return finishVerify(tsi, sig.SignerInfo.EncryptedDigest, sig.Intermediates, imprintHash, tsi, nil)
 	}
 	return nil, err
 }
@@ -138,21 +138,7 @@ func VerifyOptionalTimestamp(sig pkcs7.Signature) (TimestampedSignature, error) 
 
 // Verify that the timestamp token has a valid certificate chain
 func (cs CounterSignature) VerifyChain(roots *x509.CertPool, extraCerts []*x509.Certificate) error {
-	pool := x509.NewCertPool()
-	for _, cert := range extraCerts {
-		pool.AddCert(cert)
-	}
-	for _, cert := range cs.Intermediates {
-		pool.AddCert(cert)
-	}
-	opts := x509.VerifyOptions{
-		Intermediates: pool,
-		Roots:         roots,
-		CurrentTime:   cs.SigningTime,
-		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageTimeStamping},
-	}
-	_, err := cs.Certificate.Verify(opts)
-	return err
+	return cs.Signature.VerifyChain(roots, extraCerts, x509.ExtKeyUsageTimeStamping, cs.SigningTime)
 }
 
 // Verify the certificate chain of a PKCS#7 signature. If the signature has a

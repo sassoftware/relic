@@ -49,10 +49,8 @@ func Verify(tst *pkcs7.ContentInfoSignedData, data []byte, certs []*x509.Certifi
 		return nil, errors.New("timestamp should have exactly one SignerInfo")
 	}
 	tsi := tst.Content.SignerInfos[0]
-	tsicerts, err := tst.Content.Certificates.Parse()
-	if err != nil {
-		return nil, err
-	} else if len(tsicerts) != 0 {
+	tsicerts, certErr := tst.Content.Certificates.Parse()
+	if len(tsicerts) != 0 {
 		// keep both sets of certs just in case
 		certs = append(certs, tsicerts...)
 	}
@@ -71,16 +69,20 @@ func Verify(tst *pkcs7.ContentInfoSignedData, data []byte, certs []*x509.Certifi
 		return nil, err
 	}
 
-	return finishVerify(&tsi, verifyBlob, certs, imprintHash, tstinfo)
+	return finishVerify(&tsi, verifyBlob, certs, imprintHash, tstinfo, certErr)
 }
 
 type timeSource interface {
 	SigningTime() (time.Time, error)
 }
 
-func finishVerify(tsi *pkcs7.SignerInfo, blob []byte, certs []*x509.Certificate, hash crypto.Hash, timeSource timeSource) (*CounterSignature, error) {
+func finishVerify(tsi *pkcs7.SignerInfo, blob []byte, certs []*x509.Certificate, hash crypto.Hash, timeSource timeSource, certErr error) (*CounterSignature, error) {
 	cert, err := tsi.Verify(blob, false, certs)
 	if err != nil {
+		if errors.As(err, &pkcs7.MissingCertificateError{}) && certErr != nil {
+			// surface saved parse error
+			return nil, certErr
+		}
 		return nil, err
 	}
 	signingTime, err := timeSource.SigningTime()
@@ -92,6 +94,7 @@ func finishVerify(tsi *pkcs7.SignerInfo, blob []byte, certs []*x509.Certificate,
 			SignerInfo:    tsi,
 			Certificate:   cert,
 			Intermediates: certs,
+			CertError:     certErr,
 		},
 		Hash:        hash,
 		SigningTime: signingTime,
