@@ -16,6 +16,7 @@ require (
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/pflag v1.0.5
 	github.com/streadway/amqp v1.0.0
+	github.com/stretchr/testify v1.4.0
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8
 	github.com/zalando/go-keyring v0.1.0
 	golang.org/x/crypto v0.0.0-20200930160638-afb6bcd081ae
