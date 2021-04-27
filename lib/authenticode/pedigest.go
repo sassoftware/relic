@@ -22,6 +22,7 @@ import (
 	"debug/pe"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"hash"
 	"io"
 	"io/ioutil"
@@ -152,9 +153,7 @@ func (h *imageHasher) section(r io.Reader, sh pe.SectionHeader32) error {
 			return err
 		}
 		h.imageDigest.Write(buf)
-		if h.doPageHash {
-			h.addPageHash(position, buf, 0)
-		}
+		h.addPageHash(position, buf, 0)
 		position += uint32(n)
 		remaining -= n
 		h.lastPage = position
@@ -280,6 +279,19 @@ func readSections(r io.Reader, d io.Writer, fh *pe.FileHeader, hvals *peHeaderVa
 		return nil, err
 	} else if err := binaryReadBytes(buf, sections); err != nil {
 		return nil, err
+	}
+	// look for start of first section and check for overlap
+	for i, section := range sections {
+		if section.SizeOfRawData == 0 {
+			continue
+		}
+		if p := int64(section.PointerToRawData); p < secTblEnd {
+			return nil, fmt.Errorf("PE section %d at 0x%x overlaps section table at 0x%x", i, p, secTblEnd)
+		} else if p < hvals.sizeOfHdr {
+			// some samples have a SizeOfHeaders that goes past the start of the first section
+			hvals.sizeOfHdr = p
+		}
+		break
 	}
 	// hash the padding after the section table
 	if _, err := io.CopyN(d, r, hvals.sizeOfHdr-secTblEnd); err != nil {
