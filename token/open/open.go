@@ -27,6 +27,7 @@ import (
 	// Token types that don't require cgo
 	_ "github.com/sassoftware/relic/token/filetoken"
 	_ "github.com/sassoftware/relic/token/gcloudtoken"
+	_ "github.com/sassoftware/relic/token/azuretoken"
 	_ "github.com/sassoftware/relic/token/scdtoken"
 )
 

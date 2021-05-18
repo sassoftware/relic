@@ -55,6 +55,15 @@ tokens:
     # environment is used.
     #pin: service-account.json
 
+  # Use keys stored in Azure Key Vault
+  azurekv:
+    type: azure
+    # Optionally configure a service principal file
+    #pin: service-principal.auth
+    # Or use CLI authentication
+    #pin: ""
+    # Otherwise the environment will be used
+
 # Keys that can be used for signing
 keys:
 
@@ -97,6 +106,12 @@ keys:
     token: gcloud
     # Fully-qualified name of a key version resource. Must point to a key version, not a key.
     label: projects/root-opus-123456/locations/us-east1/keyRings/my-keyring/cryptoKeys/my-gloud-key/cryptoKeyVersions/1
+    # Same options as above: pgpcertificate, x509certificate, timestamp, roles
+
+  my_azure_key:
+    token: azurekv
+    # URL of key version resource. Must point to a key version, not a key.
+    label: https://example.vault.azure.net/keys/my-azure-key/00112233445566778899aabbccddeeff
     # Same options as above: pgpcertificate, x509certificate, timestamp, roles
 
   aliased_key:
