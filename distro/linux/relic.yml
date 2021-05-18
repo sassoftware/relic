@@ -48,6 +48,13 @@ tokens:
     # If the private key is protected with a password, specify it here
     pin: password
 
+  # Use keys stored in Google Cloud Key Management Service
+  gcloud:
+    type: gcloud
+    # Optionally configure a credential file. If not specified then the default
+    # environment is used.
+    #pin: service-account.json
+
 # Keys that can be used for signing
 keys:
 
@@ -78,23 +85,19 @@ keys:
     token: myscd
     # Specify which key to use. For OpenPGP cards this will be either OPENPGP.1 or OPENPGP.3.
     id: OPENPGP.1
-
-    # The remaining options are the same as above
-    pgpcertificate: ./keys/rsa1.pub
-    x509certificate: ./keys/rsa1.cer
-    timestamp: false
-    roles: ['somegroup']
+    # Same options as above: pgpcertificate, x509certificate, timestamp, roles
 
   my_file_key:
     token: file
     # Path to the private key file. The password is specified in the token configuration above.
     keyfile: ./keys/rsa1.key
+    # Same options as above: pgpcertificate, x509certificate, timestamp, roles
 
-    # The remaining options are the same as above
-    pgpcertificate: ./keys/rsa1.pub
-    x509certificate: ./keys/rsa1.cer
-    timestamp: false
-    roles: ['somegroup']
+  my_gcloud_key:
+    token: gcloud
+    # Fully-qualified name of a key version resource. Must point to a key version, not a key.
+    label: projects/root-opus-123456/locations/us-east1/keyRings/my-keyring/cryptoKeys/my-gloud-key/cryptoKeyVersions/1
+    # Same options as above: pgpcertificate, x509certificate, timestamp, roles
 
   aliased_key:
     # When alias is set, this key name becomes an alias for the other key.

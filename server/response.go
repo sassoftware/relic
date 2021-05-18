@@ -18,8 +18,12 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+
+	"github.com/sassoftware/relic/internal/httperror"
+	"github.com/sassoftware/relic/token"
 )
 
 type Response interface {
@@ -97,4 +101,16 @@ func writeResponse(writer http.ResponseWriter, response Response) {
 	}
 	writer.WriteHeader(response.Status())
 	writer.Write(response.Bytes())
+}
+
+func errToProblem(err error) http.Handler {
+	if e := new(token.KeyUsageError); errors.As(err, e) {
+		return httperror.Problem{
+			Status: http.StatusBadRequest,
+			Type:   httperror.ProblemKeyUsage,
+			Title:  "Incorrect Key Usage",
+			Detail: e.Error(),
+		}
+	}
+	return nil
 }

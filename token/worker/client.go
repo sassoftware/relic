@@ -23,7 +23,6 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/json"
-	"errors"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -38,6 +37,8 @@ import (
 const (
 	defaultRetries = 5
 	defaultTimeout = 60 * time.Second
+
+	tokenType = "worker"
 )
 
 func (t *WorkerToken) request(ctx context.Context, path string, rr workerrpc.Request) (*workerrpc.Response, error) {
@@ -95,19 +96,19 @@ func (t *WorkerToken) GetKeyContext(ctx context.Context, keyName string) (token.
 }
 
 func (t *WorkerToken) Import(keyName string, privKey crypto.PrivateKey) (token.Key, error) {
-	return nil, errors.New("function not implemented for worker token")
+	return nil, token.NotImplementedError{Op: "import-key", Type: tokenType}
 }
 
 func (t *WorkerToken) ImportCertificate(cert *x509.Certificate, labelBase string) error {
-	return errors.New("function not implemented for worker token")
+	return token.NotImplementedError{Op: "import-certificate", Type: tokenType}
 }
 
 func (t *WorkerToken) Generate(keyName string, keyType token.KeyType, bits uint) (token.Key, error) {
-	return nil, errors.New("function not implemented for worker token")
+	return nil, token.NotImplementedError{Op: "generate-key", Type: tokenType}
 }
 
 func (t *WorkerToken) ListKeys(opts token.ListOptions) error {
-	return errors.New("function not implemented for worker token")
+	return token.NotImplementedError{Op: "list-keys", Type: tokenType}
 }
 
 type workerKey struct {
@@ -152,5 +153,5 @@ func (k *workerKey) SignContext(ctx context.Context, digest []byte, opts crypto.
 }
 
 func (k *workerKey) ImportCertificate(cert *x509.Certificate) error {
-	return errors.New("function not implemented for worker token")
+	return token.NotImplementedError{Op: "import-certificate", Type: tokenType}
 }

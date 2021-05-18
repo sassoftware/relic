@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"github.com/sassoftware/relic/internal/workerrpc"
+	"github.com/sassoftware/relic/token"
 )
 
 const (
@@ -99,6 +100,11 @@ func (t *WorkerToken) doRetry(req *http.Request) (rresp *workerrpc.Response, err
 			if rresp.Err == "" {
 				// success
 				return rresp, nil
+			} else if rresp.Usage {
+				return nil, token.KeyUsageError{
+					Key: rresp.Key,
+					Err: errors.New(rresp.Err),
+				}
 			}
 			last = errors.New(rresp.Err)
 			if !rresp.Retryable {

@@ -19,11 +19,9 @@ package filetoken
 import (
 	"crypto"
 	"crypto/x509"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"sync"
 
 	"github.com/sassoftware/relic/config"
 	"github.com/sassoftware/relic/lib/certloader"
@@ -31,15 +29,16 @@ import (
 	"github.com/sassoftware/relic/token"
 )
 
+const tokenType = "file"
+
 func init() {
-	token.Openers["file"] = Open
+	token.Openers[tokenType] = Open
 }
 
 type fileToken struct {
 	config    *config.Config
 	tokenConf *config.TokenConfig
 	prompt    passprompt.PasswordGetter
-	mu        sync.Mutex
 }
 
 type fileKey struct {
@@ -72,7 +71,7 @@ func (tok *fileToken) Config() *config.TokenConfig {
 }
 
 func (tok *fileToken) ListKeys(opts token.ListOptions) error {
-	return errors.New("not implemented for tokens of type \"file\"")
+	return token.NotImplementedError{Op: "list-keys", Type: tokenType}
 }
 
 func (tok *fileToken) GetKey(keyName string) (token.Key, error) {
@@ -125,18 +124,18 @@ func (key *fileKey) GetID() []byte {
 }
 
 func (tok *fileToken) Import(keyName string, privKey crypto.PrivateKey) (token.Key, error) {
-	return nil, errors.New("function not implemented for tokens of type \"file\"")
+	return nil, token.NotImplementedError{Op: "import-key", Type: tokenType}
 }
 
 func (tok *fileToken) ImportCertificate(cert *x509.Certificate, labelBase string) error {
-	return errors.New("function not implemented for tokens of type \"file\"")
+	return token.NotImplementedError{Op: "import-certificate", Type: tokenType}
 }
 
 func (tok *fileToken) Generate(keyName string, keyType token.KeyType, bits uint) (token.Key, error) {
 	// TODO - probably useful
-	return nil, errors.New("function not implemented for tokens of type \"file\"")
+	return nil, token.NotImplementedError{Op: "generate-key", Type: tokenType}
 }
 
 func (key *fileKey) ImportCertificate(cert *x509.Certificate) error {
-	return errors.New("function not implemented for tokens of type \"file\"")
+	return token.NotImplementedError{Op: "import-certificate", Type: tokenType}
 }

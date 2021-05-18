@@ -31,6 +31,7 @@ import (
 
 	"github.com/sassoftware/relic/cmdline/shared"
 	"github.com/sassoftware/relic/config"
+	"github.com/sassoftware/relic/internal/httperror"
 	"github.com/sassoftware/relic/lib/compresshttp"
 	"github.com/sassoftware/relic/lib/x509tools"
 	"golang.org/x/net/http2"
@@ -125,7 +126,7 @@ func makeTLSConfig() (*tls.Config, error) {
 	}
 	config := shared.CurrentConfig
 	if config.Remote == nil {
-		return nil, errors.New("Missing remote section in config file")
+		return nil, errors.New("missing remote section in config file")
 	} else if config.Remote.URL == "" && config.Remote.DirectoryURL == "" {
 		return nil, errors.New("url or directoryUrl must be set in 'remote' section of configuration")
 	} else if config.Remote.CertFile == "" || config.Remote.KeyFile == "" {
@@ -203,9 +204,7 @@ loop:
 				break loop
 			}
 			// HTTP error, probably a 503
-			body, _ := ioutil.ReadAll(response.Body)
-			response.Body.Close()
-			err = ResponseError{method, request.URL.String(), response.Status, response.StatusCode, string(body)}
+			err = httperror.FromResponse(response)
 		}
 		if response != nil && response.StatusCode == http.StatusNotAcceptable && encodings != "" {
 			// try again without compression
@@ -243,15 +242,8 @@ func isTemporary(err error) bool {
 	if e, ok := err.(temporary); ok && e.Temporary() {
 		return true
 	}
-	// unpack error wrappers
-	if e, ok := err.(*url.Error); ok {
-		err = e.Err
-	}
-	if e, ok := err.(*net.OpError); ok {
-		err = e.Err
-	}
-	// treat any syscall error as something recoverable
-	if _, ok := err.(*os.SyscallError); ok {
+	if e := new(os.SyscallError); errors.As(err, &e) {
+		// treat any syscall error as something recoverable
 		return true
 	}
 	return false
@@ -259,29 +251,4 @@ func isTemporary(err error) bool {
 
 type temporary interface {
 	Temporary() bool
-}
-
-type ResponseError struct {
-	Method     string
-	URL        string
-	Status     string
-	StatusCode int
-	BodyText   string
-}
-
-func (e ResponseError) Error() string {
-	return fmt.Sprintf("HTTP error:\n%s %s\n%s\n%s", e.Method, e.URL, e.Status, e.BodyText)
-}
-
-func (e ResponseError) Temporary() bool {
-	switch e.StatusCode {
-	case http.StatusGatewayTimeout,
-		http.StatusBadGateway,
-		http.StatusServiceUnavailable,
-		http.StatusInsufficientStorage,
-		http.StatusInternalServerError:
-		return true
-	default:
-		return false
-	}
 }

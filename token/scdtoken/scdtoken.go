@@ -36,9 +36,11 @@ import (
 	"github.com/sassoftware/relic/token"
 )
 
+const tokenType = "scdtoken"
+
 func init() {
-	token.Openers["scdtoken"] = Open
-	token.Listers["scdtoken"] = List
+	token.Openers[tokenType] = Open
+	token.Listers[tokenType] = List
 }
 
 var defaultScdSockets = []string{
@@ -254,18 +256,18 @@ func (key *scdKey) GetID() []byte {
 }
 
 func (tok *scdToken) Import(keyName string, privKey crypto.PrivateKey) (token.Key, error) {
-	return nil, errors.New("function not implemented for tokens of type \"scdaemon\"")
+	return nil, token.NotImplementedError{Op: "import-key", Type: tokenType}
 }
 
 func (tok *scdToken) ImportCertificate(cert *x509.Certificate, labelBase string) error {
-	return errors.New("function not implemented for tokens of type \"scdaemon\"")
+	return token.NotImplementedError{Op: "import-certificate", Type: tokenType}
 }
 
 func (tok *scdToken) Generate(keyName string, keyType token.KeyType, bits uint) (token.Key, error) {
 	// TODO - probably useful
-	return nil, errors.New("function not implemented for tokens of type \"scdaemon\"")
+	return nil, token.NotImplementedError{Op: "generate-key", Type: tokenType}
 }
 
 func (key *scdKey) ImportCertificate(cert *x509.Certificate) error {
-	return errors.New("function not implemented for tokens of type \"scdaemon\"")
+	return token.NotImplementedError{Op: "import-certificate", Type: tokenType}
 }

@@ -114,7 +114,8 @@ func (h *handler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		resp.Retryable = true
 		resp.Err = err.Error()
-		if e, ok := err.(pkcs11Error); ok {
+		switch e := err.(type) {
+		case pkcs11Error:
 			if fatalErrors[e] {
 				log.Printf("error: terminating worker for token \"%s\" due to error: %s", h.token.Config().Name(), err)
 				go h.shutdown()
@@ -124,6 +125,13 @@ func (h *handler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 				// pkcs11 errors not in fatalErrors are probably user error, so don't retry
 				resp.Retryable = false
 			}
+		case token.NotImplementedError:
+			resp.Retryable = false
+		case token.KeyUsageError:
+			resp.Retryable = false
+			resp.Usage = true
+			resp.Key = e.Key
+			resp.Err = e.Err.Error()
 		}
 	}
 	// marshal response

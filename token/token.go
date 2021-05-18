@@ -19,6 +19,7 @@ package token
 import (
 	"crypto"
 	"crypto/x509"
+	"fmt"
 	"io"
 
 	"github.com/sassoftware/relic/config"
@@ -69,4 +70,25 @@ type ListOptions struct {
 	ID    string
 	// Print key and certificate contents
 	Values bool
+}
+
+type NotImplementedError struct {
+	Op, Type string
+}
+
+func (e NotImplementedError) Error() string {
+	return fmt.Sprintf("operation %s not implemented for tokens of type %s", e.Op, e.Type)
+}
+
+type KeyUsageError struct {
+	Key string
+	Err error
+}
+
+func (e KeyUsageError) Error() string {
+	return fmt.Sprintf("key %q: %+v", e.Key, e.Err)
+}
+
+func (e KeyUsageError) Unwrap() error {
+	return e.Err
 }
