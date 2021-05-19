@@ -9,6 +9,8 @@ require (
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.7 // indirect
 	github.com/Azure/go-autorest/autorest/to v0.4.0 // indirect
 	github.com/Azure/go-autorest/autorest/validation v0.3.1 // indirect
+	github.com/aws/aws-sdk-go-v2/config v1.2.0
+	github.com/aws/aws-sdk-go-v2/service/kms v1.3.0
 	github.com/beevik/etree v1.1.0
 	github.com/bradfitz/gomemcache v0.0.0-20190913173617-a41fca850d0b
 	github.com/go-asn1-ber/asn1-ber v1.5.3

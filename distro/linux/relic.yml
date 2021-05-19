@@ -64,6 +64,11 @@ tokens:
     #pin: ""
     # Otherwise the environment will be used
 
+  # Use CMKs stored in AWS Key Management Service
+  aws:
+    type: aws
+    # Presently, configuration must be done via the standard SDK env vars
+
 # Keys that can be used for signing
 keys:
 
@@ -112,6 +117,12 @@ keys:
     token: azurekv
     # URL of key version resource. Must point to a key version, not a key.
     label: https://example.vault.azure.net/keys/my-azure-key/00112233445566778899aabbccddeeff
+    # Same options as above: pgpcertificate, x509certificate, timestamp, roles
+
+  my_aws_key:
+    token: aws
+    # ID or ARN of an asymmetric CMK
+    label: arn:aws:kms:us-east-1:111111111111:key/22222222-3333-4444-5555-666666666666
     # Same options as above: pgpcertificate, x509certificate, timestamp, roles
 
   aliased_key:
