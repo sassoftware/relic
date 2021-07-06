@@ -3,6 +3,7 @@ keys/
 trust/
 work/
 vendorizer
+_*
 
 *.application
 *.appx
@@ -12,7 +13,10 @@ vendorizer
 *.cat
 *.deb
 *.dll
+*.dmg
 *.EC
+*.img
+*.ipa
 *.jar
 *.manifest
 *.MF
@@ -21,18 +25,21 @@ vendorizer
 *.p7m
 *.p7s
 *.pgp
+*.pkg
 *.ps1
 *.ps1xml
 *.vsix
 *.rpm
 *.RSA
 *.SF
+*.sig
 *.SIG
 *.xap
 
 *.orig
 *.rej
 *.swp
+.vscode
 
 # Created by https://www.gitignore.io/api/go,vim
 

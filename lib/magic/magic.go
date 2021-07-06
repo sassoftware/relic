@@ -52,6 +52,10 @@ const (
 	FileTypeVSIX
 	FileTypeXAP
 	FileTypeAPK
+	FileTypeMachO
+	FileTypeMachOFat
+	FileTypeIPA
+	FileTypeXAR
 )
 
 const (
@@ -116,6 +120,12 @@ func Detect(r io.Reader) FileType {
 	case contains(br, []byte("<assembly"), 256),
 		contains(br, []byte(":assembly"), 256):
 		return FileTypeAppManifest
+	case hasPrefix(br, []byte{0xcf, 0xfa, 0xed, 0xfe}), hasPrefix(br, []byte{0xce, 0xfa, 0xed, 0xfe}):
+		return FileTypeMachO
+	case hasPrefix(br, []byte{0xca, 0xfe, 0xba, 0xbe}):
+		return FileTypeMachOFat
+	case hasPrefix(br, []byte{0x78, 0x61, 0x72, 0x21}):
+		return FileTypeXAR
 	case hasPrefix(br, []byte{0x89}), hasPrefix(br, []byte{0xc2}), hasPrefix(br, []byte{0xc4}):
 		return FileTypePGP
 	}
@@ -195,7 +205,7 @@ func detectZip(f *os.File) FileType {
 			name = "." + name
 		}
 		name = path.Clean(name)
-		switch zf.Name {
+		switch name {
 		case "AndroidManifest.xml":
 			return FileTypeAPK
 		case "AppManifest.xaml":
@@ -207,6 +217,12 @@ func detectZip(f *os.File) FileType {
 		case "META-INF/MANIFEST.MF":
 			// APKs are also JARs so save this for last
 			isJar = true
+		}
+		switch {
+		case strings.HasSuffix(name, ".app/Info.plist"):
+			return FileTypeIPA
+		case strings.HasSuffix(name, ".app/Contents/Info.plist"):
+			return FileTypeIPA
 		}
 	}
 	if isJar {

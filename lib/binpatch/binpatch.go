@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 
 	"github.com/sassoftware/relic/lib/atomicfile"
 )
@@ -116,6 +117,7 @@ func Load(blob []byte) (*PatchSet, error) {
 
 // Marshal a PatchSet to bytes
 func (p *PatchSet) Dump() []byte {
+	sort.Sort(sorter{p})
 	header := PatchSetHeader{1, uint32(len(p.Patches))}
 	size := 8 + 16*len(p.Patches)
 	for _, hdr := range p.Patches {

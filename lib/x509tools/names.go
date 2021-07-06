@@ -56,6 +56,7 @@ var nameStyleLdap = []attrName{
 	{asn1.ObjectIdentifier{2, 5, 4, 20}, "telephoneNumber"},
 	{asn1.ObjectIdentifier{2, 5, 4, 42}, "givenName"},
 	{asn1.ObjectIdentifier{2, 5, 4, 43}, "initials"},
+	{asn1.ObjectIdentifier{0, 9, 2342, 19200300, 100, 1, 1}, "UID"},
 	{asn1.ObjectIdentifier{0, 9, 2342, 19200300, 100, 1, 25}, "dc"},
 	{asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 9, 1}, "emailAddress"},
 }
@@ -76,6 +77,7 @@ var nameStyleMsOsco = []attrName{
 	{asn1.ObjectIdentifier{2, 5, 4, 43}, "I"},
 	{asn1.ObjectIdentifier{2, 5, 4, 4}, "SN"},
 	{asn1.ObjectIdentifier{2, 5, 4, 5}, "SERIALNUMBER"},
+	{asn1.ObjectIdentifier{0, 9, 2342, 19200300, 100, 1, 1}, "UID"},
 	{asn1.ObjectIdentifier{0, 9, 2342, 19200300, 100, 1, 25}, "DC"},
 	{asn1.ObjectIdentifier{2, 5, 4, 13}, "Description"},
 	{asn1.ObjectIdentifier{2, 5, 4, 17}, "PostalCode"},

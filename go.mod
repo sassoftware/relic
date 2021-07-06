@@ -5,6 +5,7 @@ go 1.15
 require (
 	github.com/beevik/etree v1.1.0
 	github.com/bradfitz/gomemcache v0.0.0-20190913173617-a41fca850d0b
+	github.com/go-asn1-ber/asn1-ber v1.5.3
 	github.com/golang/snappy v0.0.2
 	github.com/howeyc/gopass v0.0.0-20190910152052-7cb4b85ec19c
 	github.com/kr/pretty v0.2.1
@@ -25,4 +26,5 @@ require (
 	golang.org/x/sys v0.0.0-20200930185726-fdedc70b468f
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e
 	gopkg.in/yaml.v2 v2.3.0
+	howett.net/plist v0.0.0-20201026045517-117a925f2150
 )

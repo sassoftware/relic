@@ -18,6 +18,7 @@ package verify
 
 import (
 	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"os"
@@ -41,6 +42,7 @@ var (
 	argNoIntegrityCheck bool
 	argNoChain          bool
 	argAlsoSystem       bool
+	argShowCerts        bool
 	argContent          string
 	argTrustedCerts     []string
 )
@@ -50,6 +52,7 @@ func init() {
 	VerifyCmd.Flags().BoolVar(&argNoIntegrityCheck, "no-integrity-check", false, "Bypass the integrity check of the file contents and only inspect the signature itself")
 	VerifyCmd.Flags().BoolVar(&argNoChain, "no-trust-chain", false, "Do not test whether the signing certificate is trusted")
 	VerifyCmd.Flags().BoolVar(&argAlsoSystem, "system-store", false, "When --cert is used, append rather than replace the system trust store")
+	VerifyCmd.Flags().BoolVar(&argShowCerts, "show-certs", false, "Dump certificate chain from signature")
 	VerifyCmd.Flags().StringVar(&argContent, "content", "", "Specify file containing contents for detached signatures")
 	VerifyCmd.Flags().StringArrayVar(&argTrustedCerts, "cert", nil, "Add a trusted root certificate (PEM, DER, PKCS#7, or PGP)")
 }
@@ -114,6 +117,7 @@ func verifyOne(path string, opts signers.VerifyOpts) error {
 		}
 		return err
 	}
+	sawCerts := make(map[string]bool)
 	for _, sig := range sigs {
 		var si, pkg, ts string
 		if sig.SigInfo != "" {
@@ -121,6 +125,12 @@ func verifyOne(path string, opts signers.VerifyOpts) error {
 		}
 		if sig.Package != "" {
 			pkg = sig.Package + " "
+		}
+		if sig.X509Signature != nil && argShowCerts {
+			showCert(sig.X509Signature.Certificate.Raw, sawCerts)
+			for _, cert := range sig.X509Signature.Intermediates {
+				showCert(cert.Raw, sawCerts)
+			}
 		}
 		if sig.X509Signature != nil && !opts.NoChain {
 			if err := sig.X509Signature.VerifyChain(opts.TrustedPool, nil, x509.ExtKeyUsageAny); err != nil {
@@ -170,4 +180,15 @@ func loadCerts() (signers.VerifyOpts, error) {
 		}
 	}
 	return opts, nil
+}
+
+func showCert(blob []byte, seen map[string]bool) {
+	if seen[string(blob)] {
+		return
+	}
+	seen[string(blob)] = true
+	pem.Encode(os.Stdout, &pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: blob,
+	})
 }

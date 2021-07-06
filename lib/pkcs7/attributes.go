@@ -54,7 +54,7 @@ func marshalUnsortedSet(v interface{}) ([]byte, error) {
 	return encoded, nil
 }
 
-// unmarshal a single attribute, if it exists
+// GetOne unmarshals a single attribute, if it exists
 func (l *AttributeList) GetOne(oid asn1.ObjectIdentifier, dest interface{}) error {
 	for _, raw := range *l {
 		if !raw.Type.Equal(oid) {
@@ -72,15 +72,26 @@ func (l *AttributeList) GetOne(oid asn1.ObjectIdentifier, dest interface{}) erro
 	return ErrNoAttribute{oid}
 }
 
+// GetAll unmarshals all values for an attribute. dest should be a pointer to a slice.
+func (l *AttributeList) GetAll(oid asn1.ObjectIdentifier, dest interface{}) error {
+	for _, raw := range *l {
+		if raw.Type.Equal(oid) {
+			_, err := asn1.UnmarshalWithParams(raw.Values.FullBytes, dest, "set")
+			return err
+		}
+	}
+	return ErrNoAttribute{oid}
+}
+
 // create or append to an attribute
 func (l *AttributeList) Add(oid asn1.ObjectIdentifier, obj interface{}) error {
 	value, err := asn1.Marshal(obj)
 	if err != nil {
 		return err
 	}
-	for _, attr := range *l {
+	for i, attr := range *l {
 		if attr.Type.Equal(oid) {
-			attr.Values.Bytes = append(attr.Values.Bytes, value...)
+			(*l)[i].Values.Bytes = append(attr.Values.Bytes, value...)
 			return nil
 		}
 	}
@@ -93,6 +104,15 @@ func (l *AttributeList) Add(oid asn1.ObjectIdentifier, obj interface{}) error {
 			Bytes:      value,
 		}})
 	return nil
+}
+
+func (l AttributeList) Exists(oid asn1.ObjectIdentifier) bool {
+	for _, attr := range l {
+		if attr.Type.Equal(oid) {
+			return true
+		}
+	}
+	return false
 }
 
 func (i SignerInfo) SigningTime() (time.Time, error) {

@@ -18,6 +18,7 @@
 
 cd $(dirname $0)
 set -ex
+srcdir=$(pwd -P)
 
 rm -rf scratch
 mkdir -p scratch/token
@@ -154,6 +155,27 @@ echo
 ### APK
 pkg="dummy.apk"
 $relic remote sign -k rsa2048 -f "packages/$pkg" -o "$signed/$pkg" -T jar --apk-v2-present
+$relic remote sign -k rsa2048 -f "$signed/$pkg"
+$verify_2048x "$signed/$pkg"
+echo
+
+### Mach-O
+pkg="slimfile.app"
+$relic remote sign -k rsa2048 -f "packages/$pkg/dummyapp" --info-plist "packages/$pkg/Info.plist" --resources "packages/$pkg/_CodeSignature/CodeResources" -o "$signed/slimfile.macho"
+$verify_2048x "$signed/slimfile.macho"
+( cd $signed && mkdir -p Payload && cp -r $srcdir/packages/$pkg Payload/ && cp -f slimfile.macho Payload/$pkg/dummyapp && zip -r slimfile.ipa Payload )
+$verify_2048x "$signed/slimfile.ipa"
+echo
+
+### DMG
+pkg="dummy.dmg"
+$relic remote sign -k rsa2048 -f "packages/$pkg" -o "$signed/$pkg"
+$verify_2048x "$signed/$pkg"
+echo
+
+### PKG
+pkg="dummy.pkg"
+$relic remote sign -k rsa2048 -f "packages/$pkg" -o "$signed/$pkg"
 $relic remote sign -k rsa2048 -f "$signed/$pkg"
 $verify_2048x "$signed/$pkg"
 echo

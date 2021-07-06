@@ -30,7 +30,9 @@ import (
 	_ "github.com/sassoftware/relic/signers/cab"
 	_ "github.com/sassoftware/relic/signers/cat"
 	_ "github.com/sassoftware/relic/signers/deb"
+	_ "github.com/sassoftware/relic/signers/dmg"
 	_ "github.com/sassoftware/relic/signers/jar"
+	_ "github.com/sassoftware/relic/signers/macho"
 	_ "github.com/sassoftware/relic/signers/msi"
 	_ "github.com/sassoftware/relic/signers/pecoff"
 	_ "github.com/sassoftware/relic/signers/pgp"
@@ -40,6 +42,7 @@ import (
 	_ "github.com/sassoftware/relic/signers/starman"
 	_ "github.com/sassoftware/relic/signers/vsix"
 	_ "github.com/sassoftware/relic/signers/xap"
+	_ "github.com/sassoftware/relic/signers/xar"
 )
 
 func main() {
