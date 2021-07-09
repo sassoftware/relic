@@ -108,6 +108,15 @@ func (r *ComDoc) Close() error {
 	if _, err := r.writer.WriteAt(buf.Bytes(), 0); err != nil {
 		return err
 	}
+	// Truncate past last sector. Trailing garbage will cause validation to fail.
+	for i := len(r.SAT) - 1; i >= 0; i-- {
+		if r.SAT[i] != SecIDFree {
+			if err := r.writer.Truncate(r.sectorToOffset(SecID(i + 1))); err != nil {
+				return err
+			}
+			break
+		}
+	}
 	if r.closer != nil {
 		r.closer.Close()
 		r.closer = nil
