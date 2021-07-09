@@ -91,18 +91,18 @@ func (r *ComDoc) Close() error {
 		return err
 	}
 	// Write MSAT and SAT
-	satList, msatList := r.allocSectorTables()
-	if err := r.writeSAT(satList); err != nil {
+	r.allocSectorTables()
+	if err := r.writeSAT(); err != nil {
 		return err
 	}
-	if err := r.writeMSAT(satList, msatList); err != nil {
+	if err := r.writeMSAT(); err != nil {
 		return err
 	}
 	// Write file header
 	copy(r.Header.Magic[:], fileMagic)
 	r.Header.ByteOrder = byteOrderMarker
-	r.Header.SATSectors = uint32(len(satList))
-	r.Header.MSATSectorCount = uint32(len(msatList))
+	r.Header.SATSectors = uint32(len(r.MSAT))
+	r.Header.MSATSectorCount = uint32(len(r.msatList))
 	buf := bytes.NewBuffer(make([]byte, 0, 512))
 	binary.Write(buf, binary.LittleEndian, r.Header)
 	if _, err := r.writer.WriteAt(buf.Bytes(), 0); err != nil {

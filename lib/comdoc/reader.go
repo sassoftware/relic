@@ -36,13 +36,18 @@ type ComDoc struct {
 	SectorSize      int
 	ShortSectorSize int
 	FirstSector     int64
-	MSAT, SAT, SSAT []SecID
-	Files           []DirEnt
+	// MSAT is a list of sector IDs holding a SAT
+	MSAT []SecID
+	// SAT is a table where the index is the sector ID and the value is a pointer to the next sector ID in the same stream
+	SAT   []SecID
+	SSAT  []SecID
+	Files []DirEnt
 
 	sectorBuf   []byte
 	changed     bool
-	rootStorage int   // index into files
-	rootFiles   []int // index into Files
+	rootStorage int     // index into files
+	rootFiles   []int   // index into Files
+	msatList    []SecID // list of sector IDs holding a MSAT
 	writer      *os.File
 	closer      io.Closer
 }

@@ -27,7 +27,8 @@ import (
 // holding yet more. The last entry in each additional sector points to another
 // sector holding more MSAT entries, or -2 if none.
 func (r *ComDoc) readMSAT() error {
-	msat := r.Header.MSAT[:]
+	r.MSAT = r.Header.MSAT[:]
+	r.msatList = nil
 	nextSector := r.Header.MSATNextSector
 	count := r.SectorSize / 4
 	values := make([]SecID, count)
@@ -35,21 +36,22 @@ func (r *ComDoc) readMSAT() error {
 		if err := r.readSectorStruct(nextSector, values); err != nil {
 			return err
 		}
-		msat = append(msat, values[:count-1]...)
+		r.MSAT = append(r.MSAT, values[:count-1]...)
+		r.msatList = append(r.msatList, nextSector)
 		nextSector = values[count-1]
 	}
-	r.MSAT = msat
+	// trim free slots
+	for i := len(r.MSAT) - 1; i >= 0; i-- {
+		if r.MSAT[i] >= 0 {
+			r.MSAT = r.MSAT[:i+1]
+			break
+		}
+	}
 	return nil
 }
 
 // Allocate sectors for the SAT and MSAT
-func (r *ComDoc) allocSectorTables() (satList, msatList []SecID) {
-	// free existing sectors
-	for i, j := range r.SAT {
-		if j == SecIDSAT || j == SecIDMSAT {
-			r.SAT[i] = SecIDFree
-		}
-	}
+func (r *ComDoc) allocSectorTables() {
 	// work out how many sectors are needed for both
 	satPerSector := r.SectorSize / 4
 	msatPerSector := satPerSector - 1
@@ -58,60 +60,66 @@ func (r *ComDoc) allocSectorTables() (satList, msatList []SecID) {
 			panic("irregularly sized sector table")
 		}
 		satSectors := len(r.SAT) / satPerSector
-		// 109 MSAT entries fit into the file header, the rest need more sectors
-		msatSectors := (satSectors - msatInHeader + msatPerSector - 1) / msatPerSector
-		// Check if there's room
-		oldSize := len(r.SAT)
-		freeList := r.makeFreeSectors(satSectors+msatSectors, false)
-		if oldSize == len(r.SAT) {
-			msatList = freeList[:msatSectors]
-			satList = freeList[msatSectors:]
-			break
+		if satSectors > len(r.MSAT) {
+			// allocate a new SAT sector
+			sector := r.makeFreeSectors(1, false)[0]
+			r.MSAT = append(r.MSAT, sector)
+			r.SAT[sector] = SecIDSAT
+			// a new SAT might be needed so check again
+			continue
 		}
-		// The SAT was extended so go around again to make sure that didn't
-		// increase the requirements further
+		// 109 MSAT entries fit into the file header, the rest need more sectors
+		msatSectors := (len(r.MSAT) - msatInHeader + msatPerSector - 1) / msatPerSector
+		if msatSectors > len(r.msatList) {
+			// allocate a new MSAT sector
+			sector := r.makeFreeSectors(1, false)[0]
+			r.msatList = append(r.msatList, sector)
+			r.SAT[sector] = SecIDMSAT
+			// a new SAT might be needed so check again
+			continue
+		}
+		break
 	}
-	// Mark used sectors
-	for _, i := range msatList {
-		r.SAT[i] = SecIDMSAT
-	}
-	for _, i := range satList {
-		r.SAT[i] = SecIDSAT
-	}
-	return satList, msatList
 }
 
 // Write an updated MSAT out to the header and msatSectors, with satSectors
 // being the contents of the MSAT
-func (r *ComDoc) writeMSAT(satSectors, msatSectors []SecID) error {
+func (r *ComDoc) writeMSAT() error {
 	satPerSector := r.SectorSize / 4
 	msatPerSector := satPerSector - 1
-	msatCount := msatInHeader + len(msatSectors)*msatPerSector
+	// round MSAT up to the next full sector and mark all unused spaces as free
+	msatCount := msatInHeader + len(r.msatList)*msatPerSector
 	msat := make([]SecID, msatCount)
-	copy(msat, satSectors)
-	for i := len(satSectors); i < msatCount; i++ {
+	copy(msat, r.MSAT)
+	for i := len(r.MSAT); i < msatCount; i++ {
 		msat[i] = SecIDFree
 	}
+	// copy the first 109 into the file header
 	copy(r.Header.MSAT[:], msat)
-	msat = msat[msatInHeader:] // done with the first 109
+	msat = msat[msatInHeader:]
+	// write remaining sectors
 	buf := bytes.NewBuffer(r.sectorBuf)
-	nextSector := SecIDEndOfChain
 	chunk := make([]SecID, r.SectorSize/4)
-	for i := len(msatSectors) - 1; i >= 0; i-- { // each needs to link to the next, so walk backwards
-		sector := msatSectors[i]
+	for i, sector := range r.msatList {
 		j := i * msatPerSector
-		copy(chunk, msat[j:])
-		msat = msat[:j]
-		chunk[msatPerSector] = nextSector
-		nextSector = sector
-
+		copy(chunk, msat[j:j+msatPerSector])
+		// set pointer to next MSAT sector
+		if i < len(r.msatList)-1 {
+			chunk[msatPerSector] = r.msatList[i+1]
+		} else {
+			chunk[msatPerSector] = SecIDEndOfChain
+		}
+		// write
 		buf.Reset()
 		binary.Write(buf, binary.LittleEndian, chunk)
 		if err := r.writeSector(sector, buf.Bytes()); err != nil {
 			return err
 		}
 	}
-	r.Header.MSATNextSector = nextSector
-	r.MSAT = msat
+	if len(r.msatList) > 0 {
+		r.Header.MSATNextSector = r.msatList[0]
+	} else {
+		r.Header.MSATNextSector = SecIDEndOfChain
+	}
 	return nil
 }

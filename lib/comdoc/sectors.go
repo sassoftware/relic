@@ -144,10 +144,10 @@ func (r *ComDoc) readSAT() error {
 }
 
 // Write the new sector allocation table to the listed sector IDs
-func (r *ComDoc) writeSAT(freeList []SecID) error {
+func (r *ComDoc) writeSAT() error {
 	satPerSector := r.SectorSize / 4
 	buf := bytes.NewBuffer(r.sectorBuf)
-	for i, sector := range freeList {
+	for i, sector := range r.MSAT {
 		j := i * satPerSector
 		buf.Reset()
 		binary.Write(buf, binary.LittleEndian, r.SAT[j:j+satPerSector])
