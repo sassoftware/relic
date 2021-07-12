@@ -48,7 +48,7 @@ func init() {
 	SignCmd.Flags().BoolVar(&argIfUnsigned, "if-unsigned", false, "Skip signing if the file already has a signature")
 	shared.AddDigestFlag(SignCmd)
 	shared.AddLateHook(func() {
-		signers.MergeFlags(SignCmd.Flags())
+		signers.MergeFlags(SignCmd)
 	})
 }
 

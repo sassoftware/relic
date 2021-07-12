@@ -24,6 +24,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
 	"github.com/sassoftware/relic/lib/audit"
@@ -177,10 +178,11 @@ func (s *Signer) Flags() *pflag.FlagSet {
 }
 
 // Add this module's flags to a command FlagSet
-func MergeFlags(fs *pflag.FlagSet) {
+func MergeFlags(cmd *cobra.Command) {
 	if flagMap == nil {
 		flagMap = make(map[string][]string)
 	}
+	fs := cmd.Flags()
 	for _, s := range registered {
 		if s.flags == nil {
 			continue
@@ -190,6 +192,25 @@ func MergeFlags(fs *pflag.FlagSet) {
 			flagMap[flag.Name] = append(flagMap[flag.Name], s.Name)
 		})
 	}
+	// customize the usage function so that if --sig-type is set then only those flags are displayed
+	orig := cmd.UsageFunc()
+	cmd.SetUsageFunc(func(c *cobra.Command) error {
+		if t, _ := fs.GetString("sig-type"); t != "" {
+			for name, signers := range flagMap {
+				var ok bool
+				for _, signer := range signers {
+					if signer == t {
+						ok = true
+						break
+					}
+				}
+				if !ok {
+					fs.MarkHidden(name)
+				}
+			}
+		}
+		return orig(c)
+	})
 }
 
 // IsSigned checks if a file contains a signature
