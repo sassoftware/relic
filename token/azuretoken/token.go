@@ -96,19 +96,19 @@ func (t *kvToken) GetKeyContext(ctx context.Context, keyName string) (token.Key,
 	if err != nil {
 		return nil, err
 	}
-	if keyConf.Label == "" {
-		return nil, fmt.Errorf("key %q must have \"label\" set to the fully-quaified key identifier URL of an Azure key version", keyName)
+	if keyConf.ID == "" {
+		return nil, fmt.Errorf("key %q must have \"id\" set to the fully-quaified key identifier URL of an Azure key version", keyName)
 	}
 	// deconstruct URL to call GetKey so it can put it back together again
-	u, err := url.Parse(keyConf.Label)
+	u, err := url.Parse(keyConf.ID)
 	if err != nil {
-		return nil, fmt.Errorf("key %q: label: %w", keyName, err)
+		return nil, fmt.Errorf("key %q: id: %w", keyName, err)
 	} else if u.Scheme == "" || u.Host == "" {
-		return nil, fmt.Errorf("key %q: label: invalid URL", keyName)
+		return nil, fmt.Errorf("key %q: id: invalid URL", keyName)
 	}
 	words := strings.Split(u.Path, "/")
 	if len(words) != 4 || words[1] != "keys" {
-		return nil, fmt.Errorf("key %q: label: expected https://{vaultname}.vault.azure.net/keys/{keyname}/{keyversion}", keyName)
+		return nil, fmt.Errorf("key %q: id: expected https://{vaultname}.vault.azure.net/keys/{keyname}/{keyversion}", keyName)
 	}
 	kname, kversion := words[2], words[3]
 	u.Path = ""

@@ -110,19 +110,19 @@ keys:
   my_gcloud_key:
     token: gcloud
     # Fully-qualified name of a key version resource. Must point to a key version, not a key.
-    label: projects/root-opus-123456/locations/us-east1/keyRings/my-keyring/cryptoKeys/my-gloud-key/cryptoKeyVersions/1
+    id: projects/root-opus-123456/locations/us-east1/keyRings/my-keyring/cryptoKeys/my-gloud-key/cryptoKeyVersions/1
     # Same options as above: pgpcertificate, x509certificate, timestamp, roles
 
   my_azure_key:
     token: azurekv
     # URL of key version resource. Must point to a key version, not a key.
-    label: https://example.vault.azure.net/keys/my-azure-key/00112233445566778899aabbccddeeff
+    id: https://example.vault.azure.net/keys/my-azure-key/00112233445566778899aabbccddeeff
     # Same options as above: pgpcertificate, x509certificate, timestamp, roles
 
   my_aws_key:
     token: aws
     # ID or ARN of an asymmetric CMK
-    label: arn:aws:kms:us-east-1:111111111111:key/22222222-3333-4444-5555-666666666666
+    id: arn:aws:kms:us-east-1:111111111111:key/22222222-3333-4444-5555-666666666666
     # Same options as above: pgpcertificate, x509certificate, timestamp, roles
 
   aliased_key:

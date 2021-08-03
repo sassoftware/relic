@@ -22,6 +22,7 @@ relic is a multi-tool and server for package signing and working with hardware s
 relic can work with several types of token:
 
 * pkcs11 - Industry standard PKCS#11 HSM interface using shared object files
+* Cloud services - AWS, Azure and Google Cloud managed keys
 * scdaemon - The GnuPG scdaemon service can enable access to OpenPGP cards (such as Yubikey NEO)
 * file - Private keys stored in a password-protected file
 
@@ -41,17 +42,18 @@ Other features include:
 * Save token PINs in the system keyring
 
 # Platforms
-Linux and Windows are supported. Other platforms probably work as well.
+Linux, Windows and MacOS are supported. Other platforms probably work as well.
 
 relic is tested using libsofthsm2 and Gemalto SafeNet Network HSM (Luna SA). Every vendor PKCS#11 implementation has quirks, so if relic doesn't work with your hardware please submit a pull request.
 
 # Installation
-1. Install ltdl development headers, i.e.
-    a. `dnf install libtool-ltdl-devel` or
-    b. `apt-get install libltdl-dev`
-2. `go get github.com/sassoftware/relic`
+Pre-built client binaries are available from the Github releases page. Alternately, relic can be built from source:
 
-relic can also be built as a client-only tool, removing the dependency on ltdl, by building with `-tags pure` or by disabling cgo.
+```go install github.com/sassoftware/relic@latest```
+
+The following build tags are also available:
+
+* clientonly - build a lightweight binary without standalone signing features
 
 See distro/linux/relic.yml for an example configuration.
 

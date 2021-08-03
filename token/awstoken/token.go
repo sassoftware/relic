@@ -75,10 +75,10 @@ func (t *awsToken) GetKeyContext(ctx context.Context, keyName string) (token.Key
 	if err != nil {
 		return nil, err
 	}
-	if keyConf.Label == "" {
-		return nil, fmt.Errorf("key %q must have \"label\" set to the ID or ARN of the key", keyName)
+	if keyConf.ID == "" {
+		return nil, fmt.Errorf("key %q must have \"id\" set to the ID or ARN of the key", keyName)
 	}
-	id := keyConf.Label
+	id := keyConf.ID
 	resp, err := t.cli.GetPublicKey(ctx, &kms.GetPublicKeyInput{KeyId: &id})
 	if err != nil {
 		return nil, err
@@ -123,7 +123,7 @@ func (k *awsKey) SignContext(ctx context.Context, digest []byte, opts crypto.Sig
 	if err != nil {
 		return nil, err
 	}
-	id := k.kconf.Label
+	id := k.kconf.ID
 	resp, err := k.cli.Sign(ctx, &kms.SignInput{
 		KeyId:            &id,
 		Message:          digest,

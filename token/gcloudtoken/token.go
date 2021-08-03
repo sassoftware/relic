@@ -84,10 +84,10 @@ func (t *gcloudToken) GetKeyContext(ctx context.Context, keyName string) (token.
 	if err != nil {
 		return nil, err
 	}
-	if keyConf.Label == "" {
-		return nil, fmt.Errorf("key %q must have \"label\" set to the fully-quaified resource name of a Cloud KMS key version", keyName)
+	if keyConf.ID == "" {
+		return nil, fmt.Errorf("key %q must have \"id\" set to the fully-quaified resource name of a Cloud KMS key version", keyName)
 	}
-	resp, err := t.cli.GetPublicKey(ctx, &kmspb.GetPublicKeyRequest{Name: keyConf.Label})
+	resp, err := t.cli.GetPublicKey(ctx, &kmspb.GetPublicKeyRequest{Name: keyConf.ID})
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +157,7 @@ func (k *gcloudKey) SignContext(ctx context.Context, digest []byte, opts crypto.
 		}
 	}
 	req := &kmspb.AsymmetricSignRequest{
-		Name:   k.kconf.Label,
+		Name:   k.kconf.ID,
 		Digest: &kmspb.Digest{},
 	}
 	switch k.hash {
