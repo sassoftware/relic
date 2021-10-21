@@ -21,6 +21,7 @@ import (
 
 	"github.com/sassoftware/relic/config"
 	"github.com/sassoftware/relic/lib/passprompt"
+	"github.com/sassoftware/relic/lib/x509tools"
 	"github.com/sassoftware/relic/token"
 )
 
@@ -176,6 +177,14 @@ func (k *kvKey) SignContext(ctx context.Context, digest []byte, opts crypto.Sign
 	sig, err := base64.RawURLEncoding.DecodeString(*resp.Result)
 	if err != nil {
 		return nil, err
+	}
+	if _, ok := k.pub.(*ecdsa.PublicKey); ok {
+		// repack as ASN.1
+		unpacked, err := x509tools.UnpackEcdsaSignature(sig)
+		if err != nil {
+			return nil, err
+		}
+		sig = unpacked.Marshal()
 	}
 	return sig, nil
 }

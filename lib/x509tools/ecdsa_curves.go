@@ -164,7 +164,7 @@ func UnpackEcdsaSignature(packed []byte) (sig EcdsaSignature, err error) {
 	if len(packed) != byteLen*2 {
 		err = errors.New("ecdsa signature is incorrect size")
 	} else {
-		sig.R = new(big.Int).SetBytes(packed[:byteLen])
+		sig.R = new(big.Int).SetBytes(packed[0:byteLen])
 		sig.S = new(big.Int).SetBytes(packed[byteLen:])
 	}
 	return
@@ -178,14 +178,15 @@ func (sig EcdsaSignature) Marshal() []byte {
 
 // Pack an ECDSA signature by concatenating the two numbers per IEEE 1363
 func (sig EcdsaSignature) Pack() []byte {
-	rbytes := sig.R.Bytes()
-	sbytes := sig.S.Bytes()
-	byteLen := len(rbytes)
-	if len(sbytes) > byteLen {
-		byteLen = len(sbytes)
+	// allocate space to hold both numbers
+	nbits := sig.R.BitLen()
+	if s := sig.S.BitLen(); s > nbits {
+		nbits = s
 	}
-	ret := make([]byte, byteLen*2)
-	copy(ret[byteLen-len(rbytes):], rbytes)
-	copy(ret[2*byteLen-len(sbytes):], sbytes)
+	nbytes := (nbits + 7) / 8
+	ret := make([]byte, 2*nbytes)
+	// serialize with padding
+	sig.R.FillBytes(ret[0:nbytes])
+	sig.S.FillBytes(ret[nbytes:])
 	return ret
 }
