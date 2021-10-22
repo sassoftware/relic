@@ -1,0 +1,126 @@
+name: Build
+on: [push, pull_request, release]
+jobs:
+  linux:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.17
+      - name: Restore cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Build clients
+        run: |
+          source scripts/ci-set-ldflags.sh
+          export CGO_ENABLED=0
+          GOOS=linux   GOARCH=amd64   go build -ldflags "$ldflags" -tags clientonly -o build/relic-client-linux-amd64
+          GOOS=linux   GOARCH=arm64   go build -ldflags "$ldflags" -tags clientonly -o build/relic-client-linux-arm64
+          GOOS=linux   GOARCH=ppc64le go build -ldflags "$ldflags" -tags clientonly -o build/relic-client-linux-ppc64le
+
+      - name: Build server
+        run: CGO_ENABLED=1 go build -ldflags "$ldflags" -o build/relic-linux-amd64
+
+      - name: Unit tests
+        run: go test ./...
+
+      - name: Functional tests
+        run: |
+          sudo apt-get update
+          sudo apt-get install curl softhsm2 zip
+          sed -i -e 's#provider:.*#provider: /usr/lib/softhsm/libsofthsm2.so#' functest/testconf.yml
+          ./functest/functest.sh
+
+      - name: Save artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: linux
+          path: build/
+
+  darwin:
+    runs-on: macos-11
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.17
+      - name: Restore cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/Library/Caches/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Build client
+        run: |
+          source scripts/ci-set-ldflags.sh
+          export CGO_ENABLED=0
+          GOARCH=amd64 go build -ldflags "$ldflags" -tags clientonly -o build/relic-client-darwin-amd64
+          GOARCH=arm64 go build -ldflags "$ldflags" -tags clientonly -o build/relic-client-darwin-arm64
+          lipo build/relic-client-darwin-amd64 build/relic-client-darwin-arm64 -create -output build/relic-client-darwin
+          rm -f build/relic-client-darwin-amd64 build/relic-client-darwin-arm64
+
+      - name: Build server
+        run: |
+          export CGO_ENABLED=1
+          GOARCH=amd64 go build -ldflags "$ldflags" -o build/relic-darwin-amd64
+          GOARCH=arm64 go build -ldflags "$ldflags" -o build/relic-darwin-arm64
+          lipo build/relic-darwin-amd64 build/relic-darwin-arm64 -create -output build/relic-darwin
+          rm -f build/relic-darwin-amd64 build/relic-darwin-arm64
+
+      - name: Save artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: darwin
+          path: build/
+
+  windows:
+    runs-on: windows-2019
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.17
+      - name: Restore cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            %LocalAppData%\go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Build client
+        run: |
+          source scripts/ci-set-ldflags.sh
+          CGO_ENABLED=0 go build -ldflags "$ldflags" -tags clientonly -o build/relic-client-windows-amd64.exe
+
+      - name: Build server
+        run: CGO_ENABLED=1 go build -ldflags "$ldflags" -o build/relic-windows-amd64.exe
+
+      - name: Save artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: windows
+          path: build/

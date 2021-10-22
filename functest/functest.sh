@@ -24,9 +24,15 @@ rm -rf scratch
 mkdir -p scratch/token
 export SOFTHSM2_CONF=./token.conf
 softhsm2-util --slot=0 --init-token --label=functest --pin=123456 --so-pin=12345678
-relic="relic -c ./testconf.yml"
-verify_2048p="relic verify --cert testkeys/rsa2048.pgp"
-verify_2048x="relic verify --cert testkeys/rsa2048.crt"
+if [ -e ../build/relic-linux-amd64 ]
+then
+    client=../build/relic-linux-amd64
+else
+    client=relic
+fi
+relic="$client -c ./testconf.yml"
+verify_2048p="$client verify --cert testkeys/rsa2048.pgp"
+verify_2048x="$client verify --cert testkeys/rsa2048.crt"
 $relic import-key -k rsa2048 -f testkeys/rsa2048.key
 $relic serve &
 spid=$!
@@ -51,24 +57,24 @@ set -x
 
 ### RPM
 pkg="zlib-1.2.8-10.fc24.i686.rpm"
-relic verify --cert "testkeys/RPM-GPG-KEY-fedora-25-i386" "packages/$pkg"
+$client verify --cert "testkeys/RPM-GPG-KEY-fedora-25-i386" "packages/$pkg"
 $relic remote sign -k rsa2048 -f "packages/$pkg" -o "$signed/$pkg"
-relic verify "$signed/$pkg" 2>/dev/null && { echo expected an error; exit 1; }
+$client verify "$signed/$pkg" 2>/dev/null && { echo expected an error; exit 1; }
 $verify_2048p "$signed/$pkg"
 echo
 
 ### DEB
 pkg="zlib1g_1.2.8.dfsg-5_i386.deb"
 $relic remote sign -k rsa2048 -f "packages/$pkg" -o "$signed/$pkg"
-relic verify "$signed/$pkg" 2>/dev/null && { echo expected an error; exit 1; }
+$client verify "$signed/$pkg" 2>/dev/null && { echo expected an error; exit 1; }
 $verify_2048p "$signed/$pkg"
 echo
 
 ### PGP
-relic verify "packages/InRelease" 2>/dev/null && { echo expected an error; exit 1; }
-relic verify --cert "testkeys/ubuntu2012.pgp" "packages/InRelease"
-relic verify "packages/Release.gpg" --content "packages/Release" 2>/dev/null && { echo expected an error; exit 1; }
-relic verify --cert "testkeys/ubuntu2012.pgp" "packages/Release.gpg" --content "packages/Release"
+$client verify "packages/InRelease" 2>/dev/null && { echo expected an error; exit 1; }
+$client verify --cert "testkeys/ubuntu2012.pgp" "packages/InRelease"
+$client verify "packages/Release.gpg" --content "packages/Release" 2>/dev/null && { echo expected an error; exit 1; }
+$client verify --cert "testkeys/ubuntu2012.pgp" "packages/Release.gpg" --content "packages/Release"
 $relic remote sign-pgp -u rsa2048 -ba "packages/Release" -o "$signed/Release.gpg"
 $verify_2048p "$signed/Release.gpg" --content "packages/Release"
 $relic remote sign-pgp -u rsa2048 --clearsign "packages/Release" -o "$signed/InRelease"
@@ -97,7 +103,7 @@ echo
 
 ### appx
 pkg="App1_1.0.3.0_x64.appx"
-relic verify --cert "testkeys/ralph.crt" "packages/$pkg"
+$client verify --cert "testkeys/ralph.crt" "packages/$pkg"
 $relic remote sign -k rsa2048 -f "packages/$pkg" -o "$signed/$pkg"
 $verify_2048x "$signed/$pkg"
 echo
@@ -110,7 +116,7 @@ echo
 
 ### CAT
 pkg="hyperv.cat"
-relic verify --cert "testkeys/msroot.crt" "packages/$pkg"
+$client verify --cert "testkeys/msroot.crt" "packages/$pkg"
 $relic remote sign -k rsa2048 -f "packages/$pkg" -o "$signed/$pkg"
 $verify_2048x "$signed/$pkg"
 echo
@@ -141,7 +147,7 @@ echo
 
 ### VSIX
 pkg="VSIXProject1.vsix"
-relic verify --cert "testkeys/ralph.crt" "packages/$pkg"
+$client verify --cert "testkeys/ralph.crt" "packages/$pkg"
 $relic remote sign -k rsa2048 -f "packages/$pkg" -o "$signed/$pkg"
 $verify_2048x "$signed/$pkg"
 echo
