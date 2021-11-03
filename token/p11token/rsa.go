@@ -35,7 +35,7 @@ func (key *Key) toRsaKey() (crypto.PublicKey, error) {
 		return nil, errors.New("Unable to retrieve RSA public key")
 	}
 	n := new(big.Int).SetBytes([]byte(modulus))
-	e := int(attrToInt(exponent))
+	e := int(new(big.Int).SetBytes(exponent).Int64())
 	return &rsa.PublicKey{N: n, E: e}, nil
 }
 
