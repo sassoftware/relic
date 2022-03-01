@@ -18,12 +18,17 @@ package server
 
 import (
 	"bytes"
+	"context"
+	"crypto/x509"
 	"encoding/pem"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
 
-	"github.com/sassoftware/relic/lib/certloader"
+	"github.com/sassoftware/relic/config"
+	"github.com/sassoftware/relic/internal/signinit"
+	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/armor"
 )
 
@@ -49,44 +54,59 @@ func (s *Server) serveGetKey(request *http.Request) (res Response, err error) {
 		s.Logr(request, "access denied to key %s\n", keyName)
 		return AccessDeniedResponse, nil
 	}
-	var info keyInfo
-	var paths []string
-	if keyConf.PgpCertificate != "" {
-		paths = append(paths, keyConf.PgpCertificate)
-	}
-	if keyConf.X509Certificate != "" {
-		paths = append(paths, keyConf.X509Certificate)
-	}
-	certs, err := certloader.LoadAnyCerts(paths)
+	info, err := s.getKeyInfo(request.Context(), keyConf)
 	if err != nil {
 		return nil, err
 	}
-	if len(certs.PGPCerts) != 0 {
-		var buf bytes.Buffer
-		w, err := armor.Encode(&buf, "PGP PUBLIC KEY BLOCK", nil)
-		if err != nil {
-			return nil, err
-		}
-		for _, cert := range certs.PGPCerts {
-			if err := cert.Serialize(w); err != nil {
-				return nil, err
-			}
-		}
-		if err := w.Close(); err != nil {
-			return nil, err
-		}
-		buf.WriteString("\n")
-		info.PGPCertificate = buf.String()
-	}
-	if len(certs.X509Certs) != 0 {
-		var buf bytes.Buffer
-		for _, cert := range certs.X509Certs {
-			block := &pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw}
-			if err := pem.Encode(&buf, block); err != nil {
-				return nil, err
-			}
-		}
-		info.X509Certificate = buf.String()
-	}
 	return JSONResponse(info)
+}
+
+func (s *Server) getKeyInfo(ctx context.Context, keyConf *config.KeyConfig) (info keyInfo, err error) {
+	tok := s.tokens[keyConf.Token]
+	if tok == nil {
+		return keyInfo{}, fmt.Errorf("missing token \"%s\" for key \"%s\"", keyConf.Token, keyConf.Name())
+	}
+	cert, _, err := signinit.InitKey(ctx, tok, keyConf.Name())
+	if cert.PgpKey != nil {
+		info.PGPCertificate, err = marshalPGPCert(cert.PgpKey)
+		if err != nil {
+			return keyInfo{}, err
+		}
+	}
+	if cert.Leaf != nil {
+		info.X509Certificate, err = marshalX509Cert(cert.Certificates)
+		if err != nil {
+			return keyInfo{}, err
+		}
+	}
+	return
+}
+
+// marshal entire X509 certificate chain in PEM format
+func marshalX509Cert(certs []*x509.Certificate) (string, error) {
+	var buf bytes.Buffer
+	for _, cert := range certs {
+		block := &pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw}
+		if err := pem.Encode(&buf, block); err != nil {
+			return "", err
+		}
+	}
+	return buf.String(), nil
+}
+
+// marshal PGP public certificate in ASCII armor
+func marshalPGPCert(entity *openpgp.Entity) (string, error) {
+	var buf bytes.Buffer
+	w, err := armor.Encode(&buf, "PGP PUBLIC KEY BLOCK", nil)
+	if err != nil {
+		return "", err
+	}
+	if err := entity.Serialize(w); err != nil {
+		return "", err
+	}
+	if err := w.Close(); err != nil {
+		return "", err
+	}
+	buf.WriteString("\n")
+	return buf.String(), nil
 }

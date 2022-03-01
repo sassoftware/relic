@@ -104,11 +104,12 @@ func signCsrCmd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	parsedCert := key.Certificate()
 	certPath := key.Config().X509Certificate
-	if certPath == "" {
+	if certPath == "" && len(parsedCert) == 0 {
 		return errors.New("token key has no x509 certificate")
 	}
-	cert, err := certloader.LoadTokenCertificates(key, certPath, "")
+	cert, err := certloader.LoadTokenCertificates(key, certPath, "", parsedCert)
 	if err != nil {
 		return err
 	}

@@ -180,6 +180,10 @@ func (k *gcloudKey) Config() *config.KeyConfig {
 	return k.kconf
 }
 
+func (k *gcloudKey) Certificate() []byte {
+	return nil
+}
+
 func (k *gcloudKey) GetID() []byte {
 	return nil
 }

@@ -125,6 +125,10 @@ func (key *fileKey) Config() *config.KeyConfig {
 	return key.keyConf
 }
 
+func (key *fileKey) Certificate() []byte {
+	return nil
+}
+
 func (key *fileKey) GetID() []byte {
 	return nil
 }

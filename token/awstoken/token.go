@@ -136,6 +136,10 @@ func (k *awsKey) Config() *config.KeyConfig {
 	return k.kconf
 }
 
+func (k *awsKey) Certificate() []byte {
+	return nil
+}
+
 func (k *awsKey) GetID() []byte {
 	return nil
 }

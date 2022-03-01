@@ -88,6 +88,7 @@ func (t *WorkerToken) GetKey(ctx context.Context, keyName string) (token.Key, er
 		kconf:  kconf,
 		public: pub,
 		id:     res.ID,
+		cert:   res.Cert,
 	}, nil
 }
 
@@ -112,10 +113,15 @@ type workerKey struct {
 	kconf  *config.KeyConfig
 	public crypto.PublicKey
 	id     []byte
+	cert   []byte
 }
 
 func (k *workerKey) Config() *config.KeyConfig {
 	return k.kconf
+}
+
+func (k *workerKey) Certificate() []byte {
+	return k.cert
 }
 
 func (k *workerKey) Public() crypto.PublicKey {

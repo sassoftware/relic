@@ -114,6 +114,10 @@ func (key *Key) Config() *config.KeyConfig {
 	return key.keyConf
 }
 
+func (key *Key) Certificate() []byte {
+	return nil
+}
+
 func (key *Key) Public() crypto.PublicKey {
 	return key.pubParsed
 }

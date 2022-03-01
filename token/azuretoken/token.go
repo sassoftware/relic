@@ -8,11 +8,10 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
-	"net/url"
 	"os"
-	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/2016-10-01/keyvault"
 	kvauth "github.com/Azure/azure-sdk-for-go/services/keyvault/auth"
@@ -40,6 +39,8 @@ type kvKey struct {
 	kbase    string
 	kname    string
 	kversion string
+	id       []byte
+	cert     []byte
 }
 
 func init() {
@@ -94,25 +95,43 @@ func (t *kvToken) GetKey(ctx context.Context, keyName string) (token.Key, error)
 		return nil, err
 	}
 	if keyConf.ID == "" {
-		return nil, fmt.Errorf("key %q must have \"id\" set to the fully-quaified key identifier URL of an Azure key version", keyName)
+		return nil, fmt.Errorf("key %q must have \"id\" set to the fully-qualified key identifier URL of an Azure key version, certificate or certificate version", keyName)
 	}
-	// deconstruct URL to call GetKey so it can put it back together again
-	u, err := url.Parse(keyConf.ID)
+	words, baseURL, err := parseKeyURL(keyConf.ID)
 	if err != nil {
-		return nil, fmt.Errorf("key %q: id: %w", keyName, err)
-	} else if u.Scheme == "" || u.Host == "" {
-		return nil, fmt.Errorf("key %q: id: invalid URL", keyName)
+		return nil, fmt.Errorf("key %q: %w", keyName, err)
 	}
-	words := strings.Split(u.Path, "/")
-	if len(words) != 4 || words[1] != "keys" {
-		return nil, fmt.Errorf("key %q: id: expected https://{vaultname}.vault.azure.net/keys/{keyname}/{keyversion}", keyName)
+	wantKeyID := token.KeyID(ctx)
+	var cert *certRef
+	switch {
+	case len(wantKeyID) != 0:
+		// reusing a key the client saw before
+		cert = refFromKeyID(wantKeyID)
+		if cert == nil {
+			return nil, errors.New("invalid keyID")
+		}
+		cert = &certRef{KeyName: words[0], KeyVersion: words[1]}
+	case len(words) == 4 && words[1] == "keys":
+		// directly to a key version, no cert provided
+		cert = &certRef{KeyName: words[2], KeyVersion: words[3]}
+	case len(words) == 4 && words[1] == "certificates":
+		// link to a cert version, get the key version and cert contents from it
+		cert, err = t.loadCertificateVersion(ctx, baseURL, words[2], words[3])
+		if err != nil {
+			return nil, fmt.Errorf("key %q: fetching certificate: %w", keyName, err)
+		}
+	case len(words) == 3 && words[1] == "certificates":
+		// link to a cert, pick the latest version
+		cert, err = t.loadCertificateLatest(ctx, baseURL, words[2])
+		if err != nil {
+			return nil, fmt.Errorf("key %q: fetching certificate: %w", keyName, err)
+		}
+	default:
+		return nil, fmt.Errorf("key %q must have \"id\" set to the fully-qualified key identifier URL of an Azure key version, certificate or certificate version", keyName)
 	}
-	kname, kversion := words[2], words[3]
-	u.Path = ""
-	baseURL := u.String()
-	key, err := t.cli.GetKey(ctx, baseURL, kname, kversion)
+	key, err := t.cli.GetKey(ctx, baseURL, cert.KeyName, cert.KeyVersion)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("key %q: %w", keyName, err)
 	}
 	// marshal back to JSON and then parse using jose to get a PublicKey
 	keyBlob, err := json.Marshal(key.Key)
@@ -128,8 +147,10 @@ func (t *kvToken) GetKey(ctx context.Context, keyName string) (token.Key, error)
 		cli:      t.cli,
 		pub:      jwk.Key,
 		kbase:    baseURL,
-		kname:    kname,
-		kversion: kversion,
+		kname:    cert.KeyName,
+		kversion: cert.KeyVersion,
+		cert:     cert.CertBlob,
+		id:       cert.KeyID(),
 	}, nil
 }
 
@@ -163,7 +184,16 @@ func (k *kvKey) SignContext(ctx context.Context, digest []byte, opts crypto.Sign
 		return nil, err
 	}
 	encoded := base64.RawURLEncoding.EncodeToString(digest)
-	resp, err := k.cli.Sign(ctx, k.kbase, k.kname, k.kversion, keyvault.KeySignParameters{
+	kname, kversion := k.kname, k.kversion
+	if wantKeyID := token.KeyID(ctx); len(wantKeyID) != 0 {
+		// reusing a key the client saw before
+		cert := refFromKeyID(wantKeyID)
+		if cert == nil {
+			return nil, errors.New("invalid keyID")
+		}
+		kname, kversion = cert.KeyName, cert.KeyVersion
+	}
+	resp, err := k.cli.Sign(ctx, k.kbase, kname, kversion, keyvault.KeySignParameters{
 		Algorithm: keyvault.JSONWebKeySignatureAlgorithm(alg),
 		Value:     &encoded,
 	})
@@ -185,13 +215,9 @@ func (k *kvKey) SignContext(ctx context.Context, digest []byte, opts crypto.Sign
 	return sig, nil
 }
 
-func (k *kvKey) Config() *config.KeyConfig {
-	return k.kconf
-}
-
-func (k *kvKey) GetID() []byte {
-	return nil
-}
+func (k *kvKey) Config() *config.KeyConfig { return k.kconf }
+func (k *kvKey) Certificate() []byte       { return k.cert }
+func (k *kvKey) GetID() []byte             { return k.id }
 
 func (k *kvKey) ImportCertificate(cert *x509.Certificate) error {
 	return token.NotImplementedError{Op: "import-certificate", Type: tokenType}

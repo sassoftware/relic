@@ -58,6 +58,8 @@ type Key interface {
 	SignContext(context.Context, []byte, crypto.SignerOpts) ([]byte, error)
 	// Return the key config object used to instantiate this key
 	Config() *config.KeyConfig
+	// Return the X509 certificate chain stored in the token, if any
+	Certificate() []byte
 	// Get the CKK_ID or equivalent for the key
 	GetID() []byte
 	// Import a leaf certificate for this key

@@ -205,14 +205,20 @@ func LoadX509KeyPair(certFile, keyFile string) (*Certificate, error) {
 
 // Load X509 and/or PGP certificates from named paths and return a Certificate
 // structure together with the given private key
-func LoadTokenCertificates(key crypto.PrivateKey, x509cert, pgpcert string) (*Certificate, error) {
+func LoadTokenCertificates(key crypto.PrivateKey, x509cert, pgpcert string, x509contents []byte) (*Certificate, error) {
 	var cert *Certificate
-	if x509cert != "" {
-		blob, err := ioutil.ReadFile(x509cert)
+	var err error
+	switch {
+	case x509cert != "":
+		// load X509 cert from file
+		x509contents, err = ioutil.ReadFile(x509cert)
 		if err != nil {
 			return nil, err
 		}
-		cert, err = parseCertificates(blob)
+		fallthrough
+	case len(x509contents) != 0:
+		// load X509 cert from blob
+		cert, err = parseCertificates(x509contents)
 		if err != nil {
 			return nil, err
 		}
@@ -220,7 +226,7 @@ func LoadTokenCertificates(key crypto.PrivateKey, x509cert, pgpcert string) (*Ce
 			return nil, errors.New("certificate does not match key in token")
 		}
 		cert.PrivateKey = key
-	} else {
+	default:
 		cert = &Certificate{PrivateKey: key}
 	}
 	if pgpcert != "" {

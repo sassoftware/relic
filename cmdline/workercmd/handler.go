@@ -170,6 +170,7 @@ func (h *handler) handle(rw http.ResponseWriter, req *http.Request) (resp worker
 			return resp, err
 		}
 		resp.ID = key.GetID()
+		resp.Cert = key.Certificate()
 		resp.Value, err = x509.MarshalPKIXPublicKey(key.Public())
 		return resp, err
 	case workerrpc.Sign:

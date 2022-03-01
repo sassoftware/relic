@@ -33,6 +33,7 @@ type Request struct {
 type Response struct {
 	Value     []byte
 	ID        []byte
+	Cert      []byte
 	Key       string
 	Err       string
 	Retryable bool

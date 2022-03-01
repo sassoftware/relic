@@ -257,6 +257,10 @@ func (key *scdKey) Config() *config.KeyConfig {
 	return key.keyConf
 }
 
+func (key *scdKey) Certificate() []byte {
+	return nil
+}
+
 func (key *scdKey) GetID() []byte {
 	return []byte(key.token.serial)
 }
