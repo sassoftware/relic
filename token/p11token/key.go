@@ -17,7 +17,9 @@
 package p11token
 
 import (
+	"context"
 	"crypto"
+	"crypto/rand"
 	"errors"
 	"io"
 
@@ -38,7 +40,7 @@ type Key struct {
 	pubParsed       crypto.PublicKey
 }
 
-func (token *Token) GetKey(keyName string) (token.Key, error) {
+func (token *Token) GetKey(ctx context.Context, keyName string) (token.Key, error) {
 	token.mutex.Lock()
 	defer token.mutex.Unlock()
 	keyConf, err := token.config.GetKey(keyName)
@@ -139,4 +141,8 @@ func (key *Key) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts) ([]b
 	default:
 		return nil, errors.New("Unsupported key type")
 	}
+}
+
+func (key *Key) SignContext(ctx context.Context, digest []byte, opts crypto.SignerOpts) ([]byte, error) {
+	return key.Sign(rand.Reader, digest, opts)
 }

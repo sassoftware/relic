@@ -17,6 +17,7 @@
 package token
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -79,7 +80,7 @@ func importKeyCmd(cmd *cobra.Command, args []string) error {
 		return shared.Fail(err)
 	}
 	var didSomething bool
-	key, err := tok.GetKey(argKeyName)
+	key, err := tok.GetKey(context.Background(), argKeyName)
 	if err == nil {
 		if cert.Leaf == nil {
 			return errors.New("An object with that label already exists in the token")

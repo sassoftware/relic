@@ -70,11 +70,7 @@ func (t *WorkerToken) Config() *config.TokenConfig {
 	return t.tconf
 }
 
-func (t *WorkerToken) GetKey(keyName string) (token.Key, error) {
-	return t.GetKeyContext(context.Background(), keyName)
-}
-
-func (t *WorkerToken) GetKeyContext(ctx context.Context, keyName string) (token.Key, error) {
+func (t *WorkerToken) GetKey(ctx context.Context, keyName string) (token.Key, error) {
 	kconf, err := t.config.GetKey(keyName)
 	if err != nil {
 		return nil, err
@@ -137,6 +133,7 @@ func (k *workerKey) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts) 
 func (k *workerKey) SignContext(ctx context.Context, digest []byte, opts crypto.SignerOpts) ([]byte, error) {
 	rr := workerrpc.Request{
 		KeyName: k.kconf.Name(),
+		KeyID:   k.id,
 		Digest:  digest,
 	}
 	if opts != nil {

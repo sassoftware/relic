@@ -157,6 +157,7 @@ server:
   #tokencheckinterval: 60  # ping the token every N seconds
   #tokenchecktimeout: 30   # fail a ping if it is stuck for N seconds
   #tokencheckfailures: 3   # the server will report "not healthy" after N failed pings
+  #tokencacheseconds: 600  # cache key/cert info from token
 
   # Optional list of URLs that are part of a cluster of servers
   #siblings:

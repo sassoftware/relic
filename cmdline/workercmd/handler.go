@@ -17,6 +17,8 @@
 package workercmd
 
 import (
+	"bytes"
+	"context"
 	"crypto"
 	"crypto/hmac"
 	"crypto/rand"
@@ -98,7 +100,8 @@ func (h *handler) healthCheck() {
 type handler struct {
 	token    token.Token
 	cookie   []byte
-	keyCache sync.Map
+	keys     map[string]cachedKey
+	mu       sync.Mutex
 	shutdown func()
 }
 
@@ -152,11 +155,17 @@ func (h *handler) handle(rw http.ResponseWriter, req *http.Request) (resp worker
 	if err := json.Unmarshal(blob, &rr); err != nil {
 		return resp, err
 	}
+	ctx := req.Context()
+	if rr.KeyID != nil {
+		// if the caller knows the key ID already, pass that along to ensure the
+		// same key is used in case it got rotated
+		ctx = token.WithKeyID(ctx, rr.KeyID)
+	}
 	switch req.URL.Path {
 	case workerrpc.Ping:
 		return resp, h.token.Ping()
 	case workerrpc.GetKey:
-		key, err := h.getKey(rr.KeyName)
+		key, err := h.getKey(ctx, rr.KeyName)
 		if err != nil {
 			return resp, err
 		}
@@ -169,27 +178,51 @@ func (h *handler) handle(rw http.ResponseWriter, req *http.Request) (resp worker
 		if rr.SaltLength != nil {
 			opts = &rsa.PSSOptions{SaltLength: *rr.SaltLength, Hash: hash}
 		}
-		key, err := h.getKey(rr.KeyName)
+		key, err := h.getKey(ctx, rr.KeyName)
 		if err != nil {
 			return resp, err
 		}
-		resp.Value, err = key.Sign(rand.Reader, rr.Digest, opts)
+		if signer, ok := key.(token.KeyContext); ok {
+			resp.Value, err = signer.SignContext(ctx, rr.Digest, opts)
+		} else {
+			resp.Value, err = key.Sign(rand.Reader, rr.Digest, opts)
+		}
 		return resp, err
 	default:
 		return resp, errors.New("invalid method: " + req.URL.Path)
 	}
 }
 
+type cachedKey struct {
+	expires time.Time
+	key     token.Key
+}
+
 // cache key handles
-func (h *handler) getKey(keyName string) (token.Key, error) {
-	key, _ := h.keyCache.Load(keyName)
-	if key == nil {
-		var err error
-		key, err = h.token.GetKey(keyName)
-		if err != nil {
-			return nil, err
+func (h *handler) getKey(ctx context.Context, keyName string) (token.Key, error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	wantKeyID := token.KeyID(ctx)
+	cached := h.keys[keyName]
+	if cached.key != nil && cached.expires.After(time.Now()) {
+		// if caller is looking for a particular key ID, make sure the cached
+		// one matches before returning it
+		haveKeyID := cached.key.GetID()
+		if len(wantKeyID) == 0 || bytes.Equal(wantKeyID, haveKeyID) {
+			return cached.key, nil
 		}
-		h.keyCache.Store(keyName, key)
 	}
-	return key.(token.Key), nil
+	key, err := h.token.GetKey(ctx, keyName)
+	if err != nil {
+		return nil, err
+	}
+	expires := time.Duration(shared.CurrentConfig.Server.TokenCacheSeconds) * time.Second
+	if expires > 0 && len(wantKeyID) == 0 {
+		// only cache if the caller did not request a specific key ID
+		h.keys[keyName] = cachedKey{
+			expires: time.Now().Add(expires),
+			key:     key,
+		}
+	}
+	return key, nil
 }

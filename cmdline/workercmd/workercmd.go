@@ -77,6 +77,7 @@ func runWorker(tokenName string) error {
 	handler := &handler{
 		token:  tok,
 		cookie: cookie,
+		keys:   make(map[string]cachedKey),
 	}
 	srv := &http.Server{Handler: handler}
 	wg := new(sync.WaitGroup)

@@ -17,6 +17,7 @@
 package token
 
 import (
+	"context"
 	"crypto"
 	"crypto/x509"
 	"fmt"
@@ -40,7 +41,7 @@ type Token interface {
 	// Return the token config object used to instantiate this token
 	Config() *config.TokenConfig
 	// Get a key from the token by its config alias
-	GetKey(keyName string) (Key, error)
+	GetKey(ctx context.Context, keyName string) (Key, error)
 	// Import a public+private keypair into the token
 	Import(keyName string, privKey crypto.PrivateKey) (Key, error)
 	// Import an issuer certificate into the token. The new object label will
@@ -54,6 +55,7 @@ type Token interface {
 
 type Key interface {
 	crypto.Signer
+	SignContext(context.Context, []byte, crypto.SignerOpts) ([]byte, error)
 	// Return the key config object used to instantiate this key
 	Config() *config.KeyConfig
 	// Get the CKK_ID or equivalent for the key

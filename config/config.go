@@ -83,6 +83,7 @@ type ServerConfig struct {
 	TokenCheckInterval int
 	TokenCheckFailures int
 	TokenCheckTimeout  int
+	TokenCacheSeconds  int
 
 	// URLs to all servers in the cluster. If a client uses DirectoryURL to
 	// point to this server (or a load balancer), then we will give them these
@@ -211,6 +212,9 @@ func (config *Config) Normalize(path string) error {
 		}
 		if s.TokenCheckFailures == 0 {
 			s.TokenCheckFailures = 3
+		}
+		if s.TokenCacheSeconds == 0 {
+			s.TokenCacheSeconds = 600
 		}
 	}
 	if r := config.Remote; r != nil {

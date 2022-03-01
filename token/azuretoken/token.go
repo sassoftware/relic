@@ -88,11 +88,7 @@ func (t *kvToken) Config() *config.TokenConfig {
 	return t.tconf
 }
 
-func (t *kvToken) GetKey(keyName string) (token.Key, error) {
-	return t.GetKeyContext(context.Background(), keyName)
-}
-
-func (t *kvToken) GetKeyContext(ctx context.Context, keyName string) (token.Key, error) {
+func (t *kvToken) GetKey(ctx context.Context, keyName string) (token.Key, error) {
 	keyConf, err := t.config.GetKey(keyName)
 	if err != nil {
 		return nil, err

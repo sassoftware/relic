@@ -17,6 +17,7 @@
 package open
 
 import (
+	"context"
 	"fmt"
 	"io"
 
@@ -56,7 +57,7 @@ func Key(cfg *config.Config, keyName string, prompt passprompt.PasswordGetter) (
 	if err != nil {
 		return nil, err
 	}
-	key, err := token.GetKey(keyName)
+	key, err := token.GetKey(context.Background(), keyName)
 	if err != nil {
 		token.Close()
 		return nil, err

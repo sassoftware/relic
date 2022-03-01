@@ -17,7 +17,9 @@
 package filetoken
 
 import (
+	"context"
 	"crypto"
+	"crypto/rand"
 	"crypto/x509"
 	"fmt"
 	"io"
@@ -74,7 +76,7 @@ func (tok *fileToken) ListKeys(opts token.ListOptions) error {
 	return token.NotImplementedError{Op: "list-keys", Type: tokenType}
 }
 
-func (tok *fileToken) GetKey(keyName string) (token.Key, error) {
+func (tok *fileToken) GetKey(ctx context.Context, keyName string) (token.Key, error) {
 	keyConf, err := tok.config.GetKey(keyName)
 	if err != nil {
 		return nil, err
@@ -113,6 +115,10 @@ func (key *fileKey) Public() crypto.PublicKey {
 
 func (key *fileKey) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts) ([]byte, error) {
 	return key.signer.Sign(rand, digest, opts)
+}
+
+func (key *fileKey) SignContext(ctx context.Context, digest []byte, opts crypto.SignerOpts) ([]byte, error) {
+	return key.signer.Sign(rand.Reader, digest, opts)
 }
 
 func (key *fileKey) Config() *config.KeyConfig {

@@ -24,6 +24,7 @@ const (
 
 type Request struct {
 	KeyName    string
+	KeyID      []byte
 	Digest     []byte
 	Hash       uint
 	SaltLength *int

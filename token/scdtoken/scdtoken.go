@@ -17,8 +17,10 @@
 package scdtoken
 
 import (
+	"context"
 	"crypto"
 	"crypto/ecdsa"
+	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"errors"
@@ -207,7 +209,7 @@ func (tok *scdToken) ListKeys(opts token.ListOptions) error {
 	return nil
 }
 
-func (tok *scdToken) GetKey(keyName string) (token.Key, error) {
+func (tok *scdToken) GetKey(ctx context.Context, keyName string) (token.Key, error) {
 	tok.mu.Lock()
 	defer tok.mu.Unlock()
 	keyConf, err := tok.config.GetKey(keyName)
@@ -245,6 +247,10 @@ func (key *scdKey) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts) (
 	key.token.mu.Lock()
 	defer key.token.mu.Unlock()
 	return key.key.Sign(digest, opts, key.token.pin)
+}
+
+func (key *scdKey) SignContext(ctx context.Context, digest []byte, opts crypto.SignerOpts) ([]byte, error) {
+	return key.Sign(rand.Reader, digest, opts)
 }
 
 func (key *scdKey) Config() *config.KeyConfig {

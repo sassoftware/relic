@@ -17,6 +17,7 @@
 package token
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -97,7 +98,7 @@ func selectOrGenerate() (key token.Key, err error) {
 	if err != nil {
 		return nil, err
 	}
-	key, err = tok.GetKey(argKeyName)
+	key, err = tok.GetKey(context.Background(), argKeyName)
 	if err == nil {
 		fmt.Fprintln(os.Stderr, "Using existing key in token")
 		return key, nil
@@ -159,7 +160,7 @@ func openKey(keyName string) (token.Key, error) {
 	if err != nil {
 		return nil, err
 	}
-	key, err := tok.GetKey(keyName)
+	key, err := tok.GetKey(context.Background(), keyName)
 	if err != nil {
 		tok.Close()
 		return nil, err

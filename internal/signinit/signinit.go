@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/sassoftware/relic/cmdline/shared"
+	"github.com/sassoftware/relic/config"
 	"github.com/sassoftware/relic/lib/audit"
 	"github.com/sassoftware/relic/lib/certloader"
 	"github.com/sassoftware/relic/signers"
@@ -30,46 +31,42 @@ import (
 	"github.com/sassoftware/relic/token"
 )
 
-func Init(ctx context.Context, mod *signers.Signer, tok token.Token, keyName string, hash crypto.Hash, flags *signers.FlagValues) (*certloader.Certificate, *signers.SignOpts, error) {
-	var key token.Key
-	var err error
-	if tctx, ok := tok.(keyGetter); ok {
-		key, err = tctx.GetKeyContext(ctx, keyName)
-	} else {
-		key, err = tok.GetKey(keyName)
-	}
+// InitKey loads the cert chain for a key
+func InitKey(ctx context.Context, tok token.Token, keyName string) (*certloader.Certificate, *config.KeyConfig, error) {
+	key, err := tok.GetKey(ctx, keyName)
 	if err != nil {
 		return nil, nil, err
 	}
 	kconf := key.Config()
 	// parse certificates
-	var x509cert, pgpcert string
-	if mod.CertTypes&signers.CertTypeX509 != 0 {
-		if kconf.X509Certificate == "" {
-			return nil, nil, sigerrors.ErrNoCertificate{Type: "x509"}
-		}
-		x509cert = kconf.X509Certificate
-	}
-	if mod.CertTypes&signers.CertTypePgp != 0 {
-		if kconf.PgpCertificate == "" {
-			return nil, nil, sigerrors.ErrNoCertificate{Type: "pgp"}
-		}
-		pgpcert = kconf.PgpCertificate
-	}
-	cert, err := certloader.LoadTokenCertificates(key, x509cert, pgpcert)
+	cert, err := certloader.LoadTokenCertificates(key, kconf.X509Certificate, kconf.PgpCertificate, key.Certificate())
 	if err != nil {
 		return nil, nil, err
 	}
 	cert.KeyName = keyName
+	return cert, kconf, nil
+}
+
+// InitKey prepares to sign using the named key, preparing a cert chain and
+// signing options according to the server configuration
+func Init(ctx context.Context, mod *signers.Signer, tok token.Token, keyName string, hash crypto.Hash, flags *signers.FlagValues) (*certloader.Certificate, *signers.SignOpts, error) {
+	cert, kconf, err := InitKey(ctx, tok, keyName)
+	if err != nil {
+		return nil, nil, err
+	}
 	// create audit info
 	auditInfo := audit.New(keyName, mod.Name, hash)
 	now := time.Now().UTC()
 	auditInfo.SetTimestamp(now)
 	if cert.Leaf != nil {
 		auditInfo.SetX509Cert(cert.Leaf)
+	} else if mod.CertTypes&signers.CertTypeX509 != 0 {
+		return nil, nil, sigerrors.ErrNoCertificate{Type: "x509"}
 	}
 	if cert.PgpKey != nil {
 		auditInfo.SetPgpCert(cert.PgpKey)
+	} else if mod.CertTypes&signers.CertTypePgp != 0 {
+		return nil, nil, sigerrors.ErrNoCertificate{Type: "pgp"}
 	}
 	if kconf.Timestamp {
 		cert.Timestamper, err = GetTimestamper()
@@ -95,8 +92,4 @@ func PublishAudit(info *audit.Info) error {
 		}
 	}
 	return nil
-}
-
-type keyGetter interface {
-	GetKeyContext(context.Context, string) (token.Key, error)
 }

@@ -55,7 +55,6 @@ type WorkerToken struct {
 	addr   string
 	fdset  *activatecmd.ListenerSet
 	notify *activatecmd.Listener
-	lis    net.Listener
 	closed closeonce.Closed
 	wg     sync.WaitGroup
 	ctx    context.Context

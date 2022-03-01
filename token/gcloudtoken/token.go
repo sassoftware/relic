@@ -75,11 +75,7 @@ func (t *gcloudToken) Config() *config.TokenConfig {
 	return t.tconf
 }
 
-func (t *gcloudToken) GetKey(keyName string) (token.Key, error) {
-	return t.GetKeyContext(context.Background(), keyName)
-}
-
-func (t *gcloudToken) GetKeyContext(ctx context.Context, keyName string) (token.Key, error) {
+func (t *gcloudToken) GetKey(ctx context.Context, keyName string) (token.Key, error) {
 	keyConf, err := t.config.GetKey(keyName)
 	if err != nil {
 		return nil, err

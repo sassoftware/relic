@@ -37,7 +37,7 @@ func (s *Server) serveGetKey(request *http.Request) (res Response, err error) {
 		return ErrorResponse(http.StatusMethodNotAllowed), nil
 	}
 	path := request.URL.Path[6:]
-	if strings.Index(path, "/") >= 0 {
+	if strings.Contains(path, "/") {
 		return ErrorResponse(http.StatusBadRequest), nil
 	}
 	keyName, err := url.PathUnescape(path)
