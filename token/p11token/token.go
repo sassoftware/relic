@@ -241,7 +241,7 @@ func (tok *Token) autoLogIn(pinProvider passprompt.PasswordGetter) error {
 	if loggedIn {
 		return nil
 	}
-	user := pkcs11.CKU_USER
+	var user uint = pkcs11.CKU_USER
 	if tokenConf.User != nil {
 		user = *tokenConf.User
 	}

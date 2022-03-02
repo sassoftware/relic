@@ -16,7 +16,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/2016-10-01/keyvault"
 	kvauth "github.com/Azure/azure-sdk-for-go/services/keyvault/auth"
 	"github.com/Azure/go-autorest/autorest"
-	"gopkg.in/square/go-jose.v2"
+	"github.com/go-jose/go-jose/v3"
 
 	"github.com/sassoftware/relic/config"
 	"github.com/sassoftware/relic/lib/passprompt"
