@@ -124,13 +124,13 @@ func checkSignatures(blob []byte, image io.ReadSeeker) ([]PESignature, error) {
 		doPageHashes := len(pagehashes) > 0
 		digest, err := DigestPE(image, hash, doPageHashes)
 		if err != nil {
-			return nil, err
+			return sigs, err
 		}
 		if imagehash != nil && !hmac.Equal(digest.Imprint, imagehash) {
-			return nil, fmt.Errorf("digest mismatch: %x != %x", digest.Imprint, imagehash)
+			return sigs, fmt.Errorf("digest mismatch: %x != %x", digest.Imprint, imagehash)
 		}
 		if pagehashes != nil && !hmac.Equal(digest.PageHashes, pagehashes) {
-			return nil, fmt.Errorf("page hash mismatch")
+			return sigs, fmt.Errorf("page hash mismatch")
 		}
 	}
 	return sigs, nil
