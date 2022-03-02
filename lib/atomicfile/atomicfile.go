@@ -84,8 +84,10 @@ func (f *atomicFile) Commit() error {
 	if f.File == nil {
 		return errors.New("file is closed")
 	}
-	f.File.Chmod(0644)
-	f.File.Close()
+	_ = f.File.Chmod(0644)
+	if err := f.File.Close(); err != nil {
+		return err
+	}
 	// rename can't overwrite on windows
 	if err := os.Remove(f.name); err != nil && !os.IsNotExist(err) {
 		return err

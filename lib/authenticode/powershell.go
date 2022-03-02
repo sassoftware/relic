@@ -68,9 +68,9 @@ const psEnd = "SIG # End signature block"
 type sigStyle struct{ start, end string }
 
 var psStyles = map[PsSigStyle]sigStyle{
-	SigStyleHash: sigStyle{"# ", ""},
-	SigStyleXML:  sigStyle{"<!-- ", " -->"},
-	SigStyleC:    sigStyle{"/* ", " */"},
+	SigStyleHash: {"# ", ""},
+	SigStyleXML:  {"<!-- ", " -->"},
+	SigStyleC:    {"/* ", " */"},
 }
 
 // Get the PowerShell signature style for a filename or extension
@@ -133,7 +133,7 @@ func DigestPowershell(r io.Reader, style PsSigStyle, hash crypto.Hash) (*PsDiges
 			sigSize += n
 			break
 		} else {
-			writeUtf16(d, saved, isUtf16)
+			_ = writeUtf16(d, saved, isUtf16)
 			textSize += int64(len(saved))
 			saved = line
 		}
@@ -141,7 +141,7 @@ func DigestPowershell(r io.Reader, style PsSigStyle, hash crypto.Hash) (*PsDiges
 			break
 		}
 	}
-	writeUtf16(d, saved, isUtf16)
+	_ = writeUtf16(d, saved, isUtf16)
 	textSize += int64(len(saved))
 	return &PsDigest{d.Sum(nil), hash, textSize, sigSize, style, isUtf16}, nil
 }
@@ -301,7 +301,7 @@ func readLine(br *bufio.Reader, isUtf16 bool) (string, error) {
 func toUtf16(x string) string {
 	runes := utf16.Encode([]rune(x))
 	buf := bytes.NewBuffer(make([]byte, 0, 2*len(runes)))
-	binary.Write(buf, binary.LittleEndian, runes)
+	_ = binary.Write(buf, binary.LittleEndian, runes)
 	return buf.String()
 }
 
@@ -318,6 +318,6 @@ func writeUtf16(d io.Writer, x string, isUtf16 bool) error {
 // Convert UTF-16-LE to UTF8
 func fromUtf16(x string) string {
 	runes := make([]uint16, len(x)/2)
-	binary.Read(bytes.NewReader([]byte(x)), binary.LittleEndian, runes)
+	_ = binary.Read(bytes.NewReader([]byte(x)), binary.LittleEndian, runes)
 	return string(utf16.Decode(runes))
 }

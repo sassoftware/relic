@@ -37,7 +37,7 @@ func Transform(f *os.File, opts signers.SignOpts) (signers.Transformer, error) {
 func (t *zipTransformer) GetReader() (io.Reader, error) {
 	r, w := io.Pipe()
 	go func() {
-		w.CloseWithError(zipslicer.ZipToTar(t.f, w))
+		_ = w.CloseWithError(zipslicer.ZipToTar(t.f, w))
 	}()
 	return r, nil
 }

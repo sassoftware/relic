@@ -23,6 +23,7 @@ import (
 	"crypto/rsa"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"io"
 
 	"github.com/miekg/pkcs11"
@@ -50,7 +51,7 @@ var newPrivateKeyAttrs = []*pkcs11.Attribute{
 
 // Import a PKCS#8 encoded key using a random 3DES key and the Unwrap function.
 // For some HSMs this is the only way to import keys.
-func (tok *Token) importPkcs8(pk8 []byte, attrs []*pkcs11.Attribute) error {
+func (tok *Token) importPkcs8(pk8 []byte, attrs []*pkcs11.Attribute) (err error) {
 	// Generate a temporary 3DES key
 	genMech := []*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_DES3_KEY_GEN, nil)}
 	wrapKey, err := tok.ctx.GenerateKey(tok.sh, genMech, []*pkcs11.Attribute{
@@ -61,7 +62,12 @@ func (tok *Token) importPkcs8(pk8 []byte, attrs []*pkcs11.Attribute) error {
 	if err != nil {
 		return err
 	}
-	defer tok.ctx.DestroyObject(tok.sh, wrapKey)
+	defer func() {
+		err2 := tok.ctx.DestroyObject(tok.sh, wrapKey)
+		if err2 != nil && err == nil {
+			err = fmt.Errorf("destroying temporary key: %w", err2)
+		}
+	}()
 	// Encrypt key
 	iv := make([]byte, 8)
 	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
@@ -134,7 +140,7 @@ func (tok *Token) Import(keyName string, privKey crypto.PrivateKey) (token.Key, 
 		}
 	}
 	if err != nil {
-		tok.ctx.DestroyObject(tok.sh, pubHandle)
+		_ = tok.ctx.DestroyObject(tok.sh, pubHandle)
 		return nil, err
 	}
 	keyConf.ID = hex.EncodeToString(keyID)

@@ -113,10 +113,10 @@ func (h *merkleHasher) Finish(inz *zipslicer.Directory, modified bool) ([][]byte
 			return nil, err
 		}
 	}
-	h.Write(cdirEntries)
+	_, _ = h.Write(cdirEntries)
 	h.flush()
 	// section 4: end of central directory
-	h.Write(endOfDir)
+	_, _ = h.Write(endOfDir)
 	h.flush()
 	// compute final hash
 	var pref [5]byte

@@ -32,7 +32,7 @@ func (e Problem) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	blob, _ := json.Marshal(e)
 	rw.Header().Set("Content-Type", "application/problem+json")
 	rw.WriteHeader(e.Status)
-	rw.Write(blob)
+	_, _ = rw.Write(blob)
 }
 
 func (e Problem) Temporary() bool {

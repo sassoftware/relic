@@ -210,7 +210,7 @@ func appendSignatures(ctx context.Context, out *bytes.Buffer, ztoc []byte, uncom
 	default:
 		return nil, fmt.Errorf("unsupported hash type %s", hashType)
 	}
-	binary.Write(out, binary.BigEndian, hdr)
+	_ = binary.Write(out, binary.BigEndian, hdr)
 	out.Write(ztoc)
 	// write checksum
 	var usedSigSize int64

@@ -30,7 +30,9 @@ func verifyIPA(f *os.File, opts signers.VerifyOpts) ([]*signers.Signature, error
 	if err != nil {
 		return nil, err
 	}
-	f.Seek(0, 0)
+	if _, err := f.Seek(0, 0); err != nil {
+		return nil, err
+	}
 	zr, err := zip.NewReader(f, size)
 	if err != nil {
 		return nil, err

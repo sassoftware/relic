@@ -131,7 +131,7 @@ func (d *Daemon) ReopenLogger() error {
 }
 
 func (d *Daemon) Serve() error {
-	activation.DaemonReady()
+	_ = activation.DaemonReady()
 	errch := make(chan error, len(d.listeners))
 	for _, listener := range d.listeners {
 		d.wg.Add(1)
@@ -141,7 +141,7 @@ func (d *Daemon) Serve() error {
 		}(listener)
 	}
 	d.wg.Wait()
-	for _ = range d.listeners {
+	for range d.listeners {
 		if err := <-errch; err != nil {
 			return err
 		}

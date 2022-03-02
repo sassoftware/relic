@@ -1,4 +1,6 @@
+//go:build linux || darwin || (windows && amd64)
 // +build linux darwin windows,amd64
+
 //
 // Copyright (c) SAS Institute Inc.
 //
@@ -29,8 +31,4 @@ func keyringGet(service, user string) (string, error) {
 
 func keyringSet(service, user, password string) error {
 	return keyring.Set(service, user, password)
-}
-
-func keyringDelete(service, user string) error {
-	return keyring.Delete(service, user)
 }

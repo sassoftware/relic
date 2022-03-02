@@ -49,7 +49,7 @@ var keyTypes = map[uint]string{
 	pkcs11.CKK_EC:  "ec",
 }
 
-func (tok *Token) ListKeys(opts token.ListOptions) error {
+func (tok *Token) ListKeys(opts token.ListOptions) (err error) {
 	filterKeyId, err := parseKeyID(opts.ID)
 	if err != nil {
 		return errors.New("invalid filter id")
@@ -59,7 +59,12 @@ func (tok *Token) ListKeys(opts token.ListOptions) error {
 	if err := tok.ctx.FindObjectsInit(tok.sh, nil); err != nil {
 		return err
 	}
-	defer tok.ctx.FindObjectsFinal(tok.sh)
+	defer func() {
+		err2 := tok.ctx.FindObjectsFinal(tok.sh)
+		if err2 != nil && err == nil {
+			err = err2
+		}
+	}()
 	for {
 		objects, _, err := tok.ctx.FindObjects(tok.sh, 1)
 		if err != nil {
@@ -178,17 +183,14 @@ func formatKeyID(keyID []byte) string {
 	return strings.Join(chunks, ":")
 }
 
-func dumpData(w io.Writer, d []byte) error {
+func dumpData(w io.Writer, d []byte) {
 	encoded := base64.StdEncoding.EncodeToString(d)
 	for len(encoded) > 0 {
 		n := 64
 		if n > len(encoded) {
 			n = len(encoded)
 		}
-		if _, err := fmt.Fprintln(w, " ", encoded[:n]); err != nil {
-			return err
-		}
+		fmt.Fprintln(w, " ", encoded[:n])
 		encoded = encoded[n:]
 	}
-	return nil
 }

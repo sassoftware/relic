@@ -133,7 +133,7 @@ func (t *WorkerToken) spawn() error {
 	t.wg.Add(1)
 	go func() {
 		defer t.wg.Done()
-		cmd.Wait()
+		_ = cmd.Wait()
 		t.procsExited <- pid
 		close(exited)
 	}()
@@ -147,7 +147,7 @@ func (t *WorkerToken) spawn() error {
 		// ready
 	case <-ctx.Done():
 		// timed out
-		cmd.Process.Kill()
+		_ = cmd.Process.Kill()
 		return fmt.Errorf("token \"%s\" worker timed out during startup", t.tconf.Name())
 	case <-exited:
 		// terminated
@@ -207,7 +207,7 @@ func (t *WorkerToken) Close() error {
 		t.cancel()
 		t.mu.Lock()
 		for pid := range t.procs {
-			syscall.Kill(pid, syscall.SIGTERM)
+			_ = syscall.Kill(pid, syscall.SIGTERM)
 		}
 		t.mu.Unlock()
 		t.wg.Wait()

@@ -11,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
+//go:build darwin || dragonfly || freebsd || linux || netbsd || openbsd || solaris
 // +build darwin dragonfly freebsd linux netbsd openbsd solaris
 
 package activatecmd
@@ -144,7 +145,10 @@ func socketpair() (parentEnd net.PacketConn, childEnd *os.File, err error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	defer files[0].Close() // FilePacketConn will dup this so always close it
+	defer func() {
+		// FilePacketConn will dup this so always close it
+		_ = files[0].Close()
+	}()
 	childEnd = files[1]
 	if err = unix.SetNonblock(int(files[0].Fd()), true); err == nil {
 		parentEnd, err = net.FilePacketConn(files[0])
@@ -152,7 +156,7 @@ func socketpair() (parentEnd net.PacketConn, childEnd *os.File, err error) {
 			return parentEnd, childEnd, nil
 		}
 	}
-	files[1].Close()
+	_ = files[1].Close()
 	return nil, nil, err
 }
 

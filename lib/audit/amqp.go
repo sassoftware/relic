@@ -52,7 +52,9 @@ func (info *Info) Publish(aconf *config.AmqpConfig) error {
 	if err := ch.ExchangeDeclare(aconf.ExchangeName(), amqp.ExchangeFanout, true, false, false, false, nil); err != nil {
 		return err
 	}
-	ch.Confirm(false)
+	if err := ch.Confirm(false); err != nil {
+		return err
+	}
 	notify := ch.NotifyPublish(make(chan amqp.Confirmation, 1))
 	if err := ch.Publish(aconf.ExchangeName(), aconf.RoutingKey(), false, false, msg); err != nil {
 		return err

@@ -63,6 +63,9 @@ func Sign(root, parent *etree.Element, hash crypto.Hash, privKey crypto.Signer, 
 	RemoveElements(parent, "Signature")
 	// canonicalize the enveloping document and digest it
 	refDigest, err := hashCanon(root, hash)
+	if err != nil {
+		return err
+	}
 	hashAlg, sigAlg, err := hashAlgs(hash, pubKey, opts)
 	if err != nil {
 		return err
@@ -86,6 +89,9 @@ func SignEnveloping(object *etree.Element, hash crypto.Hash, privKey crypto.Sign
 	signature.CreateAttr("xmlns", NsXMLDsig)
 	signature.AddChild(object)
 	refDigest, err := hashCanon(object, hash)
+	if err != nil {
+		return nil, err
+	}
 	hashAlg, sigAlg, err := hashAlgs(hash, pubKey, opts)
 	if err != nil {
 		return nil, err
@@ -131,6 +137,9 @@ func buildSignedInfo(signature *etree.Element, refId, hashAlg, sigAlg string, re
 
 func finishSignature(signature, signedinfo *etree.Element, hash crypto.Hash, privKey crypto.Signer, certs []*x509.Certificate, opts SignOptions) error {
 	siDigest, err := hashCanon(signedinfo, hash)
+	if err != nil {
+		return err
+	}
 	sig, err := privKey.Sign(rand.Reader, siDigest, hash)
 	if err != nil {
 		return err

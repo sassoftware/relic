@@ -194,7 +194,9 @@ func (b *blockMap) AddFile(f *zipslicer.File, raw, cooked io.Writer) error {
 	}
 	bmf.LfhSize = len(lfh)
 	if raw != nil {
-		raw.Write(lfh)
+		if _, err := raw.Write(lfh); err != nil {
+			return err
+		}
 	}
 	rc, err := f.OpenAndTeeRaw(raw)
 	if err != nil {
@@ -227,7 +229,9 @@ func (b *blockMap) AddFile(f *zipslicer.File, raw, cooked io.Writer) error {
 		return fmt.Errorf("hashing zip metadata: %w", err)
 	}
 	if raw != nil {
-		raw.Write(dd)
+		if _, err := raw.Write(dd); err != nil {
+			return err
+		}
 	}
 	if !(noHashFiles[f.Name] || strings.HasSuffix(f.Name, ".appx")) {
 		if f.Method != zip.Store {
@@ -246,9 +250,9 @@ func (b *blockMap) Marshal() ([]byte, error) {
 }
 
 func zipToDos(name string) string {
-	return strings.Replace(name, "/", "\\", -1)
+	return strings.ReplaceAll(name, "/", "\\")
 }
 
 func dosToZip(name string) string {
-	return strings.Replace(name, "\\", "/", -1)
+	return strings.ReplaceAll(name, "\\", "/")
 }

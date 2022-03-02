@@ -70,7 +70,7 @@ type scdKey struct {
 func findSock() string {
 	uid := fmt.Sprintf("%d", os.Getuid())
 	for _, fp := range defaultScdSockets {
-		fp = strings.Replace(fp, "$UID", uid, -1)
+		fp = strings.ReplaceAll(fp, "$UID", uid)
 		fp = os.ExpandEnv(fp)
 		_, err := os.Stat(fp)
 		if err == nil {

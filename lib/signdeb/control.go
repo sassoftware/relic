@@ -83,7 +83,7 @@ func parseControl(r io.Reader, ext string) (*PackageInfo, error) {
 			continue
 		}
 		key := line[:j]
-		value := strings.Trim(line[j+1:], "  \t\r\n")
+		value := strings.Trim(line[j+1:], " \t\r\n")
 		switch strings.ToLower(key) {
 		case "package":
 			info.Package = value

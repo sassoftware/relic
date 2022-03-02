@@ -142,7 +142,3 @@ func socketmasterListener(index uint) (net.Listener, error) {
 	}
 	return fdListener(uintptr(fd))
 }
-
-type filer interface {
-	File() (*os.File, error)
-}

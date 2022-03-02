@@ -57,12 +57,12 @@ func DetachClearSign(w io.Writer, signer *openpgp.Entity, message io.Reader, con
 	go func() {
 		tail, err := tailClearSign(readPipe)
 		if err == nil {
-			w.Write(tail)
+			_, err = w.Write(tail)
 		}
 		done <- err
 	}()
 	err := ClearSign(writePipe, signer, message, config)
-	writePipe.CloseWithError(err)
+	_ = writePipe.CloseWithError(err)
 	return <-done
 }
 
@@ -104,7 +104,7 @@ func MergeClearSign(w io.Writer, sig []byte, message io.Reader) error {
 	}()
 
 	err = ClearSign(writePipe, signer, message, config)
-	writePipe.CloseWithError(err)
+	_ = writePipe.CloseWithError(err)
 	if err := <-done; err != nil {
 		return err
 	}

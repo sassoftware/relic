@@ -58,7 +58,7 @@ func (r *ComDoc) writeShortSAT() error {
 		j := i * perSector
 		chunk := r.SSAT[j : j+perSector]
 		buf.Reset()
-		binary.Write(buf, binary.LittleEndian, chunk)
+		_ = binary.Write(buf, binary.LittleEndian, chunk)
 		if err := r.writeSector(sector, buf.Bytes()); err != nil {
 			return err
 		}

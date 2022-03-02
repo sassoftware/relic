@@ -171,6 +171,9 @@ func genKeyPair() (certPEM, keyPEM []byte, fingerprint string, err error) {
 
 func writeKeyPair(keyPath string) error {
 	certPEM, keyPEM, fingerprint, err := genKeyPair()
+	if err != nil {
+		return err
+	}
 	pemdata := append(keyPEM, certPEM...)
 	if err = os.MkdirAll(filepath.Dir(keyPath), 0755); err != nil {
 		return err

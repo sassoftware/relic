@@ -76,7 +76,7 @@ func auditCmd(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("%s: %w", cfg.Path(), err)
 		}
 	}
-	activation.DaemonReady()
+	_ = activation.DaemonReady()
 	// nothing left to do in this goroutine
 	time.Sleep(1<<63 - 1)
 	return nil
@@ -106,7 +106,7 @@ func startListener(conf *config.Config, db *sql.DB) error {
 				l2 = nil
 			}
 			delay.CancelReset()
-			if time.Now().Sub(start) < time.Second {
+			if time.Since(start) < time.Second {
 				delay.Sleep()
 			}
 			var err error
@@ -175,18 +175,25 @@ func (l *Listener) Loop(db *sql.DB) error {
 		info, err := audit.Parse(d.Body)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "parse failed: %s\n", err)
-			d.Ack(false)
+			if err := d.Ack(false); err != nil {
+				return err
+			}
 			continue
 		}
 		if err := logToAll(db, info); err != nil {
 			// reject the message, disconnect, and start a timeout
 			fmt.Fprintf(os.Stderr, "ERROR: %s\n", err)
-			d.Reject(true)
+			_ = d.Reject(true)
 			return err
 		}
-		d.Ack(false)
+		if err := d.Ack(false); err != nil {
+			return err
+		}
 	}
-	return <-errch
+	if err := <-errch; err != nil {
+		return err
+	}
+	return nil
 }
 
 func logToAll(db *sql.DB, info *audit.Info) (err error) {
@@ -194,7 +201,7 @@ func logToAll(db *sql.DB, info *audit.Info) (err error) {
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer tx.Rollback() //nolint:Errcheck
 	rowid, err := insertRow(db, info)
 	if err != nil {
 		return err

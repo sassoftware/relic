@@ -33,7 +33,7 @@ func makeKeyID() []byte {
 }
 
 func parseKeyID(value string) ([]byte, error) {
-	return hex.DecodeString(strings.Replace(value, ":", "", -1))
+	return hex.DecodeString(strings.ReplaceAll(value, ":", ""))
 }
 
 func bytesToBig(val []byte) *big.Int {

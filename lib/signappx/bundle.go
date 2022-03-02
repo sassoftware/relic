@@ -75,7 +75,7 @@ func verifyBundle(r io.ReaderAt, files zipFiles, sig *AppxSignature, skipDigests
 		if zf.Method != zip.Store {
 			return errors.New("bundle manifest: contains compressed appx")
 		}
-		dosname := strings.Replace(zf.Name, "/", "\\", -1)
+		dosname := strings.ReplaceAll(zf.Name, "/", "\\")
 		pkgIndex, ok := packages[dosname]
 		if !ok {
 			return fmt.Errorf("bundle manifest: missing file %s", zf.Name)

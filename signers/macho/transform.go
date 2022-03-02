@@ -39,7 +39,7 @@ type tarFile struct {
 func (t *transformer) GetReader() (io.Reader, error) {
 	r, w := io.Pipe()
 	go func() {
-		w.CloseWithError(t.send(w))
+		_ = w.CloseWithError(t.send(w))
 	}()
 	return r, nil
 }
@@ -65,7 +65,9 @@ func (t *transformer) send(w io.Writer) error {
 	if err := tw.WriteHeader(hdr); err != nil {
 		return err
 	}
-	t.f.Seek(0, 0)
+	if _, err := t.f.Seek(0, 0); err != nil {
+		return err
+	}
 	if _, err := io.Copy(tw, t.f); err != nil {
 		return err
 	}

@@ -57,12 +57,6 @@ relic verify "$signed/$pkg" 2>/dev/null && { echo expected an error; exit 1; }
 $verify_2048p "$signed/$pkg"
 echo
 
-### Starman
-pkg="zlib-1.2.8-10.fc24.i686.tar"
-$relic remote sign -k rsa2048 -f "packages/$pkg" -o "$signed/$pkg"
-$verify_2048p "$signed/$pkg"
-echo
-
 ### DEB
 pkg="zlib1g_1.2.8.dfsg-5_i386.deb"
 $relic remote sign -k rsa2048 -f "packages/$pkg" -o "$signed/$pkg"

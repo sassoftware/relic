@@ -111,7 +111,7 @@ func (r *ComDoc) writeMSAT() error {
 		}
 		// write
 		buf.Reset()
-		binary.Write(buf, binary.LittleEndian, chunk)
+		_ = binary.Write(buf, binary.LittleEndian, chunk)
 		if err := r.writeSector(sector, buf.Bytes()); err != nil {
 			return err
 		}

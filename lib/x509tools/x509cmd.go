@@ -32,7 +32,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 )
 
 var (
@@ -80,7 +80,7 @@ func splitAndTrim(s string) []string {
 	if s == "" {
 		return nil
 	}
-	s = strings.Replace(s, ",", " ", -1)
+	s = strings.ReplaceAll(s, ",", " ")
 	pieces := strings.Split(s, " ")
 	ret := make([]string, 0, len(pieces))
 	for _, p := range pieces {
@@ -303,14 +303,14 @@ func confirmAndCreate(template, parent *x509.Certificate, pub crypto.PublicKey, 
 
 func promptYN(prompt string) bool {
 	fmt.Fprint(os.Stderr, prompt)
-	if !terminal.IsTerminal(0) {
+	if !term.IsTerminal(0) {
 		fmt.Fprintln(os.Stderr, "input is not a terminal, assuming true")
 		return true
 	}
-	state, err := terminal.MakeRaw(0)
+	state, err := term.MakeRaw(0)
 	if err == nil {
 		defer fmt.Fprintln(os.Stderr)
-		defer terminal.Restore(0, state)
+		defer func() { _ = term.Restore(0, state) }()
 	}
 	var d [1]byte
 	if _, err := os.Stdin.Read(d[:]); err != nil {

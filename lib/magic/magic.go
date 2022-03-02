@@ -17,7 +17,6 @@
 package magic
 
 import (
-	"archive/tar"
 	"archive/zip"
 	"bufio"
 	"bytes"
@@ -47,7 +46,6 @@ const (
 	FileTypeCAB
 	FileTypeAppManifest
 	FileTypeCAT
-	FileTypeStarman
 	FileTypeAPPX
 	FileTypeVSIX
 	FileTypeXAP
@@ -178,14 +176,6 @@ func isTar(br *bufio.Reader) bool {
 }
 
 func detectTar(r io.Reader) FileType {
-	hdr, err := tar.NewReader(r).Next()
-	if err != nil {
-		return FileTypeUnknown
-	}
-	switch {
-	case strings.HasPrefix(hdr.Name, ".metadata/") && strings.HasSuffix(hdr.Name, ".meta"):
-		return FileTypeStarman
-	}
 	return FileTypeUnknown
 }
 

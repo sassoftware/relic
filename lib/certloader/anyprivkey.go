@@ -61,7 +61,7 @@ func ParseAnyPrivateKey(blob []byte, prompt passprompt.PasswordGetter) (crypto.P
 }
 
 func parsePemPrivateKey(block *pem.Block, prompt passprompt.PasswordGetter) (crypto.PrivateKey, error) {
-	if !x509.IsEncryptedPEMBlock(block) {
+	if !x509.IsEncryptedPEMBlock(block) { //nolint:staticcheck
 		return parsePrivateKey(block.Bytes)
 	}
 	if prompt == nil {
@@ -74,7 +74,7 @@ func parsePemPrivateKey(block *pem.Block, prompt passprompt.PasswordGetter) (cry
 		} else if password == "" {
 			return nil, errors.New("aborted")
 		}
-		keyblob, err := x509.DecryptPEMBlock(block, []byte(password))
+		keyblob, err := x509.DecryptPEMBlock(block, []byte(password)) //nolint:staticcheck
 		if err == x509.IncorrectPasswordError {
 			continue
 		} else if err != nil {

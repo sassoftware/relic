@@ -70,13 +70,17 @@ func WriteInPlace(src *os.File, dest string) (AtomicFile, error) {
 	if err != nil {
 		return nil, err
 	}
-	src.Seek(0, 0)
+	if _, err := src.Seek(0, 0); err != nil {
+		return nil, err
+	}
 	if _, err := io.Copy(outfile, src); err != nil {
 		return nil, err
 	}
-	outfile.Seek(0, 0)
-	src.Close()
-	return outfile, nil
+	if _, err := outfile.Seek(0, 0); err != nil {
+		return nil, err
+	}
+	err = src.Close()
+	return outfile, err
 }
 
 // Write bytes to a file, using write-rename when appropriate

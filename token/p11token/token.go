@@ -155,12 +155,13 @@ func openLib(tokenConf *config.TokenConfig, write bool) (*pkcs11.Ctx, error) {
 func (tok *Token) Close() error {
 	tok.mutex.Lock()
 	defer tok.mutex.Unlock()
+	var err error
 	if tok.ctx != nil {
-		tok.ctx.CloseSession(tok.sh)
+		err = tok.ctx.CloseSession(tok.sh)
 		tok.ctx = nil
 		runtime.SetFinalizer(tok, nil)
 	}
-	return nil
+	return err
 }
 
 func (tok *Token) Config() *config.TokenConfig {
@@ -272,7 +273,7 @@ func (tok *Token) findObject(attrs []*pkcs11.Attribute) ([]pkcs11.ObjectHandle, 
 	}
 	objects, _, err := tok.ctx.FindObjects(tok.sh, 10)
 	if err != nil {
-		tok.ctx.FindObjectsFinal(tok.sh)
+		_ = tok.ctx.FindObjectsFinal(tok.sh)
 		return nil, err
 	}
 	if err := tok.ctx.FindObjectsFinal(tok.sh); err != nil {

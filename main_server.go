@@ -1,5 +1,6 @@
-// +build !clientonly
-// +build !windows
+//go:build !clientonly && !windows
+// +build !clientonly,!windows
+
 //
 // Copyright (c) SAS Institute Inc.
 //

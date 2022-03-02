@@ -171,7 +171,7 @@ func hashMsiDir(cdf *comdoc.ComDoc, parent *comdoc.DirEnt, d io.Writer) error {
 			}
 		}
 	}
-	d.Write(parent.UID[:])
+	_, _ = d.Write(parent.UID[:])
 	return nil
 }
 
@@ -203,25 +203,25 @@ func prehashMsiDir(cdf *comdoc.ComDoc, parent *comdoc.DirEnt, d io.Writer) error
 // Hash a MSI stream's extended metadata
 func prehashMsiDirent(item *comdoc.DirEnt, d io.Writer) {
 	buf := bytes.NewBuffer(make([]byte, 0, 128))
-	binary.Write(buf, binary.LittleEndian, item.RawDirEnt)
+	_ = binary.Write(buf, binary.LittleEndian, item.RawDirEnt)
 	enc := buf.Bytes()
 	// Name
 	if item.Type != comdoc.DirRoot {
-		d.Write(enc[:item.NameLength-2])
+		_, _ = d.Write(enc[:item.NameLength-2])
 	}
 	// UID
 	if item.Type == comdoc.DirRoot || item.Type == comdoc.DirStorage {
-		d.Write(item.UID[:])
+		_, _ = d.Write(item.UID[:])
 	}
 	// Size
 	if item.Type == comdoc.DirStream {
-		d.Write(enc[120:124])
+		_, _ = d.Write(enc[120:124])
 	}
 	// flags
-	d.Write(enc[96:100])
+	_, _ = d.Write(enc[96:100])
 	// ctime, mtime
 	if item.Type != comdoc.DirRoot {
-		d.Write(enc[100:116])
+		_, _ = d.Write(enc[100:116])
 	}
 }
 

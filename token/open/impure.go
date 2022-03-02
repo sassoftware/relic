@@ -1,4 +1,6 @@
+//go:build cgo && !pure && !clientonly
 // +build cgo,!pure,!clientonly
+
 //
 // Copyright (c) SAS Institute Inc.
 //

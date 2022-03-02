@@ -85,14 +85,14 @@ func runWorker(tokenName string) error {
 		// keep the main goroutine from exiting until all requests are served
 		wg.Add(1)
 		// notify parent that this process is doomed and to start another one
-		activatecmd.DaemonStopping()
+		_ = activatecmd.DaemonStopping()
 		// stop accepting requests and wait for ongoing ones to finish
-		srv.Shutdown(context.Background())
+		_ = srv.Shutdown(context.Background())
 		wg.Done()
 	}
 	go handler.watchSignals()
 	go handler.healthCheck()
-	activation.DaemonReady()
+	_ = activation.DaemonReady()
 	err = srv.Serve(lis)
 	if err == http.ErrServerClosed {
 		err = nil

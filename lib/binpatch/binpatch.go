@@ -124,10 +124,10 @@ func (p *PatchSet) Dump() []byte {
 		size += int(hdr.NewSize)
 	}
 	buf := bytes.NewBuffer(make([]byte, 0, size))
-	binary.Write(buf, binary.BigEndian, header)
-	binary.Write(buf, binary.BigEndian, p.Patches)
+	_ = binary.Write(buf, binary.BigEndian, header)
+	_ = binary.Write(buf, binary.BigEndian, p.Patches)
 	for _, blob := range p.Blobs {
-		buf.Write(blob)
+		_, _ = buf.Write(blob)
 	}
 	return buf.Bytes()
 }

@@ -72,7 +72,7 @@ func transform(f *os.File, opts signers.SignOpts) (signers.Transformer, error) {
 func (t *msiTransformer) GetReader() (io.Reader, error) {
 	r, w := io.Pipe()
 	go func() {
-		w.CloseWithError(authenticode.MsiToTar(t.cdf, w))
+		_ = w.CloseWithError(authenticode.MsiToTar(t.cdf, w))
 	}()
 	return r, nil
 }

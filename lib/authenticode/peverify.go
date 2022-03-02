@@ -51,7 +51,9 @@ func VerifyPE(r io.ReadSeeker, skipDigests bool) ([]PESignature, error) {
 	}
 	// Read certificate table
 	sigblob := make([]byte, hvals.certSize)
-	r.Seek(hvals.certStart, 0)
+	if _, err := r.Seek(hvals.certStart, 0); err != nil {
+		return nil, err
+	}
 	if _, err := io.ReadFull(r, sigblob); err != nil {
 		return nil, err
 	}
@@ -71,7 +73,9 @@ func findSignatures(r io.ReadSeeker) (*peHeaderValues, error) {
 	if err != nil {
 		return nil, err
 	}
-	r.Seek(peStart, 0)
+	if _, err := r.Seek(peStart, 0); err != nil {
+		return nil, err
+	}
 	fh, err := readCoffHeader(r, d)
 	if err != nil {
 		return nil, err

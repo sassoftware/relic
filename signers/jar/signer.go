@@ -92,6 +92,8 @@ func openZip(f *os.File) (*zip.Reader, error) {
 	if err != nil {
 		return nil, err
 	}
-	f.Seek(0, 0)
+	if _, err := f.Seek(0, 0); err != nil {
+		return nil, err
+	}
 	return zip.NewReader(f, size)
 }

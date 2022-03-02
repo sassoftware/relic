@@ -43,7 +43,7 @@ func (l *limiter) Timestamp(ctx context.Context, req *pkcs9.Request) (*pkcs7.Con
 	if err := l.Limit.Wait(ctx); err != nil {
 		return nil, err
 	}
-	if waited := time.Now().Sub(start); waited > 50*time.Millisecond {
+	if waited := time.Since(start); waited > 50*time.Millisecond {
 		log.Printf("timestamper: waited %s due to rate limit", waited)
 	}
 	return l.Timestamper.Timestamp(ctx, req)

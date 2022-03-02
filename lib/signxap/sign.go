@@ -81,7 +81,7 @@ func DigestXapTar(r io.Reader, hash crypto.Hash, doPageHash bool) (*XapDigest, e
 func removeSignature(cd []byte) []byte {
 	size := len(cd)
 	var tr xapTrailer
-	binary.Read(bytes.NewReader(cd[size-10:size]), binary.LittleEndian, &tr)
+	_ = binary.Read(bytes.NewReader(cd[size-10:size]), binary.LittleEndian, &tr)
 	if tr.Magic == trailerMagic {
 		size -= int(tr.TrailerSize) + 10
 		return cd[:size]
@@ -100,14 +100,14 @@ func (d *XapDigest) Sign(ctx context.Context, cert *certloader.Certificate) (*bi
 		Unknown2:      1,
 		SignatureSize: uint32(len(ts.Raw)),
 	}
-	binary.Write(&w, binary.LittleEndian, hdr)
+	_ = binary.Write(&w, binary.LittleEndian, hdr)
 	w.Write(ts.Raw)
 	tr := xapTrailer{
 		Magic:       trailerMagic,
 		Unknown1:    1,
 		TrailerSize: uint32(len(ts.Raw) + 8),
 	}
-	binary.Write(&w, binary.LittleEndian, tr)
+	_ = binary.Write(&w, binary.LittleEndian, tr)
 	patch := binpatch.New()
 	patch.Add(d.PatchStart, d.PatchLen, w.Bytes())
 	return patch, ts, nil

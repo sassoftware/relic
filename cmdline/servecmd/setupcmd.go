@@ -85,6 +85,9 @@ func selectOrGenerate(path string) (crypto.PrivateKey, error) {
 			return nil, err
 		}
 		ecKey, err := ecdsa.GenerateKey(curve.Curve, rand.Reader)
+		if err != nil {
+			return nil, err
+		}
 		key = ecKey
 		keyBytes, err := x509.MarshalECPrivateKey(ecKey)
 		if err != nil {

@@ -150,7 +150,7 @@ func (r *ComDoc) writeSAT() error {
 	for i, sector := range r.MSAT {
 		j := i * satPerSector
 		buf.Reset()
-		binary.Write(buf, binary.LittleEndian, r.SAT[j:j+satPerSector])
+		_ = binary.Write(buf, binary.LittleEndian, r.SAT[j:j+satPerSector])
 		if err := r.writeSector(sector, buf.Bytes()); err != nil {
 			return err
 		}

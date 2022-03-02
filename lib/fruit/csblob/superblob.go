@@ -29,6 +29,7 @@ var csItypes = map[csMagic]uint32{
 }
 
 // codedirectory.h
+//nolint:deadcode,varcheck // for doc purposes
 const (
 	cdInfoSlot           = 1
 	cdRequirementsSlot   = 2

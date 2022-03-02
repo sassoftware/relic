@@ -203,7 +203,7 @@ func setupPeDigest(name string, hash crypto.Hash, doPageHash bool) (io.WriteClos
 			err = fmt.Errorf("failed to update CodeIntegrity catalog for %s: %w", name, err)
 		}
 		ch <- peDigestResult{digest, err}
-		r.CloseWithError(err)
+		_ = r.CloseWithError(err)
 		close(ch)
 	}()
 	return w, ch

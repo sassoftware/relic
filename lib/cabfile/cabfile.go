@@ -101,12 +101,12 @@ func Digest(r io.Reader, hashFunc crypto.Hash) (*CabinetDigest, error) {
 		SetID:       outHeader.SetID,
 		SigUnknown3: outSigHeader.Unknown3,
 	}
-	binary.Write(dw, binary.LittleEndian, sb)
+	_ = binary.Write(dw, binary.LittleEndian, sb)
 	// save the updated header for writing out later
 	patched := bytes.NewBuffer(make([]byte, 0, outHeader.OffsetFiles))
-	binary.Write(patched, binary.LittleEndian, outHeader)
-	binary.Write(patched, binary.LittleEndian, ReserveHeader{20, 0, 0})
-	binary.Write(patched, binary.LittleEndian, outSigHeader)
+	_ = binary.Write(patched, binary.LittleEndian, outHeader)
+	_ = binary.Write(patched, binary.LittleEndian, ReserveHeader{20, 0, 0})
+	_ = binary.Write(patched, binary.LittleEndian, outSigHeader)
 	w := io.MultiWriter(dw, patched)
 	var fh FolderHeader
 	for i := 0; i < int(cab.Header.NumFolders); i++ {
@@ -114,7 +114,7 @@ func Digest(r io.Reader, hashFunc crypto.Hash) (*CabinetDigest, error) {
 			return nil, err
 		}
 		fh.Offset += addOffset
-		binary.Write(w, binary.LittleEndian, fh)
+		_ = binary.Write(w, binary.LittleEndian, fh)
 	}
 	if _, err := io.CopyN(dw, r, int64(cab.Header.TotalSize-cab.Header.OffsetFiles)); err != nil {
 		return nil, err

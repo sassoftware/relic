@@ -32,7 +32,9 @@ func readAndHash(r io.Reader, d io.Writer, n int) ([]byte, error) {
 		return nil, err
 	}
 	if d != nil {
-		d.Write(buf)
+		if _, err := d.Write(buf); err != nil {
+			return nil, err
+		}
 	}
 	return buf, nil
 }

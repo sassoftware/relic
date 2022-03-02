@@ -141,7 +141,7 @@ readloop:
 			if inquire != nil {
 				d, err := inquire(msg, res.Lines)
 				if err != nil {
-					c.write("CANCEL\n")
+					_ = c.write("CANCEL\n")
 					if err != InquireCancel {
 						// raise this once the ERR has been received
 						saved = err
@@ -152,7 +152,7 @@ readloop:
 					}
 				}
 			} else {
-				c.write("CANCEL\n")
+				_ = c.write("CANCEL\n")
 			}
 		case StatusComment:
 			// no-op

@@ -104,7 +104,7 @@ func (r *ComDoc) Close() error {
 	r.Header.SATSectors = uint32(len(r.MSAT))
 	r.Header.MSATSectorCount = uint32(len(r.msatList))
 	buf := bytes.NewBuffer(make([]byte, 0, 512))
-	binary.Write(buf, binary.LittleEndian, r.Header)
+	_ = binary.Write(buf, binary.LittleEndian, r.Header)
 	if _, err := r.writer.WriteAt(buf.Bytes(), 0); err != nil {
 		return err
 	}

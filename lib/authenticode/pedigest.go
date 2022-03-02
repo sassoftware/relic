@@ -260,9 +260,9 @@ func readOptHeader(r io.Reader, d io.Writer, peStart int64, fh *pe.FileHeader) (
 	hvals.certStart = int64(dd.VirtualAddress)
 	hvals.certSize = int64(dd.Size)
 	hvals.secTblStart = peStart + 24 + int64(fh.SizeOfOptionalHeader)
-	d.Write(buf[:cksumStart])
-	d.Write(buf[cksumEnd:dd4Start])
-	d.Write(buf[dd4End:])
+	_, _ = d.Write(buf[:cksumStart])
+	_, _ = d.Write(buf[cksumEnd:dd4Start])
+	_, _ = d.Write(buf[dd4End:])
 	hvals.posDDCert = peStart + 24 + dd4Start
 	return hvals, nil
 }

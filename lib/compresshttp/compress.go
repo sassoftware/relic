@@ -103,8 +103,8 @@ func CompressRequest(request *http.Request, acceptEncoding string) error {
 	pr, pw := io.Pipe()
 	go func() {
 		err := compress(encoding, plain, pw)
-		plain.Close()
-		pw.CloseWithError(err)
+		_ = plain.Close()
+		_ = pw.CloseWithError(err)
 	}()
 	// Ensure reads inside the goroutine fail after the request terminates.
 	// Otherwise there could be reads happening in parallel from multiple,

@@ -150,23 +150,26 @@ func parseCertificates(pemData []byte) (*Certificate, error) {
 // Parse certificates from DER
 func parseCertificatesDer(der []byte) (*Certificate, error) {
 	var certs []*x509.Certificate
-	var err error
 	if bytes.Contains(der[:32], pkcs7SignedData) {
 		psd, err := pkcs7.Unmarshal(der)
 		if err != nil {
 			return nil, err
 		}
 		certs, err = psd.Content.Certificates.Parse()
+		if err != nil {
+			return nil, err
+		}
 	} else {
+		var err error
 		certs, err = x509.ParseCertificates(der)
+		if err != nil {
+			return nil, err
+		}
 	}
-	if err != nil {
-		return nil, err
-	} else if len(certs) == 0 {
+	if len(certs) == 0 {
 		return nil, ErrNoCerts
-	} else {
-		return &Certificate{Leaf: certs[0], Certificates: certs}, nil
 	}
+	return &Certificate{Leaf: certs[0], Certificates: certs}, nil
 }
 
 // ParseX509Certificates parses a blob in PEM or DER, X509 or PKCS#7 format and returns a list of certificates

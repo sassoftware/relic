@@ -205,7 +205,7 @@ func MergeFlags(cmd *cobra.Command) {
 					}
 				}
 				if !ok {
-					fs.MarkHidden(name)
+					_ = fs.MarkHidden(name)
 				}
 			}
 		}

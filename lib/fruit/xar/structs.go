@@ -13,6 +13,7 @@ const xarMagic = 0x78617221 // xar!
 
 type hashType uint32
 
+//nolint:deadcode,varcheck // for doc purposes
 const (
 	hashNone hashType = iota
 	hashSHA1

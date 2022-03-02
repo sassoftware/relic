@@ -47,7 +47,7 @@ func logGraylog(info *audit.Info, rowid int64) error {
 		// graylog quietly changes dots to underscores, but only after running
 		// stream filters. that gets confusing real quickly so change it to
 		// underscore now.
-		k = strings.Replace(k, ".", "_", -1)
+		k = strings.ReplaceAll(k, ".", "_")
 		msg["_"+k] = v
 	}
 	blob, err := json.Marshal(msg)

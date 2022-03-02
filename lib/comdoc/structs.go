@@ -29,18 +29,22 @@ const (
 	SecIDEndOfChain SecID = -2
 	SecIDSAT        SecID = -3
 	SecIDMSAT       SecID = -4
+)
 
+const (
 	DirEmpty   DirType = 0
 	DirStorage DirType = 1
 	DirStream  DirType = 2
 	DirRoot    DirType = 5
+)
 
+const (
 	Red   Color = 0
 	Black Color = 1
-
-	byteOrderMarker uint16 = 0xfffe
-	msatInHeader           = 109
 )
+
+const byteOrderMarker uint16 = 0xfffe
+const msatInHeader = 109
 
 var fileMagic = []byte{0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1}
 

@@ -187,7 +187,7 @@ func (k *ScdKey) Sign(hashValue []byte, opts crypto.SignerOpts, pin string) ([]b
 	if hashName == "" {
 		return nil, errors.New("unsupported hash algorithm")
 	}
-	hashName = strings.ToLower(strings.Replace(hashName, "-", "", -1))
+	hashName = strings.ToLower(strings.ReplaceAll(hashName, "-", ""))
 	res, err := k.conn.Transact(fmt.Sprintf("SETDATA %X", hashValue), nil)
 	if err != nil {
 		return nil, err

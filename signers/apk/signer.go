@@ -40,9 +40,6 @@ var ApkSigner = &signers.Signer{
 const (
 	sigMagic = "APK Sig Block 42"
 	sigApkV2 = 0x7109871a
-
-	directoryEndSignature = 0x06054b50
-	directoryEndLen       = 22
 )
 
 var (

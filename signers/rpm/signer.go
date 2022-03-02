@@ -120,6 +120,6 @@ func nevra(header *rpmutils.RpmHeader) string {
 	// strip .rpm
 	snevra = snevra[:len(snevra)-4]
 	// strip zero epoch
-	snevra = strings.Replace(snevra, "-0:", "-", -1)
+	snevra = strings.ReplaceAll(snevra, "-0:", "-")
 	return snevra
 }

@@ -100,7 +100,7 @@ func writeResponse(writer http.ResponseWriter, response Response) {
 		writer.Header().Set(k, v)
 	}
 	writer.WriteHeader(response.Status())
-	writer.Write(response.Bytes())
+	_, _ = writer.Write(response.Bytes())
 }
 
 func errToProblem(err error) http.Handler {

@@ -130,7 +130,10 @@ func getSize(r io.Reader) int32 {
 	if err != nil {
 		return -1
 	}
-	seek.Seek(start, io.SeekStart)
+	_, err = seek.Seek(start, io.SeekStart)
+	if err != nil {
+		return -1
+	}
 	size := end - start
 	if size > maxLiteralSize {
 		return -1

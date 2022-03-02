@@ -75,7 +75,7 @@ func (f *File) readLocalHeader() error {
 	if _, err := io.ReadFull(sr, lfhb[:]); err != nil {
 		return err
 	}
-	binary.Read(bytes.NewReader(lfhb[:]), binary.LittleEndian, &f.lfh)
+	_ = binary.Read(bytes.NewReader(lfhb[:]), binary.LittleEndian, &f.lfh)
 	if f.lfh.Signature != fileHeaderSignature {
 		return errors.New("local file header not found")
 	}
@@ -111,7 +111,7 @@ func (f *File) readDataDesc() error {
 	// Read the 32-bit len so we don't overshoot. The underlying stream might
 	// not be seekable.
 	var desc zipDataDesc
-	binary.Read(bytes.NewReader(f.ddb[:dataDescriptorLen]), binary.LittleEndian, &desc)
+	_ = binary.Read(bytes.NewReader(f.ddb[:dataDescriptorLen]), binary.LittleEndian, &desc)
 	if desc.Signature != dataDescriptorSignature {
 		return errors.New("data descriptor signature is missing")
 	}
@@ -121,7 +121,7 @@ func (f *File) readDataDesc() error {
 			return err
 		}
 		var desc64 zipDataDesc64
-		binary.Read(bytes.NewReader(f.ddb), binary.LittleEndian, &desc64)
+		_ = binary.Read(bytes.NewReader(f.ddb), binary.LittleEndian, &desc64)
 		if desc64.CompressedSize != f.CompressedSize || desc64.UncompressedSize != f.UncompressedSize {
 			return errors.New("data descriptor is invalid")
 		}
@@ -168,14 +168,14 @@ func (f *File) GetDirectoryHeader() ([]byte, error) {
 			Offset:           f.Offset,
 		}
 		b := bytes.NewBuffer(make([]byte, 0, zip64ExtraLen+4+len(f.Extra)))
-		binary.Write(b, binary.LittleEndian, extra)
+		_ = binary.Write(b, binary.LittleEndian, extra)
 		b.Write(f.Extra)
 		f.Extra = b.Bytes()
 		hdr.ExtraLen = uint16(b.Len())
 		hdr.ReaderVersion = zip45
 	}
 	b := bytes.NewBuffer(make([]byte, 0, directoryHeaderLen+len(f.Name)+len(f.Extra)+len(f.Comment)))
-	binary.Write(b, binary.LittleEndian, hdr)
+	_ = binary.Write(b, binary.LittleEndian, hdr)
 	b.WriteString(f.Name)
 	b.Write(f.Extra)
 	b.Write(f.Comment)
@@ -187,7 +187,7 @@ func (f *File) GetLocalHeader() ([]byte, error) {
 		return nil, err
 	}
 	b := bytes.NewBuffer(make([]byte, 0, fileHeaderLen+len(f.lfhName)+len(f.lfhExtra)))
-	binary.Write(b, binary.LittleEndian, f.lfh)
+	_ = binary.Write(b, binary.LittleEndian, f.lfh)
 	b.Write(f.lfhName)
 	b.Write(f.lfhExtra)
 	return b.Bytes(), nil
@@ -209,7 +209,8 @@ func (f *File) GetTotalSize() (int64, error) {
 
 func (d *Directory) NewFile(name string, extra, contents []byte, w io.Writer, mtime time.Time, deflate, useDesc bool) (*File, error) {
 	var zh zip.FileHeader
-	zh.SetModTime(mtime)
+	// need the side effect of this conversion
+	zh.SetModTime(mtime) //nolint:staticcheck
 	var fb bytes.Buffer
 	method := zip.Deflate
 	if deflate {
@@ -287,7 +288,7 @@ func (d *Directory) NewFile(name string, extra, contents []byte, w io.Writer, mt
 			UncompressedSize: uint64(len(contents)),
 		}
 		ddb := bytes.NewBuffer(make([]byte, 0, dataDescriptor64Len))
-		binary.Write(ddb, binary.LittleEndian, desc)
+		_ = binary.Write(ddb, binary.LittleEndian, desc)
 		f.ddb = ddb.Bytes()
 		if _, err := buf.Write(f.ddb); err != nil {
 			return nil, err
@@ -301,7 +302,8 @@ func (d *Directory) NewFile(name string, extra, contents []byte, w io.Writer, mt
 
 func (f *File) ModTime() time.Time {
 	fh := zip.FileHeader{ModifiedDate: f.ModifiedDate, ModifiedTime: f.ModifiedTime}
-	return fh.ModTime()
+	// need the side effect of this conversion
+	return fh.ModTime() //nolint:staticcheck
 }
 
 func (f *File) Open() (io.ReadCloser, error) {

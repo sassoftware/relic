@@ -58,7 +58,7 @@ func init() {
 	PgpSigner.Flags().BoolP("textmode", "t", false, "(PGP) Sign in CRLF canonical text form")
 	// for compat with 2.0 clients
 	PgpSigner.Flags().String("pgp", "", "")
-	PgpSigner.Flags().MarkHidden("pgp")
+	_ = PgpSigner.Flags().MarkHidden("pgp")
 	signers.Register(PgpSigner)
 }
 
@@ -207,7 +207,7 @@ func verify(r io.Reader, opts signers.VerifyOpts) ([]*signers.Signature, error) 
 
 func verifyPgp(sig *pgptools.PgpSignature, name string, err error) ([]*signers.Signature, error) {
 	if err == nil {
-		return []*signers.Signature{&signers.Signature{
+		return []*signers.Signature{{
 			CreationTime: sig.CreationTime,
 			Hash:         sig.Hash,
 			SignerPgp:    sig.Key.Entity,

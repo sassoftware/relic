@@ -45,11 +45,15 @@ func ZipToTar(r *os.File, w io.Writer) error {
 		return err
 	}
 	tw := tar.NewWriter(w)
-	r.Seek(dirLoc, 0)
+	if _, err := r.Seek(dirLoc, 0); err != nil {
+		return err
+	}
 	if err := tarAddStream(tw, r, TarMemberCD, size-dirLoc); err != nil {
 		return err
 	}
-	r.Seek(0, 0)
+	if _, err := r.Seek(0, 0); err != nil {
+		return err
+	}
 	if err := tarAddStream(tw, r, TarMemberZip, size); err != nil {
 		return err
 	}

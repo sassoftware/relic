@@ -25,7 +25,7 @@ import (
 
 // Log a general message
 func (s *Server) Logf(format string, args ...interface{}) {
-	s.ErrorLog.Output(2, fmt.Sprintf(format, args...))
+	_ = s.ErrorLog.Output(2, fmt.Sprintf(format, args...))
 }
 
 // Log a message associated with an ongoing request
@@ -36,14 +36,14 @@ func (s *Server) Logr(request *http.Request, format string, args ...interface{})
 		dn = " `" + dn + "`"
 	}
 	msg2 := fmt.Sprintf("[%s \"%s\"%s] %s", GetClientIP(request), GetClientName(request), dn, msg)
-	s.ErrorLog.Output(2, msg2)
+	_ = s.ErrorLog.Output(2, msg2)
 }
 
 // Log an unhandled error with optional traceback
 func (s *Server) LogError(request *http.Request, err interface{}, traceback []byte) Response {
 	msg := ""
 	if len(traceback) != 0 {
-		msg = "\n " + strings.Replace(string(traceback), "\n", "\n ", -1)
+		msg = "\n " + strings.ReplaceAll(string(traceback), "\n", "\n ")
 	}
 	s.Logr(request, "unhandled exception: %s%s\n", err, msg)
 	return ErrorResponse(http.StatusInternalServerError)

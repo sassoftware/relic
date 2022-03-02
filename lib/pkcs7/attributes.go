@@ -89,13 +89,19 @@ func (l *AttributeList) Add(oid asn1.ObjectIdentifier, obj interface{}) error {
 	if err != nil {
 		return err
 	}
-	for i, attr := range *l {
+	*l = appendAttr(*l, oid, value)
+	return nil
+}
+
+func appendAttr(attrList AttributeList, oid asn1.ObjectIdentifier, value []byte) AttributeList {
+	for i, attr := range attrList {
 		if attr.Type.Equal(oid) {
-			(*l)[i].Values.Bytes = append(attr.Values.Bytes, value...)
-			return nil
+			attr.Values.Bytes = append(attr.Values.Bytes, value...)
+			attrList[i] = attr
+			return attrList
 		}
 	}
-	*l = append(*l, Attribute{
+	return append(attrList, Attribute{
 		Type: oid,
 		Values: asn1.RawValue{
 			Class:      asn1.ClassUniversal,
@@ -103,7 +109,6 @@ func (l *AttributeList) Add(oid asn1.ObjectIdentifier, obj interface{}) error {
 			IsCompound: true,
 			Bytes:      value,
 		}})
-	return nil
 }
 
 func (l AttributeList) Exists(oid asn1.ObjectIdentifier) bool {

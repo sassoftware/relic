@@ -39,7 +39,6 @@ import (
 	_ "github.com/sassoftware/relic/signers/pkcs"
 	_ "github.com/sassoftware/relic/signers/ps"
 	_ "github.com/sassoftware/relic/signers/rpm"
-	_ "github.com/sassoftware/relic/signers/starman"
 	_ "github.com/sassoftware/relic/signers/vsix"
 	_ "github.com/sassoftware/relic/signers/xap"
 	_ "github.com/sassoftware/relic/signers/xar"

@@ -91,5 +91,5 @@ func (m *appxPackage) Marshal() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return bytes.Replace(b, []byte{'\n'}, []byte{'\r', '\n'}, -1), nil
+	return bytes.ReplaceAll(b, []byte{'\n'}, []byte{'\r', '\n'}), nil
 }

@@ -102,9 +102,9 @@ func (pd *PEDigest) MakePatch(sig []byte) (*binpatch.PatchSet, error) {
 	if pad2 != 0 {
 		buf.Write(make([]byte, pad2))
 	}
-	binary.Write(&buf, binary.LittleEndian, info)
-	buf.Write(sig)
-	buf.Write(make([]byte, padded-len(sig)))
+	_ = binary.Write(&buf, binary.LittleEndian, info)
+	_, _ = buf.Write(sig)
+	_, _ = buf.Write(make([]byte, padded-len(sig)))
 	// pack data directory
 	certTbl := buf.Bytes()
 	var dd pe.DataDirectory
@@ -114,7 +114,7 @@ func (pd *PEDigest) MakePatch(sig []byte) (*binpatch.PatchSet, error) {
 	dd.VirtualAddress = uint32(pd.CertStart)
 	dd.Size = uint32(len(certTbl)) - uint32(pad2)
 	var buf2 bytes.Buffer
-	binary.Write(&buf2, binary.LittleEndian, dd)
+	_ = binary.Write(&buf2, binary.LittleEndian, dd)
 	// make patch
 	patch := binpatch.New()
 	patch.Add(pd.markers.posDDCert, 8, buf2.Bytes())

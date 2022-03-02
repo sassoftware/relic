@@ -21,7 +21,6 @@ import (
 	"context"
 	"crypto"
 	"crypto/hmac"
-	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/json"
@@ -139,11 +138,12 @@ func (h *handler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 	// marshal response
 	blob, err := json.Marshal(resp)
+	if err == nil {
+		_, err = rw.Write(blob)
+	}
 	if err != nil {
 		log.Printf("error: worker for token \"%s\": %s", h.token.Config().Name(), err)
-		return
 	}
-	rw.Write(blob)
 }
 
 func (h *handler) handle(rw http.ResponseWriter, req *http.Request) (resp workerrpc.Response, err error) {
@@ -183,11 +183,7 @@ func (h *handler) handle(rw http.ResponseWriter, req *http.Request) (resp worker
 		if err != nil {
 			return resp, err
 		}
-		if signer, ok := key.(token.KeyContext); ok {
-			resp.Value, err = signer.SignContext(ctx, rr.Digest, opts)
-		} else {
-			resp.Value, err = key.Sign(rand.Reader, rr.Digest, opts)
-		}
+		resp.Value, err = key.SignContext(ctx, rr.Digest, opts)
 		return resp, err
 	default:
 		return resp, errors.New("invalid method: " + req.URL.Path)

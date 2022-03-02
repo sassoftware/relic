@@ -1,4 +1,6 @@
+//go:build !windows
 // +build !windows
+
 //
 // Copyright (c) SAS Institute Inc.
 //

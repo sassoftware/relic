@@ -22,7 +22,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 
@@ -108,8 +107,8 @@ func splitManifest(manifest []byte) ([][]byte, error) {
 }
 
 func parseSection(section []byte) (http.Header, error) {
-	section = bytes.Replace(section, []byte("\r\n"), []byte{'\n'}, -1)
-	section = bytes.Replace(section, []byte("\n "), []byte{}, -1)
+	section = bytes.ReplaceAll(section, []byte("\r\n"), []byte{'\n'})
+	section = bytes.ReplaceAll(section, []byte("\n "), []byte{})
 	keys := bytes.Split(section, []byte{'\n'})
 	hdr := make(http.Header)
 	for _, line := range keys {
@@ -174,7 +173,7 @@ func DigestManifest(manifest []byte, hash crypto.Hash, sectionsOnly, apkV2 bool)
 const maxLineLength = 70
 
 // Write a key-value pair, wrapping long lines as necessary
-func writeAttribute(out io.Writer, key, value string) {
+func writeAttribute(out *bytes.Buffer, key, value string) {
 	line := []byte(fmt.Sprintf("%s: %s", key, value))
 	for i := 0; i < len(line); i += maxLineLength {
 		j := i + maxLineLength
@@ -189,7 +188,7 @@ func writeAttribute(out io.Writer, key, value string) {
 	}
 }
 
-func writeSection(out io.Writer, hdr http.Header, first string) {
+func writeSection(out *bytes.Buffer, hdr http.Header, first string) {
 	value := hdr.Get(first)
 	if value != "" {
 		writeAttribute(out, first, value)

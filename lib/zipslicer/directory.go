@@ -46,8 +46,8 @@ func FindDirectory(r io.ReaderAt, size int64) (int64, error) {
 	re := bytes.NewReader(endb[:])
 	var loc64 zip64Loc
 	var end zipEndRecord
-	binary.Read(re, binary.LittleEndian, &loc64)
-	binary.Read(re, binary.LittleEndian, &end)
+	_ = binary.Read(re, binary.LittleEndian, &loc64)
+	_ = binary.Read(re, binary.LittleEndian, &end)
 	if end.Signature != directoryEndSignature {
 		return 0, errors.New("zip central directory not found")
 	}
@@ -61,7 +61,7 @@ func FindDirectory(r io.ReaderAt, size int64) (int64, error) {
 			return 0, err
 		}
 		var end64 zip64End
-		binary.Read(bytes.NewReader(end64b[:]), binary.LittleEndian, &end64)
+		_ = binary.Read(bytes.NewReader(end64b[:]), binary.LittleEndian, &end64)
 		if end64.Signature != directory64EndSignature {
 			return 0, errors.New("zip central directory not found")
 		}
@@ -79,7 +79,7 @@ func ReadWithDirectory(r io.ReaderAt, size int64, cd []byte) (*Directory, error)
 			break
 		}
 		var hdr zipCentralDir
-		binary.Read(bytes.NewReader(cd), binary.LittleEndian, &hdr)
+		_ = binary.Read(bytes.NewReader(cd), binary.LittleEndian, &hdr)
 		f := &File{
 			CreatorVersion:   hdr.CreatorVersion,
 			ReaderVersion:    hdr.ReaderVersion,
@@ -117,7 +117,6 @@ func ReadWithDirectory(r io.ReaderAt, size int64, cd []byte) (*Directory, error)
 				e := extra[4 : 4+size]
 				if needUSize && size >= 8 {
 					f.UncompressedSize = binary.LittleEndian.Uint64(e)
-					needUSize = false
 				}
 				if needCSize && size >= 16 {
 					f.CompressedSize = binary.LittleEndian.Uint64(e[8:])
@@ -145,13 +144,13 @@ func ReadWithDirectory(r io.ReaderAt, size int64, cd []byte) (*Directory, error)
 	rd := bytes.NewReader(cd)
 	switch binary.LittleEndian.Uint32(cd) {
 	case directory64EndSignature:
-		binary.Read(rd, binary.LittleEndian, &d.end64)
-		binary.Read(rd, binary.LittleEndian, &d.loc64)
+		_ = binary.Read(rd, binary.LittleEndian, &d.end64)
+		_ = binary.Read(rd, binary.LittleEndian, &d.loc64)
 	case directoryEndSignature:
 	default:
 		return nil, errors.New("expected end record")
 	}
-	binary.Read(rd, binary.LittleEndian, &d.end)
+	_ = binary.Read(rd, binary.LittleEndian, &d.end)
 	return d, nil
 }
 
@@ -198,7 +197,9 @@ func (d *Directory) Truncate(n int, body, dir io.Writer) error {
 		if err != nil {
 			return err
 		}
-		dir.Write(blob)
+		if _, err := dir.Write(blob); err != nil {
+			return err
+		}
 		size += uint64(len(blob))
 	}
 	end := d.end
@@ -208,10 +209,14 @@ func (d *Directory) Truncate(n int, body, dir io.Writer) error {
 		end64.TotalCDCount = uint64(n)
 		end64.CDSize = size
 		end64.CDOffset = cdOffset
-		binary.Write(dir, binary.LittleEndian, end64)
+		if err := binary.Write(dir, binary.LittleEndian, end64); err != nil {
+			return err
+		}
 		loc := d.loc64
 		loc.Offset = cdOffset + size
-		binary.Write(dir, binary.LittleEndian, loc)
+		if err := binary.Write(dir, binary.LittleEndian, loc); err != nil {
+			return err
+		}
 	} else {
 		if cdOffset >= uint32Max || n >= uint16Max {
 			return errors.New("file too big for 32-bit ZIP")
@@ -221,8 +226,7 @@ func (d *Directory) Truncate(n int, body, dir io.Writer) error {
 		end.CDSize = uint32(size)
 		end.CDOffset = uint32(cdOffset)
 	}
-	binary.Write(dir, binary.LittleEndian, end)
-	return nil
+	return binary.Write(dir, binary.LittleEndian, end)
 }
 
 // Get the original central directory and end-of-directory from a previously-read file.
@@ -260,9 +264,9 @@ func (d *Directory) GetOriginalDirectory(trim bool) (cdEntries, endOfDir []byte,
 			end.CDOffset -= uint32(delta)
 		}
 	}
-	binary.Write(&weod, binary.LittleEndian, end64)
-	binary.Write(&weod, binary.LittleEndian, loc64)
-	binary.Write(&weod, binary.LittleEndian, end)
+	_ = binary.Write(&weod, binary.LittleEndian, end64)
+	_ = binary.Write(&weod, binary.LittleEndian, loc64)
+	_ = binary.Write(&weod, binary.LittleEndian, end)
 	return wcd.Bytes(), weod.Bytes(), nil
 }
 

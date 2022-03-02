@@ -1,4 +1,6 @@
+//go:build (!linux && !darwin && !windows) || (windows && 386)
 // +build !linux,!darwin,!windows windows,386
+
 //
 // Copyright (c) SAS Institute Inc.
 //
@@ -26,9 +28,5 @@ func keyringGet(service, user string) (string, error) {
 }
 
 func keyringSet(service, user, password string) error {
-	return errNotFound
-}
-
-func keyringDelete(service, user string) error {
 	return errNotFound
 }

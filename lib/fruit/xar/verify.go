@@ -15,12 +15,12 @@ import (
 	"strconv"
 
 	"github.com/beevik/etree"
+	ber "github.com/go-asn1-ber/asn1-ber"
 	"github.com/sassoftware/relic/lib/fruit/csblob"
 	"github.com/sassoftware/relic/lib/pkcs7"
 	"github.com/sassoftware/relic/lib/pkcs9"
 	"github.com/sassoftware/relic/lib/x509tools"
 	"github.com/sassoftware/relic/signers/sigerrors"
-	ber "github.com/go-asn1-ber/asn1-ber"
 )
 
 type Signature struct {

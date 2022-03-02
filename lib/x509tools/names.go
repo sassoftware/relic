@@ -159,7 +159,7 @@ func attValue(raw interface{}, style NameStyle) string {
 	}
 	switch style {
 	case NameStyleOpenSsl:
-		value = strings.Replace(value, "/", "\\/", -1)
+		value = strings.ReplaceAll(value, "/", "\\/")
 	case NameStyleLdap, NameStyleMsOsco:
 		quote := false
 		if len(value) == 0 {
@@ -171,7 +171,7 @@ func attValue(raw interface{}, style NameStyle) string {
 		if i := strings.IndexAny(value, ",+=\n<>#;'\""); i >= 0 {
 			quote = true
 		}
-		value = strings.Replace(value, "\"", "\"\"", -1)
+		value = strings.ReplaceAll(value, "\"", "\"\"")
 		if quote {
 			value = "\"" + value + "\""
 		}
@@ -181,7 +181,7 @@ func attValue(raw interface{}, style NameStyle) string {
 
 // DEPRECATED - Use asn1.Unmarshal
 func ParseBMPString(raw asn1.RawValue) (s string) {
-	asn1.Unmarshal(raw.FullBytes, &s)
+	_, _ = asn1.Unmarshal(raw.FullBytes, &s)
 	return
 }
 

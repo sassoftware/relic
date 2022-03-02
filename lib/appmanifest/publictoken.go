@@ -46,7 +46,6 @@ func PublisherIdentity(cert *certloader.Certificate) (string, string, error) {
 
 const (
 	snkRsaPub     = 0x06
-	snkRsaPriv    = 0x07
 	snkRsaVersion = 0x02
 	// https://msdn.microsoft.com/en-us/library/windows/desktop/aa375549(v=vs.85).aspx
 	calgRsaSign = 0x2400 // CALG_RSA_SIGN

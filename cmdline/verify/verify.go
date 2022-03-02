@@ -187,7 +187,7 @@ func showCert(blob []byte, seen map[string]bool) {
 		return
 	}
 	seen[string(blob)] = true
-	pem.Encode(os.Stdout, &pem.Block{
+	_ = pem.Encode(os.Stdout, &pem.Block{
 		Type:  "CERTIFICATE",
 		Bytes: blob,
 	})
