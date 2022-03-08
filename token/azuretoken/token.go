@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/2016-10-01/keyvault"
 	kvauth "github.com/Azure/azure-sdk-for-go/services/keyvault/auth"
@@ -133,6 +134,9 @@ func (t *kvToken) GetKey(ctx context.Context, keyName string) (token.Key, error)
 	if err != nil {
 		return nil, fmt.Errorf("key %q: %w", keyName, err)
 	}
+	// strip off -HSM suffix to get a key type jose will accept
+	kty := strings.TrimSuffix(string(key.Key.Kty), "-HSM")
+	key.Key.Kty = keyvault.JSONWebKeyType(kty)
 	// marshal back to JSON and then parse using jose to get a PublicKey
 	keyBlob, err := json.Marshal(key.Key)
 	if err != nil {
