@@ -24,9 +24,11 @@ rm -rf scratch
 mkdir -p scratch/token
 export SOFTHSM2_CONF=./token.conf
 softhsm2-util --slot=0 --init-token --label=functest --pin=123456 --so-pin=12345678
-if [ -e ../build/linux/relic-linux-amd64 ]
+GOOS=$(go env GOOS)
+GOARCH=$(go env GOARCH)
+if [ -e ../build/relic-$GOOS-$GOARCH ]
 then
-    client=../build/linux/relic-linux-amd64
+    client=../build/relic-$GOOS-$GOARCH
 else
     client=relic
 fi
