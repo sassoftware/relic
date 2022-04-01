@@ -20,6 +20,7 @@ package main
 
 import (
 	"github.com/sassoftware/relic/cmdline/shared"
+	"github.com/sassoftware/relic/config"
 
 	_ "github.com/sassoftware/relic/cmdline/remotecmd"
 	_ "github.com/sassoftware/relic/cmdline/verify"
@@ -44,6 +45,14 @@ import (
 	_ "github.com/sassoftware/relic/signers/xar"
 )
 
+var (
+	version = "unknown" // set this at link time
+	commit  = "unknown" // set this at link time
+)
+
 func main() {
+	config.Version = version
+	config.Commit = commit
+	config.UserAgent = "relic/" + version
 	shared.Main()
 }

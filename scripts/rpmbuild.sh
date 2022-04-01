@@ -23,7 +23,7 @@ rm -f *.rpm
 tdir="relic-$version"
 rm -rf "$tdir"
 mkdir -p "$tdir"
-cp -a ../distro/linux/* "$tdir/"
+cp -a ../distro/linux/* doc/relic.yml "$tdir/"
 cp relic-linux-amd64 "$tdir/relic"
 tar -cf relic.tar "$tdir"
 sed -i -e "s/^Version:.*/Version: $version/" $tdir/relic.spec

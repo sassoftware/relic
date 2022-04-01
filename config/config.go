@@ -33,10 +33,11 @@ const (
 )
 
 var (
-	Version   = "unknown" // set this at link time
-	Commit    = "unknown" // set this at link time
-	UserAgent = "relic/" + Version
+	// these are set by main
+	Version   = "unknown"
+	Commit    = "unknown"
 	Author    = "SAS Institute Inc."
+	UserAgent = "relic/" + Version
 )
 
 type TokenConfig struct {

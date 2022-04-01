@@ -9,7 +9,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.17
+          go-version: 1.18
       - name: Restore cache
         uses: actions/cache@v2
         with:
@@ -55,7 +55,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.17
+          go-version: 1.18
       - name: Restore cache
         uses: actions/cache@v2
         with:
@@ -72,16 +72,12 @@ jobs:
           export CGO_ENABLED=0
           GOARCH=amd64 go build -ldflags "$ldflags" -tags clientonly -o build/relic-client-darwin-amd64
           GOARCH=arm64 go build -ldflags "$ldflags" -tags clientonly -o build/relic-client-darwin-arm64
-          lipo build/relic-client-darwin-amd64 build/relic-client-darwin-arm64 -create -output build/relic-client-darwin
-          rm -f build/relic-client-darwin-amd64 build/relic-client-darwin-arm64
 
       - name: Build server
         run: |
           export CGO_ENABLED=1
           GOARCH=amd64 go build -ldflags "$ldflags" -o build/relic-darwin-amd64
           GOARCH=arm64 go build -ldflags "$ldflags" -o build/relic-darwin-arm64
-          lipo build/relic-darwin-amd64 build/relic-darwin-arm64 -create -output build/relic-darwin
-          rm -f build/relic-darwin-amd64 build/relic-darwin-arm64
 
       - name: Save artifacts
         uses: actions/upload-artifact@v2
@@ -100,7 +96,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.17
+          go-version: 1.18
       - name: Restore cache
         uses: actions/cache@v2
         with:

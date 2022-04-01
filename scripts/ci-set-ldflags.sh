@@ -2,7 +2,7 @@
 version="${GITHUB_REF#refs/tags/v*}"
 [ "$version" == "$GITHUB_REF" ] && version=$GITHUB_SHA
 
-ldflags="-s -w -X github.com/sassoftware/relic/config.Version=$version -X github.com/sassoftware/relic/config.Commit=$GITHUB_SHA"
+ldflags="-s -w -X main.version=$version -X main.commit=$GITHUB_SHA"
 
 # Propagate these flags to all further steps in the current job
 echo "ldflags=$ldflags" >> $GITHUB_ENV
