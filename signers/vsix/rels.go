@@ -23,7 +23,7 @@ import (
 	"io/ioutil"
 	"path"
 
-	"github.com/sassoftware/relic/lib/certloader"
+	"github.com/sassoftware/relic/v7/lib/certloader"
 )
 
 type oxfRelationships struct {

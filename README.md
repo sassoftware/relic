@@ -49,7 +49,7 @@ relic is tested using libsofthsm2 and Gemalto SafeNet Network HSM (Luna SA). Eve
 # Installation
 Pre-built client binaries are available from the Github releases page. Alternately, relic can be built from source:
 
-```go install github.com/sassoftware/relic@latest```
+```go install github.com/sassoftware/relic/v7@latest```
 
 The following build tags are also available:
 

@@ -23,12 +23,12 @@ import (
 	"io"
 	"os"
 
-	"github.com/sassoftware/relic/lib/audit"
-	"github.com/sassoftware/relic/lib/certloader"
-	"github.com/sassoftware/relic/lib/magic"
-	"github.com/sassoftware/relic/lib/signdeb"
-	"github.com/sassoftware/relic/signers"
-	"github.com/sassoftware/relic/signers/sigerrors"
+	"github.com/sassoftware/relic/v7/lib/audit"
+	"github.com/sassoftware/relic/v7/lib/certloader"
+	"github.com/sassoftware/relic/v7/lib/magic"
+	"github.com/sassoftware/relic/v7/lib/signdeb"
+	"github.com/sassoftware/relic/v7/signers"
+	"github.com/sassoftware/relic/v7/signers/sigerrors"
 )
 
 var DebSigner = &signers.Signer{

@@ -25,8 +25,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/sassoftware/relic/config"
 	"gopkg.in/yaml.v3"
+
+	"github.com/sassoftware/relic/v7/config"
 )
 
 type AuditConfig struct {

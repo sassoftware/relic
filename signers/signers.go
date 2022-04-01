@@ -27,14 +27,15 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
-	"github.com/sassoftware/relic/lib/audit"
-	"github.com/sassoftware/relic/lib/certloader"
-	"github.com/sassoftware/relic/lib/magic"
-	"github.com/sassoftware/relic/lib/pgptools"
-	"github.com/sassoftware/relic/lib/pkcs9"
-	"github.com/sassoftware/relic/lib/x509tools"
-	"github.com/sassoftware/relic/signers/sigerrors"
 	"golang.org/x/crypto/openpgp"
+
+	"github.com/sassoftware/relic/v7/lib/audit"
+	"github.com/sassoftware/relic/v7/lib/certloader"
+	"github.com/sassoftware/relic/v7/lib/magic"
+	"github.com/sassoftware/relic/v7/lib/pgptools"
+	"github.com/sassoftware/relic/v7/lib/pkcs9"
+	"github.com/sassoftware/relic/v7/lib/x509tools"
+	"github.com/sassoftware/relic/v7/signers/sigerrors"
 )
 
 type Signer struct {

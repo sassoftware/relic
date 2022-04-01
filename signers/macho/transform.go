@@ -8,7 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/sassoftware/relic/signers"
+	"github.com/sassoftware/relic/v7/signers"
 )
 
 func transform(f *os.File, opts signers.SignOpts) (signers.Transformer, error) {

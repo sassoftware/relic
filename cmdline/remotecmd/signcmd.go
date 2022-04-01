@@ -23,9 +23,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/sassoftware/relic/cmdline/shared"
-	"github.com/sassoftware/relic/signers"
 	"github.com/spf13/cobra"
+
+	"github.com/sassoftware/relic/v7/cmdline/shared"
+	"github.com/sassoftware/relic/v7/signers"
 )
 
 var SignCmd = &cobra.Command{

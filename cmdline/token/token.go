@@ -23,11 +23,12 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/sassoftware/relic/cmdline/shared"
-	"github.com/sassoftware/relic/config"
-	"github.com/sassoftware/relic/token"
-	"github.com/sassoftware/relic/token/open"
 	"github.com/spf13/cobra"
+
+	"github.com/sassoftware/relic/v7/cmdline/shared"
+	"github.com/sassoftware/relic/v7/config"
+	"github.com/sassoftware/relic/v7/token"
+	"github.com/sassoftware/relic/v7/token/open"
 )
 
 var TokenCmd = &cobra.Command{

@@ -26,8 +26,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/sassoftware/relic/lib/x509tools"
-	"github.com/sassoftware/relic/lib/zipslicer"
+	"github.com/sassoftware/relic/v7/lib/x509tools"
+	"github.com/sassoftware/relic/v7/lib/zipslicer"
 )
 
 // found in the "extra" field of JAR files, not strictly required but it makes

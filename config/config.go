@@ -23,8 +23,9 @@ import (
 	"io/ioutil"
 	"strings"
 
-	"github.com/sassoftware/relic/lib/certloader"
 	"gopkg.in/yaml.v3"
+
+	"github.com/sassoftware/relic/v7/lib/certloader"
 )
 
 const (

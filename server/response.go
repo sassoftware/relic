@@ -22,8 +22,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/sassoftware/relic/internal/httperror"
-	"github.com/sassoftware/relic/token"
+	"github.com/sassoftware/relic/v7/internal/httperror"
+	"github.com/sassoftware/relic/v7/token"
 )
 
 type Response interface {

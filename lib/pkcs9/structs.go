@@ -31,7 +31,7 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/sassoftware/relic/lib/pkcs7"
+	"github.com/sassoftware/relic/v7/lib/pkcs7"
 )
 
 const (

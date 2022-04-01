@@ -29,14 +29,15 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/sassoftware/relic/lib/atomicfile"
-	"github.com/sassoftware/relic/lib/certloader"
-	"github.com/sassoftware/relic/lib/magic"
-	"github.com/sassoftware/relic/lib/pgptools"
-	"github.com/sassoftware/relic/signers"
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/armor"
 	"golang.org/x/crypto/openpgp/packet"
+
+	"github.com/sassoftware/relic/v7/lib/atomicfile"
+	"github.com/sassoftware/relic/v7/lib/certloader"
+	"github.com/sassoftware/relic/v7/lib/magic"
+	"github.com/sassoftware/relic/v7/lib/pgptools"
+	"github.com/sassoftware/relic/v7/signers"
 )
 
 var PgpSigner = &signers.Signer{

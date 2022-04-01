@@ -23,7 +23,7 @@ import (
 	"io"
 	"io/ioutil"
 
-	"github.com/sassoftware/relic/lib/comdoc"
+	"github.com/sassoftware/relic/v7/lib/comdoc"
 )
 
 const (

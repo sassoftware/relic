@@ -27,8 +27,9 @@ import (
 	"strings"
 
 	"github.com/qur/ar"
-	"github.com/sassoftware/relic/lib/pgptools"
 	"golang.org/x/crypto/openpgp"
+
+	"github.com/sassoftware/relic/v7/lib/pgptools"
 )
 
 // Extract and verify signatures from a Debian package. A keyring of known PGP

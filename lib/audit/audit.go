@@ -26,10 +26,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/sassoftware/relic/lib/pgptools"
-	"github.com/sassoftware/relic/lib/pkcs9"
-	"github.com/sassoftware/relic/lib/x509tools"
 	"golang.org/x/crypto/openpgp"
+
+	"github.com/sassoftware/relic/v7/lib/pgptools"
+	"github.com/sassoftware/relic/v7/lib/pkcs9"
+	"github.com/sassoftware/relic/v7/lib/x509tools"
 )
 
 type Info struct {

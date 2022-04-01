@@ -20,7 +20,7 @@ import (
 	"bytes"
 	"time"
 
-	"github.com/sassoftware/relic/lib/binpatch"
+	"github.com/sassoftware/relic/v7/lib/binpatch"
 )
 
 type Mangler struct {

@@ -21,16 +21,16 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/sassoftware/relic/config"
-	"github.com/sassoftware/relic/lib/passprompt"
-	"github.com/sassoftware/relic/token"
+	"github.com/sassoftware/relic/v7/config"
+	"github.com/sassoftware/relic/v7/lib/passprompt"
+	"github.com/sassoftware/relic/v7/token"
 
 	// Token types that don't require cgo
-	_ "github.com/sassoftware/relic/token/awstoken"
-	_ "github.com/sassoftware/relic/token/azuretoken"
-	_ "github.com/sassoftware/relic/token/filetoken"
-	_ "github.com/sassoftware/relic/token/gcloudtoken"
-	_ "github.com/sassoftware/relic/token/scdtoken"
+	_ "github.com/sassoftware/relic/v7/token/awstoken"
+	_ "github.com/sassoftware/relic/v7/token/azuretoken"
+	_ "github.com/sassoftware/relic/v7/token/filetoken"
+	_ "github.com/sassoftware/relic/v7/token/gcloudtoken"
+	_ "github.com/sassoftware/relic/v7/token/scdtoken"
 )
 
 func Token(cfg *config.Config, tokenName string, prompt passprompt.PasswordGetter) (token.Token, error) {

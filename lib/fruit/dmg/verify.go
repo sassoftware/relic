@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/sassoftware/relic/lib/fruit/csblob"
-	"github.com/sassoftware/relic/signers/sigerrors"
+	"github.com/sassoftware/relic/v7/lib/fruit/csblob"
+	"github.com/sassoftware/relic/v7/signers/sigerrors"
 )
 
 type Signature struct {

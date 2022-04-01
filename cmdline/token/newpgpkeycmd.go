@@ -27,12 +27,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sassoftware/relic/cmdline/shared"
-	"github.com/sassoftware/relic/token"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/armor"
 	"golang.org/x/crypto/openpgp/packet"
+
+	"github.com/sassoftware/relic/v7/cmdline/shared"
+	"github.com/sassoftware/relic/v7/token"
 )
 
 var NewPgpKeyCmd = &cobra.Command{

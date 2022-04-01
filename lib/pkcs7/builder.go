@@ -25,7 +25,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/sassoftware/relic/lib/x509tools"
+	"github.com/sassoftware/relic/v7/lib/x509tools"
 )
 
 type SignatureBuilder struct {

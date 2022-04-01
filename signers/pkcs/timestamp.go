@@ -22,11 +22,11 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/sassoftware/relic/lib/magic"
-	"github.com/sassoftware/relic/lib/pkcs7"
-	"github.com/sassoftware/relic/lib/pkcs9"
-	"github.com/sassoftware/relic/lib/x509tools"
-	"github.com/sassoftware/relic/signers"
+	"github.com/sassoftware/relic/v7/lib/magic"
+	"github.com/sassoftware/relic/v7/lib/pkcs7"
+	"github.com/sassoftware/relic/v7/lib/pkcs9"
+	"github.com/sassoftware/relic/v7/lib/x509tools"
+	"github.com/sassoftware/relic/v7/signers"
 )
 
 var PkcsSigner = &signers.Signer{

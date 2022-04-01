@@ -27,8 +27,9 @@ import (
 	"io"
 
 	"github.com/miekg/pkcs11"
-	"github.com/sassoftware/relic/lib/pkcs8"
-	"github.com/sassoftware/relic/token"
+
+	"github.com/sassoftware/relic/v7/lib/pkcs8"
+	"github.com/sassoftware/relic/v7/token"
 )
 
 // Common attributes for new public keys

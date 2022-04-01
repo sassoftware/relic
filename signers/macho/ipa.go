@@ -9,9 +9,10 @@ import (
 	"path"
 	"strings"
 
-	"github.com/sassoftware/relic/lib/magic"
-	"github.com/sassoftware/relic/signers"
 	"howett.net/plist"
+
+	"github.com/sassoftware/relic/v7/lib/magic"
+	"github.com/sassoftware/relic/v7/signers"
 )
 
 var ipaVerifier = &signers.Signer{

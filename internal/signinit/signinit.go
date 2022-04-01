@@ -22,13 +22,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/sassoftware/relic/cmdline/shared"
-	"github.com/sassoftware/relic/config"
-	"github.com/sassoftware/relic/lib/audit"
-	"github.com/sassoftware/relic/lib/certloader"
-	"github.com/sassoftware/relic/signers"
-	"github.com/sassoftware/relic/signers/sigerrors"
-	"github.com/sassoftware/relic/token"
+	"github.com/sassoftware/relic/v7/cmdline/shared"
+	"github.com/sassoftware/relic/v7/config"
+	"github.com/sassoftware/relic/v7/lib/audit"
+	"github.com/sassoftware/relic/v7/lib/certloader"
+	"github.com/sassoftware/relic/v7/signers"
+	"github.com/sassoftware/relic/v7/signers/sigerrors"
+	"github.com/sassoftware/relic/v7/token"
 )
 
 // InitKey loads the cert chain for a key

@@ -22,8 +22,8 @@ import (
 	"path"
 	"strings"
 
-	"github.com/sassoftware/relic/lib/signappx"
-	"github.com/sassoftware/relic/lib/zipslicer"
+	"github.com/sassoftware/relic/v7/lib/signappx"
+	"github.com/sassoftware/relic/v7/lib/zipslicer"
 )
 
 type mangler struct {

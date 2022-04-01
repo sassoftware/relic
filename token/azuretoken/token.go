@@ -19,10 +19,10 @@ import (
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/go-jose/go-jose/v3"
 
-	"github.com/sassoftware/relic/config"
-	"github.com/sassoftware/relic/lib/passprompt"
-	"github.com/sassoftware/relic/lib/x509tools"
-	"github.com/sassoftware/relic/token"
+	"github.com/sassoftware/relic/v7/config"
+	"github.com/sassoftware/relic/v7/lib/passprompt"
+	"github.com/sassoftware/relic/v7/lib/x509tools"
+	"github.com/sassoftware/relic/v7/token"
 )
 
 const tokenType = "azure"

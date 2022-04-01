@@ -25,10 +25,10 @@ import (
 	"io"
 	"io/ioutil"
 
-	"github.com/sassoftware/relic/config"
-	"github.com/sassoftware/relic/lib/certloader"
-	"github.com/sassoftware/relic/lib/passprompt"
-	"github.com/sassoftware/relic/token"
+	"github.com/sassoftware/relic/v7/config"
+	"github.com/sassoftware/relic/v7/lib/certloader"
+	"github.com/sassoftware/relic/v7/lib/passprompt"
+	"github.com/sassoftware/relic/v7/token"
 )
 
 const tokenType = "file"

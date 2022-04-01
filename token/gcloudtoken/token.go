@@ -15,9 +15,9 @@ import (
 	"google.golang.org/api/option"
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
 
-	"github.com/sassoftware/relic/config"
-	"github.com/sassoftware/relic/lib/passprompt"
-	"github.com/sassoftware/relic/token"
+	"github.com/sassoftware/relic/v7/config"
+	"github.com/sassoftware/relic/v7/lib/passprompt"
+	"github.com/sassoftware/relic/v7/token"
 )
 
 const tokenType = "gcloud"

@@ -21,10 +21,11 @@ import (
 	"errors"
 	"time"
 
-	"github.com/sassoftware/relic/config"
-	"github.com/sassoftware/relic/lib/certloader"
-	"github.com/sassoftware/relic/lib/x509tools"
 	"github.com/streadway/amqp"
+
+	"github.com/sassoftware/relic/v7/config"
+	"github.com/sassoftware/relic/v7/lib/certloader"
+	"github.com/sassoftware/relic/v7/lib/x509tools"
 )
 
 // Publish audit record to a AMQP exchange

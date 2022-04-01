@@ -23,7 +23,8 @@ import (
 	"fmt"
 
 	"github.com/miekg/pkcs11"
-	"github.com/sassoftware/relic/signers/sigerrors"
+
+	"github.com/sassoftware/relic/v7/signers/sigerrors"
 )
 
 var newCertAttrs = []*pkcs11.Attribute{

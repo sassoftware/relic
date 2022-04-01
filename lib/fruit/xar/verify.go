@@ -16,11 +16,12 @@ import (
 
 	"github.com/beevik/etree"
 	ber "github.com/go-asn1-ber/asn1-ber"
-	"github.com/sassoftware/relic/lib/fruit/csblob"
-	"github.com/sassoftware/relic/lib/pkcs7"
-	"github.com/sassoftware/relic/lib/pkcs9"
-	"github.com/sassoftware/relic/lib/x509tools"
-	"github.com/sassoftware/relic/signers/sigerrors"
+
+	"github.com/sassoftware/relic/v7/lib/fruit/csblob"
+	"github.com/sassoftware/relic/v7/lib/pkcs7"
+	"github.com/sassoftware/relic/v7/lib/pkcs9"
+	"github.com/sassoftware/relic/v7/lib/x509tools"
+	"github.com/sassoftware/relic/v7/signers/sigerrors"
 )
 
 type Signature struct {

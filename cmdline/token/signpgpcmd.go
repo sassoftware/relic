@@ -17,9 +17,10 @@
 package token
 
 import (
-	"github.com/sassoftware/relic/cmdline/shared"
-	"github.com/sassoftware/relic/signers/pgp"
 	"github.com/spf13/cobra"
+
+	"github.com/sassoftware/relic/v7/cmdline/shared"
+	"github.com/sassoftware/relic/v7/signers/pgp"
 )
 
 var SignPgpCmd = &cobra.Command{

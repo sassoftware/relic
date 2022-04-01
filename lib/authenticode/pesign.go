@@ -25,9 +25,9 @@ import (
 	"encoding/binary"
 	"errors"
 
-	"github.com/sassoftware/relic/lib/binpatch"
-	"github.com/sassoftware/relic/lib/certloader"
-	"github.com/sassoftware/relic/lib/pkcs9"
+	"github.com/sassoftware/relic/v7/lib/binpatch"
+	"github.com/sassoftware/relic/v7/lib/certloader"
+	"github.com/sassoftware/relic/v7/lib/pkcs9"
 )
 
 // Sign the digest and return an Authenticode structure

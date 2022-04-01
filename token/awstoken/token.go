@@ -13,9 +13,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/kms"
 	"github.com/aws/aws-sdk-go-v2/service/kms/types"
 
-	"github.com/sassoftware/relic/config"
-	"github.com/sassoftware/relic/lib/passprompt"
-	"github.com/sassoftware/relic/token"
+	"github.com/sassoftware/relic/v7/config"
+	"github.com/sassoftware/relic/v7/lib/passprompt"
+	"github.com/sassoftware/relic/v7/token"
 )
 
 const tokenType = "aws"

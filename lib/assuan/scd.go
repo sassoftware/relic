@@ -27,9 +27,9 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/sassoftware/relic/lib/dlog"
-	"github.com/sassoftware/relic/lib/x509tools"
-	"github.com/sassoftware/relic/signers/sigerrors"
+	"github.com/sassoftware/relic/v7/lib/dlog"
+	"github.com/sassoftware/relic/v7/lib/x509tools"
+	"github.com/sassoftware/relic/v7/signers/sigerrors"
 )
 
 type ScdConn struct {

@@ -23,12 +23,12 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/sassoftware/relic/config"
-	"github.com/sassoftware/relic/lib/pkcs7"
-	"github.com/sassoftware/relic/lib/pkcs9"
-	"github.com/sassoftware/relic/lib/pkcs9/ratelimit"
-	"github.com/sassoftware/relic/lib/pkcs9/timestampcache"
-	"github.com/sassoftware/relic/lib/x509tools"
+	"github.com/sassoftware/relic/v7/config"
+	"github.com/sassoftware/relic/v7/lib/pkcs7"
+	"github.com/sassoftware/relic/v7/lib/pkcs9"
+	"github.com/sassoftware/relic/v7/lib/pkcs9/ratelimit"
+	"github.com/sassoftware/relic/v7/lib/pkcs9/timestampcache"
+	"github.com/sassoftware/relic/v7/lib/x509tools"
 )
 
 type tsClient struct {

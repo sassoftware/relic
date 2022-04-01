@@ -30,12 +30,12 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/sassoftware/relic/config"
-	"github.com/sassoftware/relic/lib/assuan"
-	"github.com/sassoftware/relic/lib/passprompt"
-	"github.com/sassoftware/relic/lib/x509tools"
-	"github.com/sassoftware/relic/signers/sigerrors"
-	"github.com/sassoftware/relic/token"
+	"github.com/sassoftware/relic/v7/config"
+	"github.com/sassoftware/relic/v7/lib/assuan"
+	"github.com/sassoftware/relic/v7/lib/passprompt"
+	"github.com/sassoftware/relic/v7/lib/x509tools"
+	"github.com/sassoftware/relic/v7/signers/sigerrors"
+	"github.com/sassoftware/relic/v7/token"
 )
 
 const tokenType = "scdtoken"

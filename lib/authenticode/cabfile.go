@@ -24,13 +24,13 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/sassoftware/relic/lib/binpatch"
-	"github.com/sassoftware/relic/lib/cabfile"
-	"github.com/sassoftware/relic/lib/certloader"
-	"github.com/sassoftware/relic/lib/pkcs7"
-	"github.com/sassoftware/relic/lib/pkcs9"
-	"github.com/sassoftware/relic/lib/x509tools"
-	"github.com/sassoftware/relic/signers/sigerrors"
+	"github.com/sassoftware/relic/v7/lib/binpatch"
+	"github.com/sassoftware/relic/v7/lib/cabfile"
+	"github.com/sassoftware/relic/v7/lib/certloader"
+	"github.com/sassoftware/relic/v7/lib/pkcs7"
+	"github.com/sassoftware/relic/v7/lib/pkcs9"
+	"github.com/sassoftware/relic/v7/lib/x509tools"
+	"github.com/sassoftware/relic/v7/signers/sigerrors"
 )
 
 type CabSignature struct {

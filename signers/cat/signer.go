@@ -23,13 +23,13 @@ import (
 	"io"
 	"io/ioutil"
 
-	"github.com/sassoftware/relic/lib/authenticode"
-	"github.com/sassoftware/relic/lib/certloader"
-	"github.com/sassoftware/relic/lib/magic"
-	"github.com/sassoftware/relic/lib/pkcs7"
-	"github.com/sassoftware/relic/lib/pkcs9"
-	"github.com/sassoftware/relic/signers"
-	"github.com/sassoftware/relic/signers/pkcs"
+	"github.com/sassoftware/relic/v7/lib/authenticode"
+	"github.com/sassoftware/relic/v7/lib/certloader"
+	"github.com/sassoftware/relic/v7/lib/magic"
+	"github.com/sassoftware/relic/v7/lib/pkcs7"
+	"github.com/sassoftware/relic/v7/lib/pkcs9"
+	"github.com/sassoftware/relic/v7/signers"
+	"github.com/sassoftware/relic/v7/signers/pkcs"
 )
 
 var CatSigner = &signers.Signer{

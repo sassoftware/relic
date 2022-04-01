@@ -22,7 +22,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sassoftware/relic/token/worker"
+	"github.com/sassoftware/relic/v7/token/worker"
 )
 
 var (

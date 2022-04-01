@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	"github.com/sassoftware/relic/cmdline/shared"
+	"github.com/sassoftware/relic/v7/cmdline/shared"
 
 	"github.com/spf13/cobra"
 )

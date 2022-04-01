@@ -7,9 +7,10 @@ import (
 	"encoding/asn1"
 	"fmt"
 
-	"github.com/sassoftware/relic/lib/pkcs7"
-	"github.com/sassoftware/relic/lib/x509tools"
 	"howett.net/plist"
+
+	"github.com/sassoftware/relic/v7/lib/pkcs7"
+	"github.com/sassoftware/relic/v7/lib/x509tools"
 )
 
 func checkCDHashes(si *pkcs7.SignerInfo, computed map[crypto.Hash][]byte) error {

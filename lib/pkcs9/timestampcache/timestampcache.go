@@ -21,8 +21,9 @@ import (
 	"time"
 
 	"github.com/bradfitz/gomemcache/memcache"
-	"github.com/sassoftware/relic/lib/pkcs7"
-	"github.com/sassoftware/relic/lib/pkcs9"
+
+	"github.com/sassoftware/relic/v7/lib/pkcs7"
+	"github.com/sassoftware/relic/v7/lib/pkcs9"
 )
 
 const (

@@ -22,9 +22,10 @@ import (
 	"encoding/pem"
 	"errors"
 
-	"github.com/sassoftware/relic/lib/passprompt"
-	"github.com/sassoftware/relic/lib/x509tools"
 	"golang.org/x/crypto/pkcs12"
+
+	"github.com/sassoftware/relic/v7/lib/passprompt"
+	"github.com/sassoftware/relic/v7/lib/x509tools"
 )
 
 func ParsePKCS12(blob []byte, prompt passprompt.PasswordGetter) (*Certificate, error) {

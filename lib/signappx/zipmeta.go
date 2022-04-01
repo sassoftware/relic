@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/sassoftware/relic/lib/zipslicer"
+	"github.com/sassoftware/relic/v7/lib/zipslicer"
 )
 
 func verifyMeta(r io.ReaderAt, size int64, sig *AppxSignature, skipDigests bool) error {

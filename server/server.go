@@ -32,11 +32,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sassoftware/relic/config"
-	"github.com/sassoftware/relic/lib/compresshttp"
-	"github.com/sassoftware/relic/lib/isologger"
-	"github.com/sassoftware/relic/lib/x509tools"
-	"github.com/sassoftware/relic/token/worker"
+	"github.com/sassoftware/relic/v7/config"
+	"github.com/sassoftware/relic/v7/lib/compresshttp"
+	"github.com/sassoftware/relic/v7/lib/isologger"
+	"github.com/sassoftware/relic/v7/lib/x509tools"
+	"github.com/sassoftware/relic/v7/token/worker"
 )
 
 type Server struct {

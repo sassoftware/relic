@@ -27,12 +27,13 @@ import (
 	"os"
 	"sync"
 
-	"github.com/sassoftware/relic/config"
-	"github.com/sassoftware/relic/internal/activation"
-	"github.com/sassoftware/relic/lib/certloader"
-	"github.com/sassoftware/relic/lib/x509tools"
-	"github.com/sassoftware/relic/server"
 	"golang.org/x/net/http2"
+
+	"github.com/sassoftware/relic/v7/config"
+	"github.com/sassoftware/relic/v7/internal/activation"
+	"github.com/sassoftware/relic/v7/lib/certloader"
+	"github.com/sassoftware/relic/v7/lib/x509tools"
+	"github.com/sassoftware/relic/v7/server"
 )
 
 type Daemon struct {

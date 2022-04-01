@@ -25,13 +25,14 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/sassoftware/relic/lib/audit"
-	"github.com/sassoftware/relic/lib/binpatch"
-	"github.com/sassoftware/relic/lib/magic"
-	"github.com/sassoftware/relic/lib/pkcs7"
-	"github.com/sassoftware/relic/lib/pkcs9"
 	"github.com/spf13/pflag"
 	"golang.org/x/crypto/openpgp"
+
+	"github.com/sassoftware/relic/v7/lib/audit"
+	"github.com/sassoftware/relic/v7/lib/binpatch"
+	"github.com/sassoftware/relic/v7/lib/magic"
+	"github.com/sassoftware/relic/v7/lib/pkcs7"
+	"github.com/sassoftware/relic/v7/lib/pkcs9"
 )
 
 type SignOpts struct {

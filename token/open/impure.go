@@ -21,5 +21,5 @@ package open
 
 import (
 	// Token types that need cgo
-	_ "github.com/sassoftware/relic/token/p11token"
+	_ "github.com/sassoftware/relic/v7/token/p11token"
 )

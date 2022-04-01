@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	"github.com/sassoftware/relic/lib/zipslicer"
+	"github.com/sassoftware/relic/v7/lib/zipslicer"
 )
 
 func (m *mangler) parseTypes(f *zipslicer.MangleFile) error {

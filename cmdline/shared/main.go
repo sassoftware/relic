@@ -21,8 +21,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/sassoftware/relic/config"
 	"github.com/spf13/cobra"
+
+	"github.com/sassoftware/relic/v7/config"
 )
 
 var (

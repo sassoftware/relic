@@ -20,4 +20,4 @@
 package main
 
 // local token commands (no server)
-import _ "github.com/sassoftware/relic/cmdline/token"
+import _ "github.com/sassoftware/relic/v7/cmdline/token"

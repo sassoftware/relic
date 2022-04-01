@@ -6,8 +6,8 @@ import (
 	"io"
 	"os"
 
-	"github.com/sassoftware/relic/lib/magic"
-	"github.com/sassoftware/relic/signers"
+	"github.com/sassoftware/relic/v7/lib/magic"
+	"github.com/sassoftware/relic/v7/signers"
 )
 
 var fatVerifier = &signers.Signer{

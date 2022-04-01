@@ -22,7 +22,7 @@ import (
 	"encoding/binary"
 	"errors"
 
-	"github.com/sassoftware/relic/lib/zipslicer"
+	"github.com/sassoftware/relic/v7/lib/zipslicer"
 )
 
 const merkleBlock = 1048576

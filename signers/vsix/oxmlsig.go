@@ -31,12 +31,13 @@ import (
 	"strings"
 
 	"github.com/beevik/etree"
-	"github.com/sassoftware/relic/lib/certloader"
-	"github.com/sassoftware/relic/lib/pkcs7"
-	"github.com/sassoftware/relic/lib/pkcs9"
-	"github.com/sassoftware/relic/lib/xmldsig"
-	"github.com/sassoftware/relic/signers"
-	"github.com/sassoftware/relic/signers/sigerrors"
+
+	"github.com/sassoftware/relic/v7/lib/certloader"
+	"github.com/sassoftware/relic/v7/lib/pkcs7"
+	"github.com/sassoftware/relic/v7/lib/pkcs9"
+	"github.com/sassoftware/relic/v7/lib/xmldsig"
+	"github.com/sassoftware/relic/v7/signers"
+	"github.com/sassoftware/relic/v7/signers/sigerrors"
 )
 
 type oxmlManifest struct {

@@ -27,10 +27,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/sassoftware/relic/lib/passprompt"
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/armor"
 	"golang.org/x/crypto/openpgp/packet"
+
+	"github.com/sassoftware/relic/v7/lib/passprompt"
 )
 
 // Parse and decrypt a private key. It can be a RSA or ECDA key in PKCS#1 or

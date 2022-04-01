@@ -21,10 +21,10 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/sassoftware/relic/internal/signinit"
-	"github.com/sassoftware/relic/lib/readercounter"
-	"github.com/sassoftware/relic/lib/x509tools"
-	"github.com/sassoftware/relic/signers"
+	"github.com/sassoftware/relic/v7/internal/signinit"
+	"github.com/sassoftware/relic/v7/lib/readercounter"
+	"github.com/sassoftware/relic/v7/lib/x509tools"
+	"github.com/sassoftware/relic/v7/signers"
 )
 
 const defaultHash = crypto.SHA256

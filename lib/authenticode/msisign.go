@@ -20,9 +20,9 @@ import (
 	"context"
 	"crypto"
 
-	"github.com/sassoftware/relic/lib/certloader"
-	"github.com/sassoftware/relic/lib/comdoc"
-	"github.com/sassoftware/relic/lib/pkcs9"
+	"github.com/sassoftware/relic/v7/lib/certloader"
+	"github.com/sassoftware/relic/v7/lib/comdoc"
+	"github.com/sassoftware/relic/v7/lib/pkcs9"
 )
 
 // Create the Authenticode structure for a MSI file signature using a previously-calculated digest (imprint).

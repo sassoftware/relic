@@ -29,7 +29,7 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/sassoftware/relic/lib/x509tools"
+	"github.com/sassoftware/relic/v7/lib/x509tools"
 
 	"github.com/beevik/etree"
 )

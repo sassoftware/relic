@@ -26,10 +26,11 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/sassoftware/relic/config"
-	"github.com/sassoftware/relic/internal/signinit"
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/armor"
+
+	"github.com/sassoftware/relic/v7/config"
+	"github.com/sassoftware/relic/v7/internal/signinit"
 )
 
 type keyInfo struct {

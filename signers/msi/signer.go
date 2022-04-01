@@ -23,12 +23,12 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/sassoftware/relic/lib/atomicfile"
-	"github.com/sassoftware/relic/lib/authenticode"
-	"github.com/sassoftware/relic/lib/certloader"
-	"github.com/sassoftware/relic/lib/comdoc"
-	"github.com/sassoftware/relic/lib/magic"
-	"github.com/sassoftware/relic/signers"
+	"github.com/sassoftware/relic/v7/lib/atomicfile"
+	"github.com/sassoftware/relic/v7/lib/authenticode"
+	"github.com/sassoftware/relic/v7/lib/certloader"
+	"github.com/sassoftware/relic/v7/lib/comdoc"
+	"github.com/sassoftware/relic/v7/lib/magic"
+	"github.com/sassoftware/relic/v7/signers"
 )
 
 var MsiSigner = &signers.Signer{

@@ -27,8 +27,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sassoftware/relic/lib/authenticode"
-	"github.com/sassoftware/relic/lib/zipslicer"
+	"github.com/sassoftware/relic/v7/lib/authenticode"
+	"github.com/sassoftware/relic/v7/lib/zipslicer"
 )
 
 type AppxDigest struct {

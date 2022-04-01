@@ -5,11 +5,11 @@ import (
 	"io"
 	"os"
 
-	"github.com/sassoftware/relic/lib/certloader"
-	"github.com/sassoftware/relic/lib/fruit/csblob"
-	"github.com/sassoftware/relic/lib/fruit/machos"
-	"github.com/sassoftware/relic/lib/magic"
-	"github.com/sassoftware/relic/signers"
+	"github.com/sassoftware/relic/v7/lib/certloader"
+	"github.com/sassoftware/relic/v7/lib/fruit/csblob"
+	"github.com/sassoftware/relic/v7/lib/fruit/machos"
+	"github.com/sassoftware/relic/v7/lib/magic"
+	"github.com/sassoftware/relic/v7/signers"
 )
 
 var signer = &signers.Signer{

@@ -29,12 +29,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sassoftware/relic/cmdline/shared"
-	"github.com/sassoftware/relic/config"
-	"github.com/sassoftware/relic/internal/httperror"
-	"github.com/sassoftware/relic/lib/compresshttp"
-	"github.com/sassoftware/relic/lib/x509tools"
 	"golang.org/x/net/http2"
+
+	"github.com/sassoftware/relic/v7/cmdline/shared"
+	"github.com/sassoftware/relic/v7/config"
+	"github.com/sassoftware/relic/v7/internal/httperror"
+	"github.com/sassoftware/relic/v7/lib/compresshttp"
+	"github.com/sassoftware/relic/v7/lib/x509tools"
 )
 
 type ReaderGetter interface {

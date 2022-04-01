@@ -22,7 +22,8 @@ import (
 	"errors"
 
 	"github.com/miekg/pkcs11"
-	"github.com/sassoftware/relic/lib/x509tools"
+
+	"github.com/sassoftware/relic/v7/lib/x509tools"
 )
 
 // Convert token ECDSA public key to *ecdsa.PublicKey

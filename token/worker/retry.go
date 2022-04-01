@@ -29,8 +29,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/sassoftware/relic/internal/workerrpc"
-	"github.com/sassoftware/relic/token"
+	"github.com/sassoftware/relic/v7/internal/workerrpc"
+	"github.com/sassoftware/relic/v7/token"
 )
 
 const (

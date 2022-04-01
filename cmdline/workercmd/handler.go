@@ -34,9 +34,10 @@ import (
 	"time"
 
 	"github.com/miekg/pkcs11"
-	"github.com/sassoftware/relic/cmdline/shared"
-	"github.com/sassoftware/relic/internal/workerrpc"
-	"github.com/sassoftware/relic/token"
+
+	"github.com/sassoftware/relic/v7/cmdline/shared"
+	"github.com/sassoftware/relic/v7/internal/workerrpc"
+	"github.com/sassoftware/relic/v7/token"
 )
 
 // an arbitarily-chosen set of error codes that indicate that the token session

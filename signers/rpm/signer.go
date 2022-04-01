@@ -27,13 +27,14 @@ import (
 	"time"
 
 	rpmutils "github.com/sassoftware/go-rpmutils"
-	"github.com/sassoftware/relic/lib/audit"
-	"github.com/sassoftware/relic/lib/binpatch"
-	"github.com/sassoftware/relic/lib/certloader"
-	"github.com/sassoftware/relic/lib/magic"
-	"github.com/sassoftware/relic/lib/pgptools"
-	"github.com/sassoftware/relic/signers"
-	"github.com/sassoftware/relic/signers/sigerrors"
+
+	"github.com/sassoftware/relic/v7/lib/audit"
+	"github.com/sassoftware/relic/v7/lib/binpatch"
+	"github.com/sassoftware/relic/v7/lib/certloader"
+	"github.com/sassoftware/relic/v7/lib/magic"
+	"github.com/sassoftware/relic/v7/lib/pgptools"
+	"github.com/sassoftware/relic/v7/signers"
+	"github.com/sassoftware/relic/v7/signers/sigerrors"
 )
 
 var RpmSigner = &signers.Signer{

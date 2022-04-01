@@ -20,8 +20,9 @@ import (
 	"crypto"
 	"fmt"
 
-	"github.com/sassoftware/relic/lib/x509tools"
 	"github.com/spf13/cobra"
+
+	"github.com/sassoftware/relic/v7/lib/x509tools"
 )
 
 var ArgDigest string

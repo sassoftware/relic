@@ -19,8 +19,8 @@ package token
 import (
 	"io"
 
-	"github.com/sassoftware/relic/config"
-	"github.com/sassoftware/relic/lib/passprompt"
+	"github.com/sassoftware/relic/v7/config"
+	"github.com/sassoftware/relic/v7/lib/passprompt"
 )
 
 type (

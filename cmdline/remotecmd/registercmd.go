@@ -33,10 +33,11 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/sassoftware/relic/cmdline/shared"
-	"github.com/sassoftware/relic/config"
-	"github.com/sassoftware/relic/lib/certloader"
 	"gopkg.in/yaml.v3"
+
+	"github.com/sassoftware/relic/v7/cmdline/shared"
+	"github.com/sassoftware/relic/v7/config"
+	"github.com/sassoftware/relic/v7/lib/certloader"
 
 	"github.com/spf13/cobra"
 )

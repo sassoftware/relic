@@ -23,8 +23,9 @@ import (
 	"net/url"
 	"os"
 
-	"github.com/sassoftware/relic/cmdline/shared"
 	"github.com/spf13/cobra"
+
+	"github.com/sassoftware/relic/v7/cmdline/shared"
 )
 
 var GetKeyCmd = &cobra.Command{

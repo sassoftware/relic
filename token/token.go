@@ -23,7 +23,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/sassoftware/relic/config"
+	"github.com/sassoftware/relic/v7/config"
 )
 
 type KeyType uint

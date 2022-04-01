@@ -23,10 +23,11 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/sassoftware/relic/cmdline/shared"
-	"github.com/sassoftware/relic/lib/certloader"
-	"github.com/sassoftware/relic/lib/x509tools"
 	"github.com/spf13/cobra"
+
+	"github.com/sassoftware/relic/v7/cmdline/shared"
+	"github.com/sassoftware/relic/v7/lib/certloader"
+	"github.com/sassoftware/relic/v7/lib/x509tools"
 )
 
 var (

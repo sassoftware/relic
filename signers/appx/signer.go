@@ -23,11 +23,11 @@ import (
 	"io"
 	"os"
 
-	"github.com/sassoftware/relic/lib/certloader"
-	"github.com/sassoftware/relic/lib/magic"
-	"github.com/sassoftware/relic/lib/signappx"
-	"github.com/sassoftware/relic/signers"
-	"github.com/sassoftware/relic/signers/zipbased"
+	"github.com/sassoftware/relic/v7/lib/certloader"
+	"github.com/sassoftware/relic/v7/lib/magic"
+	"github.com/sassoftware/relic/v7/lib/signappx"
+	"github.com/sassoftware/relic/v7/signers"
+	"github.com/sassoftware/relic/v7/signers/zipbased"
 )
 
 var AppxSigner = &signers.Signer{

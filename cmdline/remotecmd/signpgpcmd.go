@@ -17,8 +17,9 @@
 package remotecmd
 
 import (
-	"github.com/sassoftware/relic/signers/pgp"
 	"github.com/spf13/cobra"
+
+	"github.com/sassoftware/relic/v7/signers/pgp"
 )
 
 var SignPgpCmd = &cobra.Command{

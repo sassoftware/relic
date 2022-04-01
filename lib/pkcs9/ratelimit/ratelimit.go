@@ -18,9 +18,10 @@ import (
 	"log"
 	"time"
 
-	"github.com/sassoftware/relic/lib/pkcs7"
-	"github.com/sassoftware/relic/lib/pkcs9"
 	"golang.org/x/time/rate"
+
+	"github.com/sassoftware/relic/v7/lib/pkcs7"
+	"github.com/sassoftware/relic/v7/lib/pkcs9"
 )
 
 type limiter struct {
