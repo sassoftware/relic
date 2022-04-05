@@ -19,6 +19,7 @@ package x509tools
 import (
 	"crypto"
 	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha1"
@@ -34,20 +35,28 @@ import (
 func MakeSerial() *big.Int {
 	blob := make([]byte, 12)
 	if _, err := io.ReadFull(rand.Reader, blob); err != nil {
-		return nil
+		panic(err)
 	}
 	return new(big.Int).SetBytes(blob)
 }
 
 // Choose a X509 signature algorithm suitable for the specified public key
 func X509SignatureAlgorithm(pub crypto.PublicKey) x509.SignatureAlgorithm {
-	switch pub.(type) {
+	switch k := pub.(type) {
 	case *rsa.PublicKey:
 		if ArgRSAPSS {
 			return x509.SHA256WithRSAPSS
 		}
 		return x509.SHA256WithRSA
 	case *ecdsa.PublicKey:
+		switch k.Curve {
+		case elliptic.P256():
+			return x509.ECDSAWithSHA256
+		case elliptic.P384():
+			return x509.ECDSAWithSHA384
+		case elliptic.P521():
+			return x509.ECDSAWithSHA512
+		}
 		return x509.ECDSAWithSHA256
 	default:
 		return x509.UnknownSignatureAlgorithm
