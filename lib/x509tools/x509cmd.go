@@ -233,7 +233,22 @@ func SignCSR(csrBytes []byte, rand io.Reader, key crypto.Signer, cacert *x509.Ce
 	// update fields
 	template := &x509.Certificate{Subject: csr.Subject}
 	if copyExtensions {
-		template.ExtraExtensions = csr.Extensions
+		// drop CSR extensions that are overridden or merged with our args
+		for _, ex := range csr.Extensions {
+			switch {
+			case ArgCertAuthority && ex.Id.Equal(oidExtensionBasicConstraints):
+				// arg has set CA constraint
+			case ArgKeyUsage != "" && (ex.Id.Equal(oidExtensionKeyUsage) || ex.Id.Equal(oidExtensionExtendedKeyUsage)):
+				// arg has set key usage
+			case ex.Id.Equal(oidExtensionSubjectKeyId) || ex.Id.Equal(oidExtensionAuthorityKeyId):
+				// we always set this
+			case ex.Id.Equal(oidExtensionSubjectAltName):
+				// these are copied piecemeal below
+			default:
+				// copy the extension as-is
+				template.ExtraExtensions = append(template.ExtraExtensions, ex)
+			}
+		}
 		template.DNSNames = csr.DNSNames
 		template.EmailAddresses = csr.EmailAddresses
 		template.IPAddresses = csr.IPAddresses

@@ -179,12 +179,6 @@ func attValue(raw interface{}, style NameStyle) string {
 	return value
 }
 
-// DEPRECATED - Use asn1.Unmarshal
-func ParseBMPString(raw asn1.RawValue) (s string) {
-	_, _ = asn1.Unmarshal(raw.FullBytes, &s)
-	return
-}
-
 func ToBMPString(value string) asn1.RawValue {
 	runes := utf16.Encode([]rune(value))
 	raw := make([]byte, 2*len(runes))
