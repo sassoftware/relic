@@ -118,7 +118,6 @@ echo
 
 ### CAT
 pkg="hyperv.cat"
-$client verify --cert "testkeys/msroot.crt" "packages/$pkg"
 $relic remote sign -k rsa2048 -f "packages/$pkg" -o "$signed/$pkg"
 $verify_2048x "$signed/$pkg"
 echo
