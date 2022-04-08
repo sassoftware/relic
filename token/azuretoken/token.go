@@ -11,12 +11,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/2016-10-01/keyvault"
-	kvauth "github.com/Azure/azure-sdk-for-go/services/keyvault/auth"
-	"github.com/Azure/go-autorest/autorest"
 	"github.com/go-jose/go-jose/v3"
 
 	"github.com/sassoftware/relic/v7/config"
@@ -53,20 +50,9 @@ func open(conf *config.Config, tokenName string, pinProvider passprompt.Password
 	if err != nil {
 		return nil, err
 	}
-	var auth autorest.Authorizer
-	if tconf.Pin != nil {
-		credFile := *tconf.Pin
-		if credFile == "" {
-			auth, err = kvauth.NewAuthorizerFromCLI()
-		} else {
-			os.Setenv("AZURE_AUTH_LOCATION", credFile)
-			auth, err = kvauth.NewAuthorizerFromFile()
-		}
-	} else {
-		auth, err = kvauth.NewAuthorizerFromEnvironment()
-	}
+	auth, err := newAuthorizer(tconf)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("configuring azure auth: %w", err)
 	}
 	cli := keyvault.New()
 	cli.Authorizer = auth
