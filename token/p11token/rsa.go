@@ -20,6 +20,7 @@ import (
 	"crypto"
 	"crypto/rsa"
 	"errors"
+	"math"
 	"math/big"
 
 	"github.com/miekg/pkcs11"
@@ -32,11 +33,15 @@ func (key *Key) toRsaKey() (crypto.PublicKey, error) {
 	modulus := key.token.getAttribute(key.pub, pkcs11.CKA_MODULUS)
 	exponent := key.token.getAttribute(key.pub, pkcs11.CKA_PUBLIC_EXPONENT)
 	if len(modulus) == 0 || len(exponent) == 0 {
-		return nil, errors.New("Unable to retrieve RSA public key")
+		return nil, errors.New("unable to retrieve RSA public key")
 	}
-	n := new(big.Int).SetBytes([]byte(modulus))
-	e := int(attrToInt(exponent))
-	return &rsa.PublicKey{N: n, E: e}, nil
+	n := new(big.Int).SetBytes(modulus)
+	e := new(big.Int).SetBytes(exponent)
+	eInt := e.Int64()
+	if !e.IsInt64() || eInt > math.MaxInt || eInt < 3 {
+		return nil, errors.New("RSA exponent is out of bounds")
+	}
+	return &rsa.PublicKey{N: n, E: int(eInt)}, nil
 }
 
 func (key *Key) newPssMech(opts *rsa.PSSOptions) (*pkcs11.Mechanism, error) {
@@ -79,7 +84,7 @@ func (key *Key) newPssMech(opts *rsa.PSSOptions) (*pkcs11.Mechanism, error) {
 func (key *Key) signRSA(digest []byte, opts crypto.SignerOpts) ([]byte, error) {
 	var mech *pkcs11.Mechanism
 	if opts == nil || opts.HashFunc() == 0 {
-		return nil, errors.New("Signer options are required")
+		return nil, errors.New("signer options are required")
 	} else if pss, ok := opts.(*rsa.PSSOptions); ok {
 		var err error
 		mech, err = key.newPssMech(pss)

@@ -282,11 +282,3 @@ func (tok *Token) findObject(attrs []*pkcs11.Attribute) ([]pkcs11.ObjectHandle, 
 	}
 	return objects, nil
 }
-
-func attrToInt(value []byte) uint {
-	var n uint
-	for i := len(value) - 1; i >= 0; i-- {
-		n = n<<8 | uint(value[i])
-	}
-	return n
-}

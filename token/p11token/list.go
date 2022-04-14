@@ -83,11 +83,12 @@ func (tok *Token) ListKeys(opts token.ListOptions) (err error) {
 				continue
 			}
 			fmt.Fprintf(opts.Output, "handle 0x%08x:\n", handle)
-			class := attrToInt(tok.getAttribute(handle, pkcs11.CKA_CLASS))
-			if name := classNames[class]; name != "" {
+			rawClass := tok.getAttribute(handle, pkcs11.CKA_CLASS)
+			class, err := getUlong(rawClass)
+			if name := classNames[class]; name != "" && err == nil {
 				fmt.Fprintf(opts.Output, " class:   %s\n", name)
 			} else {
-				fmt.Fprintf(opts.Output, " class:   0x%08x\n", class)
+				fmt.Fprintf(opts.Output, " class:   0x%x\n", rawClass)
 			}
 			if len(objId) > 0 {
 				fmt.Fprintf(opts.Output, " id:      %s\n", formatKeyID(objId))
@@ -117,11 +118,12 @@ func (tok *Token) ListKeys(opts token.ListOptions) (err error) {
 }
 
 func (tok *Token) printKey(opts token.ListOptions, handle pkcs11.ObjectHandle) {
-	keyType := attrToInt(tok.getAttribute(handle, pkcs11.CKA_KEY_TYPE))
-	if name := keyTypes[keyType]; name != "" {
+	rawKeyType := tok.getAttribute(handle, pkcs11.CKA_KEY_TYPE)
+	keyType, err := getUlong(rawKeyType)
+	if name := keyTypes[keyType]; name != "" && err == nil {
 		fmt.Fprintf(opts.Output, " type:    %s\n", name)
 	} else {
-		fmt.Fprintf(opts.Output, " type:    0x%08x\n", keyType)
+		fmt.Fprintf(opts.Output, " type:    0x%x\n", keyType)
 	}
 	switch keyType {
 	case pkcs11.CKK_RSA:

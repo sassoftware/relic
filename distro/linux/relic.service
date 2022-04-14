@@ -12,6 +12,7 @@ ExecStart=/usr/libexec/relic-einhorn start
 ExecStop=/usr/libexec/relic-einhorn stop
 ExecReload=/usr/libexec/relic-einhorn reload
 SyslogIdentifier=relic
+Restart=on-failure
 
 [Install]
 WantedBy=multi-user.target

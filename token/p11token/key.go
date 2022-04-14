@@ -21,6 +21,7 @@ import (
 	"crypto"
 	"crypto/rand"
 	"errors"
+	"fmt"
 	"io"
 
 	"github.com/miekg/pkcs11"
@@ -69,9 +70,12 @@ func (token *Token) getKey(keyConf *config.KeyConfig, keyName string) (*Key, err
 	}
 	keyTypeBlob := token.getAttribute(key.priv, pkcs11.CKA_KEY_TYPE)
 	if len(keyTypeBlob) == 0 {
-		return nil, errors.New("Missing CKA_KEY_TYPE on private key")
+		return nil, errors.New("private key: CKA_KEY_TYPE is missing")
 	}
-	key.keyType = attrToInt(keyTypeBlob)
+	key.keyType, err = getUlong(keyTypeBlob)
+	if err != nil {
+		return nil, fmt.Errorf("private key: CKA_KEY_TYPE: %w", err)
+	}
 	switch key.keyType {
 	case CKK_RSA:
 		key.pubParsed, err = key.toRsaKey()

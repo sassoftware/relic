@@ -18,6 +18,7 @@ package p11token
 
 import (
 	"encoding/binary"
+	"fmt"
 	"unsafe"
 )
 
@@ -47,4 +48,26 @@ func putUlong(buf []byte, v uint) {
 	default:
 		panic("can't determine native integer size")
 	}
+}
+
+func getUlong(value []byte) (uint, error) {
+	switch len(value) {
+	case 8:
+		return uint(nativeOrder.Uint64(value)), nil
+	case 4:
+		return uint(nativeOrder.Uint32(value)), nil
+	case 2:
+		return uint(nativeOrder.Uint16(value)), nil
+	case 1:
+		return uint(value[0]), nil
+	}
+	return 0, IntegerError{Raw: value}
+}
+
+type IntegerError struct {
+	Raw []byte
+}
+
+func (e IntegerError) Error() string {
+	return fmt.Sprintf("unable to parse value as unsigned integer: %x", e.Raw)
 }
