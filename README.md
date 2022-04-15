@@ -55,7 +55,14 @@ The following build tags are also available:
 
 * clientonly - build a lightweight binary without standalone signing features
 
-See distro/linux/relic.yml for an example configuration.
+See [doc/relic.yml](./doc/relic.yml) for an example configuration.
+
+# Additional documentation
+
+* [Signing Android packages](./doc/android.md)
+* [Signing MacOS binaries](./doc/macos.md)
+* [Using Azure Key Vault](./doc/azure.md)
+* [Using a PGP card, YubiKey etc.](./doc/pgpcard.md)
 
 # Related projects
 * SoftHSMv2 - file-based PKCS#11 implementation for testing https://github.com/opendnssec/SoftHSMv2
