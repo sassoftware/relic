@@ -25,6 +25,7 @@ import (
 	"io"
 	"io/ioutil"
 
+	"github.com/rs/zerolog"
 	"github.com/sassoftware/relic/v7/lib/appmanifest"
 	"github.com/sassoftware/relic/v7/lib/audit"
 	"github.com/sassoftware/relic/v7/lib/certloader"
@@ -47,12 +48,8 @@ func init() {
 	signers.Register(AppSigner)
 }
 
-func formatLog(info *audit.Info) string {
-	return fmt.Sprintf("assembly=%s version=%s publicKeyToken=%s",
-		info.Attributes["assembly.name"],
-		info.Attributes["assembly.version"],
-		info.Attributes["assembly.publicKeyToken"],
-	)
+func formatLog(info *audit.Info) *zerolog.Event {
+	return info.AttrsForLog("assembly.")
 }
 
 func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]byte, error) {

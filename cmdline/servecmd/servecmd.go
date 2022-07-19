@@ -19,7 +19,6 @@ package servecmd
 import (
 	"errors"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 
@@ -61,7 +60,7 @@ func MakeServer() (*daemon.Daemon, error) {
 	if shared.CurrentConfig.Clients == nil {
 		return nil, errors.New("Missing clients section in configuration file")
 	}
-	if shared.CurrentConfig.Server.Listen == "" {
+	if shared.CurrentConfig.Server.Listen == "" && shared.CurrentConfig.Server.ListenHTTP == "" {
 		shared.CurrentConfig.Server.Listen = ":6300"
 	}
 	return daemon.New(shared.CurrentConfig, argTest)
@@ -88,7 +87,6 @@ func listenDebug() error {
 
 func serveCmd(cmd *cobra.Command, args []string) error {
 	// let journald add timestamps
-	log.SetFlags(0)
 	srv, err := MakeServer()
 	if err != nil {
 		return shared.Fail(err)

@@ -23,13 +23,14 @@ import (
 	"encoding/pem"
 	"fmt"
 	"net/http"
-	"net/url"
-	"strings"
 
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/armor"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/sassoftware/relic/v7/config"
+	"github.com/sassoftware/relic/v7/internal/authmodel"
+	"github.com/sassoftware/relic/v7/internal/httperror"
 	"github.com/sassoftware/relic/v7/internal/signinit"
 )
 
@@ -38,28 +39,18 @@ type keyInfo struct {
 	PGPCertificate  string
 }
 
-func (s *Server) serveGetKey(request *http.Request) (res Response, err error) {
-	if request.Method != "GET" {
-		return ErrorResponse(http.StatusMethodNotAllowed), nil
+func (s *Server) serveGetKey(rw http.ResponseWriter, req *http.Request) error {
+	userInfo := authmodel.RequestInfo(req)
+	keyName := chi.URLParam(req, "key")
+	keyConf, err := s.Config.GetKey(keyName)
+	if err == nil && userInfo.Allowed(keyConf) {
+		info, err := s.getKeyInfo(req.Context(), keyConf)
+		if err != nil {
+			return err
+		}
+		return writeJSON(rw, info)
 	}
-	path := request.URL.Path[6:]
-	if strings.Contains(path, "/") {
-		return ErrorResponse(http.StatusBadRequest), nil
-	}
-	keyName, err := url.PathUnescape(path)
-	if err != nil {
-		return ErrorResponse(http.StatusBadRequest), nil
-	}
-	keyConf := s.CheckKeyAccess(request, keyName)
-	if keyConf == nil {
-		s.Logr(request, "access denied to key %s\n", keyName)
-		return AccessDeniedResponse, nil
-	}
-	info, err := s.getKeyInfo(request.Context(), keyConf)
-	if err != nil {
-		return nil, err
-	}
-	return JSONResponse(info)
+	return httperror.ErrForbidden
 }
 
 func (s *Server) getKeyInfo(ctx context.Context, keyConf *config.KeyConfig) (info keyInfo, err error) {

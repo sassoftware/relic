@@ -19,18 +19,18 @@ package server
 import (
 	"net/http"
 	"sort"
+
+	"github.com/sassoftware/relic/v7/internal/authmodel"
 )
 
-func (s *Server) serveListKeys(request *http.Request) (res Response, err error) {
-	if request.Method != "GET" {
-		return ErrorResponse(http.StatusMethodNotAllowed), nil
-	}
+func (s *Server) serveListKeys(rw http.ResponseWriter, req *http.Request) error {
+	userInfo := authmodel.RequestInfo(req)
 	keys := []string{}
 	for key, keyConf := range s.Config.Keys {
-		if !keyConf.Hide && s.CheckKeyAccess(request, key) != nil {
+		if !keyConf.Hide && userInfo.Allowed(keyConf) {
 			keys = append(keys, key)
 		}
 	}
 	sort.Strings(keys)
-	return JSONResponse(keys)
+	return writeJSON(rw, keys)
 }

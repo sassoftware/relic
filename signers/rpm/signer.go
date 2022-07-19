@@ -26,6 +26,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rs/zerolog"
 	rpmutils "github.com/sassoftware/go-rpmutils"
 
 	"github.com/sassoftware/relic/v7/lib/audit"
@@ -50,12 +51,8 @@ func init() {
 	signers.Register(RpmSigner)
 }
 
-func formatLog(attrs *audit.Info) string {
-	return fmt.Sprintf("nevra=%s md5=%s sha1=%s",
-		attrs.Attributes["rpm.nevra"],
-		attrs.Attributes["rpm.md5"],
-		attrs.Attributes["rpm.sha1"],
-	)
+func formatLog(attrs *audit.Info) *zerolog.Event {
+	return attrs.AttrsForLog("rpm.")
 }
 
 func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]byte, error) {

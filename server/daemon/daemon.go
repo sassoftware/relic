@@ -25,12 +25,15 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"sync"
+	"time"
 
 	"golang.org/x/net/http2"
+	"golang.org/x/sync/errgroup"
 
+	"github.com/rs/zerolog/log"
 	"github.com/sassoftware/relic/v7/config"
 	"github.com/sassoftware/relic/v7/internal/activation"
+	"github.com/sassoftware/relic/v7/internal/zhttp"
 	"github.com/sassoftware/relic/v7/lib/certloader"
 	"github.com/sassoftware/relic/v7/lib/x509tools"
 	"github.com/sassoftware/relic/v7/server"
@@ -40,7 +43,8 @@ type Daemon struct {
 	server     *server.Server
 	httpServer *http.Server
 	listeners  []net.Listener
-	wg         sync.WaitGroup
+	addrs      []string
+	eg         errgroup.Group
 }
 
 func makeTLSConfig(config *config.Config) (*tls.Config, error) {
@@ -85,76 +89,86 @@ func New(config *config.Config, test bool) (*Daemon, error) {
 	if err != nil {
 		return nil, err
 	}
-	tconf, err := makeTLSConfig(config)
-	if err != nil {
-		return nil, err
-	}
-	httpServer := &http.Server{
-		Handler:   srv,
-		ErrorLog:  srv.ErrorLog,
-		TLSConfig: tconf,
-	}
-	if err := http2.ConfigureServer(httpServer, nil); err != nil {
-		return nil, err
+	httpServer := &http.Server{Handler: srv.Handler()}
+	// configure TLS listener
+	if config.Server.Listen != "" {
+		tconf, err := makeTLSConfig(config)
+		if err != nil {
+			return nil, err
+		}
+		httpServer.TLSConfig = tconf
+		if err := http2.ConfigureServer(httpServer, nil); err != nil {
+			return nil, err
+		}
 	}
 	if test {
 		srv.Close()
 		return nil, nil
 	}
-
-	listener, err := getListener(config.Server.Listen, tconf)
-	if err != nil {
-		return nil, err
+	if err := zhttp.SetupLogging(config.Server.LogLevel, config.Server.LogFile); err != nil {
+		return nil, fmt.Errorf("configuring logging: %w", err)
 	}
-	listeners := []net.Listener{listener}
+
+	var listeners []net.Listener
+	var addrs []string
+	// open TLS listener
+	if config.Server.Listen != "" {
+		listener, err := getListener(config.Server.Listen, httpServer.TLSConfig)
+		if err != nil {
+			return nil, err
+		}
+		listeners = append(listeners, listener)
+		addrs = append(addrs, "https://"+listener.Addr().String())
+	}
+	// open plaintext listener
 	if config.Server.ListenHTTP != "" {
 		httpListener, err := activation.GetListener(1, "tcp", config.Server.ListenHTTP)
 		if err != nil {
 			return nil, err
 		}
 		listeners = append(listeners, httpListener)
+		addrs = append(addrs, "http://"+httpListener.Addr().String())
+	}
+	if len(listeners) == 0 {
+		return nil, errors.New("no listeners configured")
 	}
 	return &Daemon{
 		server:     srv,
 		httpServer: httpServer,
 		listeners:  listeners,
+		addrs:      addrs,
 	}, nil
-}
-
-func (d *Daemon) SetOutput(w io.Writer) {
-	d.server.ErrorLog.SetFlags(0)
-	d.server.ErrorLog.SetPrefix("")
-	d.server.ErrorLog.SetOutput(w)
-}
-
-func (d *Daemon) ReopenLogger() error {
-	return d.server.ReopenLogger()
 }
 
 func (d *Daemon) Serve() error {
 	_ = activation.DaemonReady()
-	errch := make(chan error, len(d.listeners))
 	for _, listener := range d.listeners {
-		d.wg.Add(1)
-		go func(listener net.Listener) {
-			errch <- d.httpServer.Serve(listener)
-			d.wg.Done()
-		}(listener)
-	}
-	d.wg.Wait()
-	for range d.listeners {
-		if err := <-errch; err != nil {
+		listener := listener // re-scope to loop
+		d.eg.Go(func() error {
+			err := d.httpServer.Serve(listener)
+			if err == http.ErrServerClosed {
+				err = nil
+			}
 			return err
-		}
+		})
 	}
-	return nil
+	log.Info().Strs("urls", d.addrs).Msg("listening for requests")
+	return d.eg.Wait()
 }
 
 func (d *Daemon) Close() error {
-	// prevent Serve() from returning until the shutdown completes
-	d.wg.Add(1)
-	err := d.httpServer.Shutdown(context.Background())
-	d.server.Close()
-	d.wg.Done()
-	return err
+	// do Shutdown() inside errgroup because it will cause the ongoing Serve()
+	// calls to return immediately and we need something to keep blocking until
+	// all ongoing requests are done and Shutdown() returns
+	d.eg.Go(func() error {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
+		err := d.httpServer.Shutdown(ctx)
+		err2 := d.server.Close()
+		if err == nil {
+			err = err2
+		}
+		return err
+	})
+	return d.eg.Wait()
 }

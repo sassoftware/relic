@@ -24,10 +24,12 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"golang.org/x/crypto/openpgp"
 
+	"github.com/rs/zerolog"
 	"github.com/sassoftware/relic/v7/lib/pgptools"
 	"github.com/sassoftware/relic/v7/lib/pkcs9"
 	"github.com/sassoftware/relic/v7/lib/x509tools"
@@ -105,6 +107,22 @@ func (info *Info) Marshal() ([]byte, error) {
 		info.Attributes["perf.elapsed.ms"] = time.Since(info.StartTime).Nanoseconds() / 1e6
 	}
 	return json.Marshal(info.Attributes)
+}
+
+func (info *Info) AttrsForLog(prefix string) *zerolog.Event {
+	ev := zerolog.Dict()
+	for name, value := range info.Attributes {
+		if !strings.HasPrefix(name, prefix) {
+			continue
+		}
+		name = name[len(prefix):]
+		if s, ok := value.(string); ok {
+			ev.Str(name, s)
+		} else {
+			ev.Interface(name, s)
+		}
+	}
+	return ev
 }
 
 // Parse audit data from a JSON blob

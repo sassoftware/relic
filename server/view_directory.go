@@ -25,7 +25,7 @@ import (
 	"time"
 )
 
-func (s *Server) serveDirectory(req *http.Request) (Response, error) {
+func (s *Server) serveDirectory(rw http.ResponseWriter, req *http.Request) {
 	sibs := s.Config.Server.Siblings
 	if len(sibs) == 0 {
 		u := new(url.URL)
@@ -44,5 +44,5 @@ func (s *Server) serveDirectory(req *http.Request) (Response, error) {
 	for _, i := range order {
 		fmt.Fprintf(&buf, "%s\r\n", sibs[i])
 	}
-	return StringResponse(http.StatusOK, buf.String()), nil
+	_, _ = rw.Write(buf.Bytes())
 }

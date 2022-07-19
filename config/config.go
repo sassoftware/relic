@@ -77,6 +77,8 @@ type ServerConfig struct {
 	KeyFile    string // Path to TLS key file
 	CertFile   string // Path to TLS certificate chain
 	LogFile    string // Optional error log
+	LogLevel   string // Optional log level
+	PolicyURL  string // Optional open-policy-agent endpoint
 
 	Disabled    bool // Always return 503 Service Unavailable
 	ListenDebug bool // Serve debug info on an alternate port

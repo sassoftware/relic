@@ -24,6 +24,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
@@ -47,7 +48,7 @@ type Signer struct {
 	// Return true if the given filename is associated with this signer
 	TestPath func(string) bool
 	// Format audit attributes for logfile
-	FormatLog func(*audit.Info) string
+	FormatLog func(*audit.Info) *zerolog.Event
 	// Verify a file, returning the set of signatures found. Performs integrity
 	// checks but does not build X509 chains.
 	Verify func(*os.File, VerifyOpts) ([]*Signature, error)

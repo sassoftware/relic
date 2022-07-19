@@ -19,10 +19,10 @@ package deb
 // Sign Debian packages
 
 import (
-	"fmt"
 	"io"
 	"os"
 
+	"github.com/rs/zerolog"
 	"github.com/sassoftware/relic/v7/lib/audit"
 	"github.com/sassoftware/relic/v7/lib/certloader"
 	"github.com/sassoftware/relic/v7/lib/magic"
@@ -45,12 +45,8 @@ func init() {
 	signers.Register(DebSigner)
 }
 
-func formatLog(attrs *audit.Info) string {
-	return fmt.Sprintf("name=%s version=%s arch=%s",
-		attrs.Attributes["deb.name"],
-		attrs.Attributes["deb.version"],
-		attrs.Attributes["deb.arch"],
-	)
+func formatLog(attrs *audit.Info) *zerolog.Event {
+	return attrs.AttrsForLog("deb.")
 }
 
 func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]byte, error) {

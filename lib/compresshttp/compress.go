@@ -29,6 +29,7 @@ import (
 )
 
 const (
+	acceptEncoding   = "Accept-Encoding"
 	contentEncoding  = "Content-Encoding"
 	contentLength    = "Content-Length"
 	EncodingIdentity = "identity"
@@ -59,19 +60,21 @@ func selectEncoding(acceptEncoding string) string {
 	return best
 }
 
-func compress(encoding string, r io.Reader, w io.Writer) (err error) {
-	var compr io.WriteCloser
+func setupCompression(encoding string, w io.Writer) (io.WriteCloser, error) {
 	switch encoding {
 	case EncodingIdentity, "":
-		_, err = io.Copy(w, r)
-		return err
+		return nopCloseWriter{Writer: w}, nil
 	case EncodingGzip:
-		compr, err = gzip.NewWriterLevel(w, gzip.BestSpeed)
+		return gzip.NewWriterLevel(w, gzip.BestSpeed)
 	case EncodingSnappy:
-		compr = snappy.NewBufferedWriter(w)
+		return snappy.NewBufferedWriter(w), nil
 	default:
-		return ErrUnacceptableEncoding
+		return nil, ErrUnacceptableEncoding
 	}
+}
+
+func compress(encoding string, r io.Reader, w io.Writer) (err error) {
+	compr, err := setupCompression(encoding, w)
 	if err == nil {
 		_, err = io.Copy(compr, r)
 	}
@@ -192,4 +195,12 @@ func (rc readAndClose) Read(d []byte) (int, error) {
 
 func (rc readAndClose) Close() error {
 	return rc.c.Close()
+}
+
+type nopCloseWriter struct {
+	io.Writer
+}
+
+func (nopCloseWriter) Close() error {
+	return nil
 }

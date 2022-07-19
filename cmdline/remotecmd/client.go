@@ -21,7 +21,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -30,6 +29,7 @@ import (
 	"time"
 
 	"golang.org/x/net/http2"
+	"golang.org/x/oauth2"
 
 	"github.com/sassoftware/relic/v7/cmdline/shared"
 	"github.com/sassoftware/relic/v7/config"
@@ -42,18 +42,54 @@ type ReaderGetter interface {
 	GetReader() (io.Reader, error)
 }
 
-// Make a single API request to a named endpoint, handling directory lookup and failover automatically.
-func CallRemote(endpoint, method string, query *url.Values, body ReaderGetter) (*http.Response, error) {
-	if err := shared.InitClientConfig(); err != nil {
+type client struct {
+	config      *config.RemoteConfig
+	cli         *http.Client
+	tokenSource oauth2.TokenSource
+}
+
+func newClient() (*client, error) {
+	err := shared.InitClientConfig()
+	if err != nil {
 		return nil, err
 	}
-	if shared.CurrentConfig.Remote == nil {
-		return nil, errors.New("config file has no \"remote\" section")
+	cfg := shared.CurrentConfig.Remote
+	if cfg == nil {
+		return nil, errors.New("missing remote section in config file")
+	} else if cfg.URL == "" && cfg.DirectoryURL == "" {
+		return nil, errors.New("url or directoryUrl must be set in 'remote' section of configuration")
+	}
+	tconf, err := makeTLSConfig(cfg)
+	if err != nil {
+		return nil, err
+	}
+	dialer := &net.Dialer{
+		Timeout: time.Duration(cfg.ConnectTimeout) * time.Second,
+	}
+	transport := &http.Transport{TLSClientConfig: tconf, DialContext: dialer.DialContext}
+	if err := http2.ConfigureTransport(transport); err != nil {
+		return nil, err
+	}
+	client := &client{
+		config: cfg,
+		cli:    &http.Client{Transport: transport},
+	}
+	if client.tokenSource == nil && len(tconf.Certificates) == 0 {
+		return nil, errors.New("remote.certfile and remote.keyfile must be set")
+	}
+	return client, nil
+}
+
+// Make a single API request to a named endpoint, handling directory lookup and failover automatically.
+func CallRemote(endpoint, method string, query *url.Values, body ReaderGetter) (*http.Response, error) {
+	cli, err := newClient()
+	if err != nil {
+		return nil, err
 	}
 	encodings := compresshttp.AcceptedEncodings
 	bases := []string{shared.CurrentConfig.Remote.URL}
 	if dirurl := shared.CurrentConfig.Remote.DirectoryURL; dirurl != "" {
-		newBases, serverEncodings, err := getDirectory(dirurl)
+		newBases, serverEncodings, err := cli.getDirectory(dirurl)
 		if err != nil {
 			return nil, err
 		} else if len(newBases) > 0 {
@@ -61,18 +97,18 @@ func CallRemote(endpoint, method string, query *url.Values, body ReaderGetter) (
 		}
 		encodings = serverEncodings
 	}
-	return doRequest(bases, endpoint, method, encodings, query, body)
+	return cli.doRequest(bases, endpoint, method, encodings, query, body)
 }
 
 // Call the configured directory URL to get a list of servers to try.
 // callRemote() calls this automatically, use that instead.
-func getDirectory(dirurl string) ([]string, string, error) {
-	response, err := doRequest([]string{dirurl}, "directory", "GET", "", nil, nil)
+func (cli *client) getDirectory(dirurl string) ([]string, string, error) {
+	response, err := cli.doRequest([]string{dirurl}, "directory", "GET", "", nil, nil)
 	if err != nil {
 		return nil, "", err
 	}
 	encodings := response.Header.Get("Accept-Encoding")
-	bodybytes, err := ioutil.ReadAll(response.Body)
+	bodybytes, err := io.ReadAll(response.Body)
 	if err != nil {
 		return nil, "", err
 	}
@@ -85,33 +121,35 @@ func getDirectory(dirurl string) ([]string, string, error) {
 }
 
 // Build a HTTP request from various bits and pieces
-func buildRequest(base, endpoint, method, encoding string, query *url.Values, bodyFile ReaderGetter) (*http.Request, error) {
-	eurl, err := url.Parse(endpoint)
+func (cli *client) buildRequest(base, endpoint, method, encoding string, query *url.Values, bodyFile ReaderGetter) (*http.Request, error) {
+	request, err := http.NewRequest(method, base, nil)
 	if err != nil {
 		return nil, err
 	}
-	url, err := url.Parse(base)
+	request.URL, err = request.URL.Parse(endpoint)
 	if err != nil {
-		return nil, fmt.Errorf("parsing remote URL: %w", err)
+		return nil, err
 	}
-	url = url.ResolveReference(eurl)
 	if query != nil {
-		url.RawQuery = query.Encode()
+		request.URL.RawQuery = query.Encode()
 	}
-	request := &http.Request{
-		Method: method,
-		URL:    url,
-		Header: http.Header{"User-Agent": []string{config.UserAgent}},
-	}
+	request.Header.Set("User-Agent", config.UserAgent)
 	if encoding != "" {
 		request.Header.Set("Accept-Encoding", encoding)
+	}
+	if cli.tokenSource != nil {
+		tok, err := cli.tokenSource.Token()
+		if err != nil {
+			return nil, err
+		}
+		tok.SetAuthHeader(request)
 	}
 	if bodyFile != nil {
 		stream, err := bodyFile.GetReader()
 		if err != nil {
 			return nil, err
 		}
-		request.Body = ioutil.NopCloser(stream)
+		request.Body = io.NopCloser(stream)
 		if err := compresshttp.CompressRequest(request, encoding); err != nil {
 			return nil, err
 		}
@@ -120,32 +158,29 @@ func buildRequest(base, endpoint, method, encoding string, query *url.Values, bo
 }
 
 // Build TLS config based on client configuration
-func makeTLSConfig() (*tls.Config, error) {
-	err := shared.InitClientConfig()
-	if err != nil {
+func makeTLSConfig(cfg *config.RemoteConfig) (*tls.Config, error) {
+	tconf := new(tls.Config)
+	if err := x509tools.LoadCertPool(cfg.CaCert, tconf); err != nil {
 		return nil, err
 	}
-	config := shared.CurrentConfig
-	if config.Remote == nil {
-		return nil, errors.New("missing remote section in config file")
-	} else if config.Remote.URL == "" && config.Remote.DirectoryURL == "" {
-		return nil, errors.New("url or directoryUrl must be set in 'remote' section of configuration")
-	} else if config.Remote.CertFile == "" || config.Remote.KeyFile == "" {
-		return nil, errors.New("certfile and keyfile are required settings in 'remote' section of configuration")
+	x509tools.SetKeyLogFile(tconf)
+	if cfg.CertFile == "" && cfg.KeyFile == "" {
+		return tconf, nil
 	}
+	var err error
 	var certBytes, keyBytes []byte
-	if strings.Contains(config.Remote.CertFile, "-----BEGIN") {
-		certBytes = []byte(config.Remote.CertFile)
+	if strings.Contains(cfg.CertFile, "-----BEGIN") {
+		certBytes = []byte(cfg.CertFile)
 	} else {
-		certBytes, err = ioutil.ReadFile(config.Remote.CertFile)
+		certBytes, err = os.ReadFile(cfg.CertFile)
 		if err != nil {
 			return nil, fmt.Errorf("remote.certfile: %w", err)
 		}
 	}
-	if strings.Contains(config.Remote.KeyFile, "-----BEGIN") {
-		keyBytes = []byte(config.Remote.KeyFile)
+	if strings.Contains(cfg.KeyFile, "-----BEGIN") {
+		keyBytes = []byte(cfg.KeyFile)
 	} else {
-		keyBytes, err = ioutil.ReadFile(config.Remote.KeyFile)
+		keyBytes, err = os.ReadFile(cfg.KeyFile)
 		if err != nil {
 			return nil, fmt.Errorf("remote.keyfile: %w", err)
 		}
@@ -154,29 +189,12 @@ func makeTLSConfig() (*tls.Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	tconf := &tls.Config{Certificates: []tls.Certificate{tlscert}}
-	x509tools.SetKeyLogFile(tconf)
-	if err := x509tools.LoadCertPool(config.Remote.CaCert, tconf); err != nil {
-		return nil, err
-	}
+	tconf.Certificates = []tls.Certificate{tlscert}
 	return tconf, nil
 }
 
 // Transact one request, trying multiple servers if necessary. Internal use only.
-func doRequest(bases []string, endpoint, method, encodings string, query *url.Values, bodyFile ReaderGetter) (response *http.Response, err error) {
-	tconf, err := makeTLSConfig()
-	if err != nil {
-		return nil, err
-	}
-	dialer := &net.Dialer{
-		Timeout: time.Duration(shared.CurrentConfig.Remote.ConnectTimeout) * time.Second,
-	}
-	transport := &http.Transport{TLSClientConfig: tconf, DialContext: dialer.DialContext}
-	if err := http2.ConfigureTransport(transport); err != nil {
-		return nil, err
-	}
-	client := &http.Client{Transport: transport}
-
+func (cli *client) doRequest(bases []string, endpoint, method, encodings string, query *url.Values, bodyFile ReaderGetter) (response *http.Response, err error) {
 	minAttempts := shared.CurrentConfig.Remote.Retries
 	if len(bases) < minAttempts {
 		var repeated []string
@@ -189,11 +207,11 @@ func doRequest(bases []string, endpoint, method, encodings string, query *url.Va
 loop:
 	for i, base := range bases {
 		var request *http.Request
-		request, err = buildRequest(base, endpoint, method, encodings, query, bodyFile)
+		request, err = cli.buildRequest(base, endpoint, method, encodings, query, bodyFile)
 		if err != nil {
 			return nil, err
 		}
-		response, err = client.Do(request)
+		response, err = cli.cli.Do(request)
 		if request.Body != nil {
 			request.Body.Close()
 		}

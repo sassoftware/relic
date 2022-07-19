@@ -17,12 +17,10 @@
 package server
 
 import (
-	"fmt"
 	"net/http"
 )
 
-func (*Server) serveHome(request *http.Request) (Response, error) {
-	roles := request.Context().Value(ctxRoles).([]string)
-	data := fmt.Sprintf("I am a teapot\n\nRoles: %s\n", roles)
-	return StringResponse(http.StatusOK, data), nil
+func (*Server) serveHome(rw http.ResponseWriter, req *http.Request) error {
+	_, err := rw.Write([]byte("Welcome to relic!\n"))
+	return err
 }

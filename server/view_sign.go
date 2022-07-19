@@ -21,7 +21,11 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/rs/zerolog/hlog"
+	"github.com/sassoftware/relic/v7/internal/authmodel"
+	"github.com/sassoftware/relic/v7/internal/httperror"
 	"github.com/sassoftware/relic/v7/internal/signinit"
+	"github.com/sassoftware/relic/v7/internal/zhttp"
 	"github.com/sassoftware/relic/v7/lib/readercounter"
 	"github.com/sassoftware/relic/v7/lib/x509tools"
 	"github.com/sassoftware/relic/v7/signers"
@@ -29,75 +33,80 @@ import (
 
 const defaultHash = crypto.SHA256
 
-func (s *Server) serveSign(request *http.Request, writer http.ResponseWriter) (res Response, err error) {
-	if request.Method != "POST" {
-		return ErrorResponse(http.StatusMethodNotAllowed), nil
-	}
+func (s *Server) serveSign(rw http.ResponseWriter, request *http.Request) error {
 	// parse parameters
 	query := request.URL.Query()
 	keyName := query.Get("key")
 	if keyName == "" {
-		return StringResponse(http.StatusBadRequest, "'key' query parameter is required"), nil
+		return httperror.MissingParameterError("key")
 	}
 	filename := query.Get("filename")
 	if filename == "" {
-		return StringResponse(http.StatusBadRequest, "'filename' query parameter is required"), nil
+		return httperror.MissingParameterError("filename")
 	}
 	sigType := query.Get("sigtype")
-	keyConf := s.CheckKeyAccess(request, keyName)
-	if keyConf == nil {
-		s.Logr(request, "access denied to key %s\n", keyName)
-		return AccessDeniedResponse, nil
+	// authorize key
+	userInfo := authmodel.RequestInfo(request)
+	keyConf, err := s.Config.GetKey(keyName)
+	if err != nil {
+		hlog.FromRequest(request).Err(err).Str("key", keyName).Msg("key not found")
+		return httperror.ErrForbidden
+	} else if !userInfo.Allowed(keyConf) {
+		hlog.FromRequest(request).Error().Str("key", keyName).Msg("access to key denied")
+		return httperror.ErrForbidden
 	}
+	// configure signer
 	mod := signers.ByName(sigType)
 	if mod == nil {
-		s.Logr(request, "error: unknown sigtype: sigtype=%s key=%s", sigType, keyName)
-		return StringResponse(http.StatusBadRequest, "unknown sigtype"), nil
+		hlog.FromRequest(request).Error().Str("sigtype", sigType).Msg("signature type not found")
+		return httperror.ErrUnknownSignatureType
 	}
 	hash := defaultHash
 	if digest := request.URL.Query().Get("digest"); digest != "" {
 		hash = x509tools.HashByName(digest)
 		if hash == 0 {
-			s.Logr(request, "error: unknown digest %s", digest)
-			return StringResponse(http.StatusBadRequest, "unknown digest"), nil
+			hlog.FromRequest(request).Error().Str("digest", digest).Msg("digest type not found")
+			return httperror.ErrUnknownDigest
 		}
 	}
+	// parse flags for signer
 	flags, err := mod.FlagsFromQuery(query)
 	if err != nil {
-		s.Logr(request, "error: parsing arguments: %s", err)
-		return StringResponse(http.StatusBadRequest, "invalid parameters"), nil
+		hlog.FromRequest(request).Err(err).Str("sigtype", sigType).
+			Msg("failed to parse signer arguments")
+		return httperror.BadParameterError(err)
 	}
 	// get key from token and initialize signer context
 	tok := s.tokens[keyConf.Token]
 	if tok == nil {
-		return nil, fmt.Errorf("missing token \"%s\" for key \"%s\"", keyConf.Token, keyName)
+		return fmt.Errorf("missing token \"%s\" for key \"%s\"", keyConf.Token, keyName)
 	}
 	cert, opts, err := signinit.Init(request.Context(), mod, tok, keyName, hash, flags)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	opts.Audit.Attributes["client.ip"] = GetClientIP(request)
-	opts.Audit.Attributes["client.name"] = GetClientName(request)
-	opts.Audit.Attributes["client.dn"] = GetClientDN(request)
+	opts.Audit.Attributes["client.ip"] = zhttp.StripPort(request.RemoteAddr)
 	opts.Audit.Attributes["client.filename"] = filename
+	userInfo.AuditContext(opts.Audit)
 	// sign the request stream and output a binpatch or signature blob
 	counter := readercounter.New(request.Body)
 	blob, err := mod.Sign(counter, cert, *opts)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	opts.Audit.Attributes["perf.size.in"] = counter.N
 	opts.Audit.Attributes["perf.size.patch"] = len(blob)
-	var extra string
-	if mod.FormatLog != nil {
-		extra = mod.FormatLog(opts.Audit)
-	}
-	if extra != "" {
-		extra = " " + extra
-	}
 	if err := signinit.PublishAudit(opts.Audit); err != nil {
-		return nil, err
+		return err
 	}
-	s.Logr(request, "Signed package: filename=%s key=%s%s", filename, keyConf.Name(), extra)
-	return BytesResponse(blob, opts.Audit.GetMimeType()), nil
+	ev := hlog.FromRequest(request).Info().
+		Str("key", keyConf.Name()).
+		Str("filename", filename)
+	if mod.FormatLog != nil {
+		ev.Dict("package", mod.FormatLog(opts.Audit))
+	}
+	ev.Msg("signed package")
+	rw.Header().Set("Content-Type", opts.Audit.GetMimeType())
+	_, err = rw.Write(blob)
+	return err
 }

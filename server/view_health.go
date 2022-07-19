@@ -22,6 +22,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/rs/zerolog/log"
+	"github.com/sassoftware/relic/v7/internal/zhttp"
 	"github.com/sassoftware/relic/v7/token/worker"
 )
 
@@ -60,41 +62,44 @@ func (s *Server) healthCheck() bool {
 	healthMu.Lock()
 	last := healthStatus
 	healthMu.Unlock()
-	ok := true
+	var notOK []string
 	for _, token := range s.tokens {
 		if !s.pingOne(token) {
-			ok = false
+			notOK = append(notOK, token.Config().Name())
 		}
 	}
 	next := last
-	if ok {
+	if len(notOK) == 0 {
+		ev := log.Info().Str("token_state", "OK")
 		if last == 0 {
-			s.Logf("recovered to normal state, status is now OK")
+			ev.Msg("recovered to normal state, status is now OK")
 		} else if last < s.Config.Server.TokenCheckFailures {
-			s.Logf("recovered to normal state")
+			ev.Msg("recovered to normal state")
 		}
 		next = s.Config.Server.TokenCheckFailures
 	} else if last > 0 {
 		next--
 		if next == 0 {
-			s.Logf("exceeded maximum health check failures, flagging as ERROR")
+			log.Error().Str("token_state", "ERROR").
+				Msg("exceeded maximum health check failures, flagging as ERROR")
 		}
 	}
 	healthMu.Lock()
 	defer healthMu.Unlock()
 	healthStatus = next
 	healthLastPing = time.Now()
-	return ok
+	return len(notOK) == 0
 }
 
 func (s *Server) pingOne(tok *worker.WorkerToken) bool {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*time.Duration(s.Config.Server.TokenCheckTimeout))
 	defer cancel()
 	if err := tok.PingContext(ctx); err != nil {
+		ev := log.Error().Str("token", tok.Config().Name())
 		if ctx.Err() != nil {
-			s.Logf("error: health check of token %s timed out", tok.Config().Name())
+			ev.Msg("token health check timed out")
 		} else {
-			s.Logf("error: health check of token %s failed: %s", tok.Config().Name(), err)
+			ev.Err(err).Msg("token health check failed")
 		}
 		return false
 	}
@@ -109,19 +114,18 @@ func (s *Server) Healthy(request *http.Request) bool {
 	defer healthMu.Unlock()
 	if time.Since(healthLastPing) > 3*s.healthCheckInterval() {
 		if request != nil {
-			s.Logr(request, "error: health check AWOL for %d seconds", time.Since(healthLastPing)/time.Second)
+			log.Error().Dur("stale_for", time.Since(healthLastPing)).Msg("health check is stale")
 		}
 		return false
 	}
 	return healthStatus > 0
 }
 
-func (s *Server) serveHealth(request *http.Request) (res Response, err error) {
-	if request.Method != "GET" {
-		return ErrorResponse(http.StatusMethodNotAllowed), nil
-	}
+func (s *Server) serveHealth(rw http.ResponseWriter, request *http.Request) {
+	zhttp.DontLog(request)
 	if s.Healthy(request) {
-		return StringResponse(http.StatusOK, "OK"), nil
+		_, _ = rw.Write([]byte("OK\r\n"))
+	} else {
+		http.Error(rw, "health check failed", http.StatusServiceUnavailable)
 	}
-	return ErrorResponse(http.StatusServiceUnavailable), nil
 }

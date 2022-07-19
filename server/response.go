@@ -17,90 +17,37 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 
 	"github.com/sassoftware/relic/v7/internal/httperror"
+	"github.com/sassoftware/relic/v7/internal/zhttp"
 	"github.com/sassoftware/relic/v7/token"
 )
 
-type Response interface {
-	Headers() map[string]string
-	Status() int
-	Bytes() []byte
-}
-
-type bytesResponse struct {
-	StatusCode  int
-	ContentType string
-	Body        []byte
-}
-
-func (r bytesResponse) Bytes() []byte {
-	return r.Body
-}
-
-func (r bytesResponse) Status() int {
-	return r.StatusCode
-}
-
-func (r bytesResponse) Headers() map[string]string {
-	return map[string]string{
-		"Content-Length": fmt.Sprintf("%d", len(r.Body)),
-		"Content-Type":   r.ContentType,
+func handleFunc(f func(http.ResponseWriter, *http.Request) error) http.HandlerFunc {
+	return func(rw http.ResponseWriter, req *http.Request) {
+		ctx := req.Context()
+		if srv, ok := ctx.Value(http.ServerContextKey).(*http.Server); ok && srv.WriteTimeout > 0 {
+			// timeout request context when WriteTimeout is reached
+			ctx, cancel := context.WithTimeout(req.Context(), srv.WriteTimeout)
+			defer cancel()
+			req = req.WithContext(ctx)
+		}
+		err := f(rw, req)
+		if err == nil {
+			return
+		}
+		if resp, ok := err.(http.Handler); ok {
+			resp.ServeHTTP(rw, req)
+		} else if h := errToProblem(err); h != nil {
+			h.ServeHTTP(rw, req)
+		} else {
+			zhttp.WriteUnhandledError(rw, req, err, "")
+		}
 	}
-}
-
-func BytesResponse(body []byte, contentType string) Response {
-	return &bytesResponse{
-		StatusCode:  http.StatusOK,
-		ContentType: contentType,
-		Body:        body,
-	}
-}
-
-func StringResponse(statusCode int, body string) Response {
-	return &bytesResponse{
-		StatusCode:  statusCode,
-		ContentType: "text/plain",
-		Body:        []byte(body + "\r\n"),
-	}
-}
-
-func ErrorResponse(statusCode int) Response {
-	return &bytesResponse{
-		StatusCode:  statusCode,
-		ContentType: "text/plain",
-		Body:        []byte(http.StatusText(statusCode) + "\r\n"),
-	}
-}
-
-var AccessDeniedResponse Response = &bytesResponse{
-	StatusCode:  http.StatusForbidden,
-	ContentType: "text/plain",
-	Body:        []byte("Access denied\r\n"),
-}
-
-func JSONResponse(data interface{}) (Response, error) {
-	blob, err := json.Marshal(data)
-	if err != nil {
-		return nil, err
-	}
-	return &bytesResponse{
-		StatusCode:  http.StatusOK,
-		ContentType: "application/json",
-		Body:        blob,
-	}, nil
-}
-
-func writeResponse(writer http.ResponseWriter, response Response) {
-	for k, v := range response.Headers() {
-		writer.Header().Set(k, v)
-	}
-	writer.WriteHeader(response.Status())
-	_, _ = writer.Write(response.Bytes())
 }
 
 func errToProblem(err error) http.Handler {
@@ -113,4 +60,14 @@ func errToProblem(err error) http.Handler {
 		}
 	}
 	return nil
+}
+
+func writeJSON(rw http.ResponseWriter, data interface{}) error {
+	blob, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	rw.Header().Set("Content-Type", "application/json")
+	_, err = rw.Write(blob)
+	return err
 }
