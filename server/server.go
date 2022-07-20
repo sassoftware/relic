@@ -23,6 +23,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/sassoftware/relic/v7/config"
 	"github.com/sassoftware/relic/v7/internal/authmodel"
+	"github.com/sassoftware/relic/v7/internal/realip"
 	"github.com/sassoftware/relic/v7/internal/zhttp"
 	"github.com/sassoftware/relic/v7/lib/compresshttp"
 	"github.com/sassoftware/relic/v7/token/worker"
@@ -34,11 +35,12 @@ type Server struct {
 	closeCh chan<- bool
 	tokens  map[string]*worker.WorkerToken
 	auth    authmodel.Authenticator
+	realIP  func(http.Handler) http.Handler
 }
 
 func (s *Server) Handler() http.Handler {
 	r := chi.NewRouter()
-	// r.Use(realip.FromEnvironment) TODO
+	r.Use(s.realIP)
 	r.Use(zhttp.LoggingMiddleware())
 	r.Use(zhttp.RecoveryMiddleware)
 	r.Use(compresshttp.Middleware)
@@ -71,11 +73,16 @@ func New(config *config.Config) (*Server, error) {
 	if err != nil {
 		return nil, fmt.Errorf("configuration authentication: %w", err)
 	}
+	realIP, err := realip.Middleware(config.Server.TrustedProxies)
+	if err != nil {
+		return nil, err
+	}
 	s := &Server{
 		Config:  config,
 		Closed:  closed,
 		closeCh: closed,
 		auth:    auth,
+		realIP:  realIP,
 		tokens:  make(map[string]*worker.WorkerToken),
 	}
 	// create a worker for each token used by any key

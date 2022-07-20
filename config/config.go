@@ -93,6 +93,9 @@ type ServerConfig struct {
 	// point to this server (or a load balancer), then we will give them these
 	// URLs as a means to distribute load without needing a middle-box.
 	Siblings []string
+
+	// IP networks of trusted reverse proxies that can front this service
+	TrustedProxies []string
 }
 
 type ClientConfig struct {

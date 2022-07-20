@@ -9,6 +9,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/sassoftware/relic/v7/config"
 	"github.com/sassoftware/relic/v7/internal/httperror"
+	"github.com/sassoftware/relic/v7/internal/realip"
 	"github.com/sassoftware/relic/v7/internal/zhttp"
 	"github.com/sassoftware/relic/v7/lib/audit"
 	"github.com/sassoftware/relic/v7/lib/x509tools"
@@ -22,17 +23,20 @@ type CertificateAuth struct {
 }
 
 func (a *CertificateAuth) Authenticate(req *http.Request) (UserInfo, error) {
-	if req.TLS == nil || len(req.TLS.PeerCertificates) == 0 {
+	peerCerts, err := realip.PeerCertificates(req)
+	if err != nil {
+		return nil, err
+	} else if len(peerCerts) == 0 {
 		return nil, httperror.ErrCertificateRequired
 	}
-	cert := req.TLS.PeerCertificates[0]
+	cert := peerCerts[0]
 	encoded := fingerprint(cert)
 	var useDN bool
 	var saved error
 	client := a.Config.Clients[encoded]
 	if client == nil {
 		for _, c2 := range a.Config.Clients {
-			match, err := c2.Match(req.TLS.PeerCertificates)
+			match, err := c2.Match(peerCerts)
 			if match {
 				client = c2
 				useDN = true

@@ -13,6 +13,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/sassoftware/relic/v7/config"
 	"github.com/sassoftware/relic/v7/internal/httperror"
+	"github.com/sassoftware/relic/v7/internal/realip"
 	"github.com/sassoftware/relic/v7/internal/zhttp"
 	"github.com/sassoftware/relic/v7/lib/audit"
 )
@@ -39,8 +40,10 @@ func (a *PolicyAuth) Authenticate(req *http.Request) (UserInfo, error) {
 		Query: req.URL.Query(),
 		Token: bearerToken(req),
 	}
-	if req.TLS != nil && len(req.TLS.PeerCertificates) != 0 {
-		input.Fingerprint = fingerprint(req.TLS.PeerCertificates[0])
+	if peerCerts, err := realip.PeerCertificates(req); err != nil {
+		return nil, err
+	} else if len(peerCerts) != 0 {
+		input.Fingerprint = fingerprint(peerCerts[0])
 	}
 	if input.Token == "" && input.Fingerprint == "" {
 		return nil, httperror.ErrTokenRequired
