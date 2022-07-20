@@ -139,8 +139,8 @@ server:
   # Socket activation via systemd is also supported, in which case this is ignored.
   listen: ":6300"
 
-  # Listen for non-secure connections. This is only useful for health checks,
-  # since every other endpoint requires a client certificate. Defaults to none.
+  # Listen for non-secure connections. This is useful for health checks and/or
+  # if clients connect via a trusted reverse proxy. Default is none.
   listenhttp: ":6301"
 
   # Private key for server TLS. PEM format, RSA or ECDSA
@@ -162,10 +162,30 @@ server:
   #tokencheckfailures: 3   # the server will report "not healthy" after N failed pings
   #tokencacheseconds: 600  # cache key/cert info from token
 
-  # Optional list of URLs that are part of a cluster of servers
+  # Optional list of URLs that are part of a cluster of servers. If set clients
+  # will connect directly to one of these servers at random, otherwise they
+  # will connect to their originally configured URL.
   #siblings:
   #- https://relic1:6300
   #- https://relic2:6300
+
+  # Optionally utilize Open Policy Agent to authenticate and authorize requests
+  # instead of the builtin client certificate verification.
+  # See [opa.md](./opa.md) for details.
+  #policyurl: http://127.0.0.1:8181/v1/data/relic
+
+  # If policyurl is set, optionally specify an Azure AD tenant which will be
+  # provided to clients that wish to perform interactive token authentication.
+  #azuread:
+  #  authority: https://login.microsoftonline.com/00000000-1111-2222-3333-444444444444
+  #  clientid: 55555555-6666-7777-8888-999999999999
+
+  # If fronted by a trusted reverse proxy, list the IP(s) and IP network(s) of
+  # the proxy here. The X-Forwarded-{For,Proto,Host} and Ssl-Client-Certificate
+  # headers will be respected when connections come from one of these IPs.
+  #trustedproxies:
+  #- 127.0.0.1
+  #- 10.0.0.0/30
 
 # Instead of including token PINs in this file, you can specify an alternate
 # "pin file" which is a YAML file holding key-value pairs where the key is the
