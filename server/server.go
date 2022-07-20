@@ -46,7 +46,7 @@ func (s *Server) Handler() http.Handler {
 	r.Use(compresshttp.Middleware)
 	// unauthenticated methods
 	r.Get("/health", s.serveHealth)
-	r.Get("/directory", s.serveDirectory)
+	r.Get("/directory", handleFunc(s.serveDirectory))
 	// authenticated methods
 	a := r.With(authmodel.Middleware(s.auth))
 	a.Get("/", handleFunc(s.serveHome))

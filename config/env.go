@@ -29,8 +29,9 @@ func FromEnvironment() (*Config, error) {
 	}
 	clientCert := os.Getenv("RELIC_CLIENT_CERT")
 	clientKey := os.Getenv("RELIC_CLIENT_KEY")
-	if clientCert == "" {
-		return nil, errors.New("RELIC_CLIENT_CERT must be set when RELIC_URL is set")
+	accessToken := os.Getenv("RELIC_ACCESS_TOKEN")
+	if clientCert == "" && accessToken == "" {
+		return nil, errors.New("RELIC_CLIENT_CERT or RELIC_ACCESS_TOKEN must be set when RELIC_URL is set")
 	}
 	if clientKey == "" {
 		clientKey = clientCert
@@ -40,6 +41,7 @@ func FromEnvironment() (*Config, error) {
 			DirectoryURL: remoteURL,
 			KeyFile:      clientKey,
 			CertFile:     clientCert,
+			AccessToken:  accessToken,
 			CaCert:       os.Getenv("RELIC_CACERT"),
 		},
 	}

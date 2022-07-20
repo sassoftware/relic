@@ -18,6 +18,7 @@ package remotecmd
 
 import (
 	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -33,6 +34,7 @@ import (
 
 	"github.com/sassoftware/relic/v7/cmdline/shared"
 	"github.com/sassoftware/relic/v7/config"
+	"github.com/sassoftware/relic/v7/internal/authmodel"
 	"github.com/sassoftware/relic/v7/internal/httperror"
 	"github.com/sassoftware/relic/v7/lib/compresshttp"
 	"github.com/sassoftware/relic/v7/lib/x509tools"
@@ -56,8 +58,11 @@ func newClient() (*client, error) {
 	cfg := shared.CurrentConfig.Remote
 	if cfg == nil {
 		return nil, errors.New("missing remote section in config file")
-	} else if cfg.URL == "" && cfg.DirectoryURL == "" {
-		return nil, errors.New("url or directoryUrl must be set in 'remote' section of configuration")
+	} else if cfg.DirectoryURL == "" {
+		if cfg.URL == "" {
+			return nil, errors.New("url or directoryUrl must be set in 'remote' section of configuration")
+		}
+		cfg.DirectoryURL = cfg.URL
 	}
 	tconf, err := makeTLSConfig(cfg)
 	if err != nil {
@@ -74,9 +79,14 @@ func newClient() (*client, error) {
 		config: cfg,
 		cli:    &http.Client{Transport: transport},
 	}
-	if client.tokenSource == nil && len(tconf.Certificates) == 0 {
+	if cfg.AccessToken != "" {
+		// static access token from environment
+		client.tokenSource = oauth2.StaticTokenSource(&oauth2.Token{AccessToken: cfg.AccessToken})
+	}
+	if client.tokenSource == nil && len(tconf.Certificates) == 0 && !cfg.Interactive {
 		return nil, errors.New("remote.certfile and remote.keyfile must be set")
 	}
+	// in case of interactive auth, wait until we have metadata
 	return client, nil
 }
 
@@ -86,23 +96,43 @@ func CallRemote(endpoint, method string, query *url.Values, body ReaderGetter) (
 	if err != nil {
 		return nil, err
 	}
-	encodings := compresshttp.AcceptedEncodings
-	bases := []string{shared.CurrentConfig.Remote.URL}
-	if dirurl := shared.CurrentConfig.Remote.DirectoryURL; dirurl != "" {
-		newBases, serverEncodings, err := cli.getDirectory(dirurl)
-		if err != nil {
-			return nil, err
-		} else if len(newBases) > 0 {
-			bases = newBases
-		}
-		encodings = serverEncodings
+	cfg := shared.CurrentConfig.Remote
+	bases := []string{cfg.DirectoryURL}
+	metadata, serverEncodings, err := cli.getDirectory(cfg.DirectoryURL)
+	if err != nil {
+		return nil, err
+	} else if len(metadata.Hosts) > 0 {
+		// list of direct URLs provided
+		bases = metadata.Hosts
 	}
-	return cli.doRequest(bases, endpoint, method, encodings, query, body)
+	if err := cli.interactiveAuth(metadata); err != nil {
+		return nil, fmt.Errorf("configuring interactive authentication: %w", err)
+	}
+	return cli.doRequest(bases, endpoint, method, serverEncodings, query, body)
+}
+
+func (cli *client) interactiveAuth(metadata *authmodel.Metadata) error {
+	if !cli.config.Interactive || cli.tokenSource != nil {
+		// not needed
+		return nil
+	}
+	for _, auth := range metadata.Auth {
+		if auth.Type != authmodel.AuthTypeAzureAD {
+			continue
+		}
+		var err error
+		cli.tokenSource, err = azureTokenSource(auth.Authority, auth.ClientID, auth.Scopes)
+		if err != nil {
+			return err
+		}
+		break
+	}
+	return nil
 }
 
 // Call the configured directory URL to get a list of servers to try.
 // callRemote() calls this automatically, use that instead.
-func (cli *client) getDirectory(dirurl string) ([]string, string, error) {
+func (cli *client) getDirectory(dirurl string) (*authmodel.Metadata, string, error) {
 	response, err := cli.doRequest([]string{dirurl}, "directory", "GET", "", nil, nil)
 	if err != nil {
 		return nil, "", err
@@ -113,11 +143,20 @@ func (cli *client) getDirectory(dirurl string) ([]string, string, error) {
 		return nil, "", err
 	}
 	response.Body.Close()
-	text := strings.Trim(string(bodybytes), "\r\n")
-	if len(text) == 0 {
-		return nil, encodings, nil
+	m := new(authmodel.Metadata)
+	if strings.Contains(response.Header.Get("Content-Type"), "json") {
+		if err := json.Unmarshal(bodybytes, m); err != nil {
+			return nil, "", err
+		}
+	} else {
+		// legacy path
+		text := strings.Trim(string(bodybytes), "\r\n")
+		if len(text) == 0 {
+			return nil, encodings, nil
+		}
+		m.Hosts = strings.Split(text, "\r\n")
 	}
-	return strings.Split(text, "\r\n"), encodings, nil
+	return m, encodings, nil
 }
 
 // Build a HTTP request from various bits and pieces
@@ -153,6 +192,9 @@ func (cli *client) buildRequest(base, endpoint, method, encoding string, query *
 		if err := compresshttp.CompressRequest(request, encoding); err != nil {
 			return nil, err
 		}
+	}
+	if endpoint == "directory" {
+		request.Header.Set("Accept", "application/json, */*")
 	}
 	return request, nil
 }

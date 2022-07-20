@@ -96,6 +96,14 @@ type ServerConfig struct {
 
 	// IP networks of trusted reverse proxies that can front this service
 	TrustedProxies []string
+
+	AzureAD *ServerAzureConfig
+}
+
+type ServerAzureConfig struct {
+	Authority string
+	ClientID  string
+	Scopes    []string
 }
 
 type ClientConfig struct {
@@ -114,6 +122,9 @@ type RemoteConfig struct {
 	CaCert         string `yaml:",omitempty"` // Path to CA certificate or embedded certificate
 	ConnectTimeout int    `yaml:",omitempty"` // Connection timeout in seconds
 	Retries        int    `yaml:",omitempty"` // Attempt an operation (at least) N times
+
+	AccessToken string `yaml:"-"`
+	Interactive bool
 }
 
 type TimestampConfig struct {

@@ -27,6 +27,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"io/ioutil"
 	"math/big"
 	"os"
@@ -143,6 +144,10 @@ func writeConfig(cfgPath, url, certPath, keyPath, caPath string) error {
 	newConfig.Remote.CertFile = certPath
 	newConfig.Remote.KeyFile = keyPath
 	newConfig.Remote.CaCert = caPath
+	return writeConfigObject(cfgPath, newConfig, true)
+}
+
+func writeConfigObject(cfgPath string, newConfig *config.Config, secure bool) error {
 	cfgblob, err := yaml.Marshal(newConfig)
 	if err != nil {
 		return err
@@ -154,7 +159,11 @@ func writeConfig(cfgPath, url, certPath, keyPath, caPath string) error {
 	if err = os.MkdirAll(filepath.Dir(cfgPath), 0755); err != nil {
 		return err
 	}
-	return ioutil.WriteFile(cfgPath, cfgblob, 0600)
+	var umask fs.FileMode = 0644
+	if secure {
+		umask = 0600
+	}
+	return os.WriteFile(cfgPath, cfgblob, umask)
 }
 
 func genKeyPair() (certPEM, keyPEM []byte, fingerprint string, err error) {

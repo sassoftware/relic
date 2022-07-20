@@ -21,28 +21,46 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
-	"net/url"
-	"time"
+	"strings"
+
+	"github.com/sassoftware/relic/v7/internal/authmodel"
+	"github.com/sassoftware/relic/v7/internal/realip"
 )
 
-func (s *Server) serveDirectory(rw http.ResponseWriter, req *http.Request) {
-	sibs := s.Config.Server.Siblings
-	if len(sibs) == 0 {
-		u := new(url.URL)
-		*u = *req.URL
-		if req.TLS != nil {
-			u.Scheme = "https"
-		} else {
-			u.Scheme = "http"
+func (s *Server) serveDirectory(rw http.ResponseWriter, req *http.Request) error {
+	sibs := append([]string{}, s.Config.Server.Siblings...)
+	rand.Shuffle(len(sibs), func(i, j int) { sibs[i], sibs[j] = sibs[j], sibs[i] })
+	if !strings.Contains(req.Header.Get("Accept"), "json") {
+		// legacy path
+		var buf bytes.Buffer
+		if len(sibs) == 0 {
+			u := realip.BaseURL(req)
+			sibs = []string{u.String()}
 		}
-		u.Host = req.Host
-		sibs = []string{u.String()}
+		for _, h := range sibs {
+			_, _ = fmt.Fprintf(&buf, "%s\r\n", h)
+		}
+		var err error
+		_, err = rw.Write(buf.Bytes())
+		return err
 	}
-	var buf bytes.Buffer
-	shuf := rand.New(rand.NewSource(time.Now().UnixNano()))
-	order := shuf.Perm(len(sibs))
-	for _, i := range order {
-		fmt.Fprintf(&buf, "%s\r\n", sibs[i])
+
+	md := authmodel.Metadata{
+		Hosts: sibs,
+		Auth: []authmodel.AuthMetadata{
+			{Type: authmodel.AuthTypeCertificate},
+		},
 	}
-	_, _ = rw.Write(buf.Bytes())
+	if _, ok := s.auth.(*authmodel.PolicyAuth); ok {
+		md.Auth = append(md.Auth, authmodel.AuthMetadata{Type: authmodel.AuthTypeBearerToken})
+		if aad := s.Config.Server.AzureAD; aad != nil {
+			md.Auth = append(md.Auth, authmodel.AuthMetadata{
+				Type:      authmodel.AuthTypeAzureAD,
+				Authority: aad.Authority,
+				ClientID:  aad.ClientID,
+				Scopes:    aad.Scopes,
+			})
+		}
+	}
+	return writeJSON(rw, md)
 }
