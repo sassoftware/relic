@@ -83,7 +83,7 @@ func newClient() (*client, error) {
 		// static access token from environment
 		client.tokenSource = oauth2.StaticTokenSource(&oauth2.Token{AccessToken: cfg.AccessToken})
 	}
-	if client.tokenSource == nil && len(tconf.Certificates) == 0 && !cfg.Interactive {
+	if client.tokenSource == nil && tconf.GetClientCertificate == nil && !cfg.Interactive {
 		return nil, errors.New("remote.certfile and remote.keyfile must be set")
 	}
 	// in case of interactive auth, wait until we have metadata
@@ -231,7 +231,17 @@ func makeTLSConfig(cfg *config.RemoteConfig) (*tls.Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	tconf.Certificates = []tls.Certificate{tlscert}
+	// When the server is running behind nginx, nginx must be configured to send
+	// at least one CA-cert to the client to pick from. However, it's not
+	// feasible to list every cert the server would accept as most of them are
+	// self-signed, so only a dummy cert is sent. Go is clever though, and if we
+	// set tconf.Certificates here it will try to match it again what the server
+	// claims to want, and if none match then no cert is sent at all. Work
+	// around this by using GetClientCertificate so that the matching behavior
+	// is bypassed and it always sends the configured client cert.
+	tconf.GetClientCertificate = func(*tls.CertificateRequestInfo) (*tls.Certificate, error) {
+		return &tlscert, nil
+	}
 	return tconf, nil
 }
 
