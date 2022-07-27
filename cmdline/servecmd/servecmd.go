@@ -51,17 +51,19 @@ func MakeServer() (*daemon.Daemon, error) {
 	if shared.CurrentConfig.Server == nil {
 		return nil, errors.New("Missing server section in configuration file")
 	}
-	if shared.CurrentConfig.Server.KeyFile == "" {
-		return nil, errors.New("Missing keyfile option in server configuration file")
-	}
-	if shared.CurrentConfig.Server.CertFile == "" {
-		return nil, errors.New("Missing certfile option in server configuration file")
-	}
 	if shared.CurrentConfig.Clients == nil {
 		return nil, errors.New("Missing clients section in configuration file")
 	}
 	if shared.CurrentConfig.Server.Listen == "" && shared.CurrentConfig.Server.ListenHTTP == "" {
 		shared.CurrentConfig.Server.Listen = ":6300"
+	}
+	if shared.CurrentConfig.Server.Listen != "" {
+		if shared.CurrentConfig.Server.KeyFile == "" {
+			return nil, errors.New("missing keyfile option in server configuration file")
+		}
+		if shared.CurrentConfig.Server.CertFile == "" {
+			return nil, errors.New("missing certfile option in server configuration file")
+		}
 	}
 	return daemon.New(shared.CurrentConfig, argTest)
 }
