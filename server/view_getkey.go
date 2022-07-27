@@ -53,12 +53,16 @@ func (s *Server) serveGetKey(rw http.ResponseWriter, req *http.Request) error {
 	return httperror.ErrForbidden
 }
 
-func (s *Server) getKeyInfo(ctx context.Context, keyConf *config.KeyConfig) (info keyInfo, err error) {
+func (s *Server) getKeyInfo(ctx context.Context, keyConf *config.KeyConfig) (keyInfo, error) {
 	tok := s.tokens[keyConf.Token]
 	if tok == nil {
 		return keyInfo{}, fmt.Errorf("missing token \"%s\" for key \"%s\"", keyConf.Token, keyConf.Name())
 	}
 	cert, _, err := signinit.InitKey(ctx, tok, keyConf.Name())
+	if err != nil {
+		return keyInfo{}, err
+	}
+	var info keyInfo
 	if cert.PgpKey != nil {
 		info.PGPCertificate, err = marshalPGPCert(cert.PgpKey)
 		if err != nil {
@@ -71,7 +75,7 @@ func (s *Server) getKeyInfo(ctx context.Context, keyConf *config.KeyConfig) (inf
 			return keyInfo{}, err
 		}
 	}
-	return
+	return info, nil
 }
 
 // marshal entire X509 certificate chain in PEM format
