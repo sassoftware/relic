@@ -147,7 +147,7 @@ func trustedClient(trustedNets []*net.IPNet, req *http.Request) (string, bool) {
 	}
 	// Parse all XFF headers into a single list of hops
 	var hops []string
-	for _, xff := range req.Header.Values("X-Forwarded-For") {
+	for _, xff := range req.Header.Values(forwardedFor) {
 		for _, hop := range strings.Split(xff, ",") {
 			hop = strings.TrimSpace(hop)
 			if hop != "" {
@@ -156,8 +156,8 @@ func trustedClient(trustedNets []*net.IPNet, req *http.Request) (string, bool) {
 		}
 	}
 	// Check each hop, starting from the closest one to us
-	for len(hops) > 0 {
-		nextHop := strings.TrimSpace(hops[len(hops)-1])
+	for i := len(hops) - 1; i >= 0; i-- {
+		nextHop := strings.TrimSpace(hops[i])
 		if !hopTrusted(trustedNets, nextHop) {
 			// The previous hop is trusted but this one is not, so this is the
 			// best client IP
