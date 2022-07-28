@@ -68,7 +68,19 @@ func (t *kvToken) Close() error {
 }
 
 func (t *kvToken) Ping() error {
-	// TODO
+	// query info for one of the keys in this token
+	for _, keyConf := range t.config.Keys {
+		if keyConf.Token != t.tconf.Name() || keyConf.Hide {
+			continue
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), keyConf.GetTimeout())
+		defer cancel()
+		_, err := t.GetKey(ctx, keyConf.Name())
+		if err != nil {
+			return fmt.Errorf("checking key %q: %w", keyConf.Name(), err)
+		}
+		break
+	}
 	return nil
 }
 

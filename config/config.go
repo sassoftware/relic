@@ -80,9 +80,10 @@ type ServerConfig struct {
 	LogLevel   string // Optional log level
 	PolicyURL  string // Optional open-policy-agent endpoint
 
-	Disabled    bool // Always return 503 Service Unavailable
-	ListenDebug bool // Serve debug info on an alternate port
-	NumWorkers  int  // Number of worker subprocesses per configured token
+	Disabled      bool   // Always return 503 Service Unavailable
+	ListenDebug   bool   // Serve debug info on an alternate port
+	ListenMetrics string // Port to listen for plaintext metrics
+	NumWorkers    int    // Number of worker subprocesses per configured token
 
 	TokenCheckInterval int
 	TokenCheckFailures int

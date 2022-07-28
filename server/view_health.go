@@ -22,6 +22,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/rs/zerolog/log"
 	"github.com/sassoftware/relic/v7/internal/zhttp"
 	"github.com/sassoftware/relic/v7/token/worker"
@@ -31,6 +33,14 @@ var (
 	healthStatus   int
 	healthLastPing time.Time
 	healthMu       sync.Mutex
+
+	metricTokenCheckErrors = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "token_check_sequential_errors",
+			Help: "Number of sequential errors seen while checking the token's status",
+		},
+		[]string{"token"},
+	)
 )
 
 func (s *Server) healthCheckInterval() time.Duration {
@@ -63,9 +73,13 @@ func (s *Server) healthCheck() bool {
 	last := healthStatus
 	healthMu.Unlock()
 	var notOK []string
-	for _, token := range s.tokens {
-		if !s.pingOne(token) {
-			notOK = append(notOK, token.Config().Name())
+	for name, token := range s.tokens {
+		metric := metricTokenCheckErrors.WithLabelValues(name)
+		if s.pingOne(token) {
+			metric.Set(0)
+		} else {
+			metric.Inc()
+			notOK = append(notOK, name)
 		}
 	}
 	next := last

@@ -22,6 +22,8 @@ import (
 	"net"
 	"net/http"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
 	"github.com/sassoftware/relic/v7/cmdline/shared"
@@ -76,13 +78,27 @@ func listenDebug() error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Serving debug info on http://%s/debug/pprof/\n", lis.Addr())
+	log.Info().Msgf("serving debug info on http://%s/debug/pprof/", lis.Addr())
 	go func() {
 		// pprof installs itself into the default handler on import
 		err := http.Serve(lis, nil)
-		if err != nil {
-			fmt.Println(err)
-		}
+		log.Err(err).Msg("debug listener stopped")
+	}()
+	return nil
+}
+
+func listenMetrics() error {
+	if shared.CurrentConfig.Server.ListenMetrics == "" {
+		return nil
+	}
+	lis, err := net.Listen("tcp", shared.CurrentConfig.Server.ListenMetrics)
+	if err != nil {
+		return shared.Fail(err)
+	}
+	log.Info().Msgf("serving metrics on http://%s/metrics", lis.Addr())
+	go func() {
+		err := http.Serve(lis, promhttp.Handler())
+		log.Err(err).Msg("metrics listener stopped")
 	}()
 	return nil
 }
@@ -98,6 +114,9 @@ func serveCmd(cmd *cobra.Command, args []string) error {
 	}
 	go watchSignals(srv)
 	if err := listenDebug(); err != nil {
+		return err
+	}
+	if err := listenMetrics(); err != nil {
 		return err
 	}
 	if err := srv.Serve(); err != nil && err != http.ErrServerClosed {
