@@ -108,7 +108,7 @@ func (s *Server) healthCheck() bool {
 func (s *Server) pingOne(tok *worker.WorkerToken) bool {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*time.Duration(s.Config.Server.TokenCheckTimeout))
 	defer cancel()
-	if err := tok.PingContext(ctx); err != nil {
+	if err := tok.Ping(ctx); err != nil {
 		ev := log.Error().Str("token", tok.Config().Name())
 		if ctx.Err() != nil {
 			ev.Msg("token health check timed out")

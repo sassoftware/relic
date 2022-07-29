@@ -67,13 +67,13 @@ func (t *kvToken) Close() error {
 	return nil
 }
 
-func (t *kvToken) Ping() error {
+func (t *kvToken) Ping(ctx context.Context) error {
 	// query info for one of the keys in this token
 	for _, keyConf := range t.config.Keys {
 		if keyConf.Token != t.tconf.Name() || keyConf.Hide {
 			continue
 		}
-		ctx, cancel := context.WithTimeout(context.Background(), keyConf.GetTimeout())
+		ctx, cancel := context.WithTimeout(ctx, keyConf.GetTimeout())
 		defer cancel()
 		_, err := t.GetKey(ctx, keyConf.Name())
 		if err != nil {

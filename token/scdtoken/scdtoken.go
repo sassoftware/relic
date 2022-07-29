@@ -158,7 +158,7 @@ func (tok *scdToken) login(prompt passprompt.PasswordGetter) error {
 	return token.Login(tconf, prompt, loginFunc, keyringUser, initialPrompt)
 }
 
-func (tok *scdToken) Ping() error {
+func (tok *scdToken) Ping(ctx context.Context) error {
 	tok.mu.Lock()
 	defer tok.mu.Unlock()
 	// TODO

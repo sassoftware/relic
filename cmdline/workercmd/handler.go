@@ -26,14 +26,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
-	"log"
+	"io"
 	"net/http"
 	"os"
 	"sync"
 	"time"
 
 	"github.com/miekg/pkcs11"
+	"github.com/rs/zerolog/log"
 
 	"github.com/sassoftware/relic/v7/cmdline/shared"
 	"github.com/sassoftware/relic/v7/internal/workerrpc"
@@ -60,40 +60,38 @@ func (h *handler) healthCheck() {
 	timeout := time.Duration(shared.CurrentConfig.Server.TokenCheckTimeout) * time.Second
 	ppid := os.Getppid()
 	tick := time.NewTicker(interval)
-	tmt := time.NewTimer(timeout)
 	errch := make(chan error)
 	for {
 		// check if parent process went away
 		if os.Getppid() != ppid {
-			log.Println("error: parent process disappeared, worker stopping", ppid, os.Getppid())
+			log.Error().
+				Int("old_ppid", ppid).Int("new_ppid", os.Getppid()).
+				Msg("parent process disappeared, worker stopping")
 			h.shutdown()
 			return
 		}
 		// check if token is alive
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		go func() {
-			errch <- h.token.Ping()
+			errch <- h.token.Ping(ctx)
 		}()
 		var err error
 		select {
 		case err = <-errch:
 			// ping completed
-		case <-tmt.C:
+		case <-ctx.Done():
 			// timed out
 			err = fmt.Errorf("timed out after %s", timeout)
 		}
+		cancel()
 		if err != nil {
 			// stop the worker on error
-			log.Printf("error: health check of token \"%s\" failed: %s", h.token.Config().Name(), err)
+			log.Err(err).Msg("token health check failed")
 			h.shutdown()
 			return
 		}
 		// wait for next tick
 		<-tick.C
-		// reset timeout
-		if !tmt.Stop() {
-			<-tmt.C
-		}
-		tmt.Reset(timeout)
 	}
 }
 
@@ -120,7 +118,7 @@ func (h *handler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		switch e := err.(type) {
 		case pkcs11Error:
 			if fatalErrors[e] {
-				log.Printf("error: terminating worker for token \"%s\" due to error: %s", h.token.Config().Name(), err)
+				log.Err(err).Msg("terminating worker due to token error")
 				go h.shutdown()
 				// errors that cause the worker to restart are also retryable
 				resp.Retryable = true
@@ -143,12 +141,12 @@ func (h *handler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		_, err = rw.Write(blob)
 	}
 	if err != nil {
-		log.Printf("error: worker for token \"%s\": %s", h.token.Config().Name(), err)
+		log.Err(err).Msg("error handling worker request")
 	}
 }
 
 func (h *handler) handle(rw http.ResponseWriter, req *http.Request) (resp workerrpc.Response, err error) {
-	blob, err := ioutil.ReadAll(req.Body)
+	blob, err := io.ReadAll(req.Body)
 	if err != nil {
 		return resp, err
 	}
@@ -164,7 +162,7 @@ func (h *handler) handle(rw http.ResponseWriter, req *http.Request) (resp worker
 	}
 	switch req.URL.Path {
 	case workerrpc.Ping:
-		return resp, h.token.Ping()
+		return resp, h.token.Ping(ctx)
 	case workerrpc.GetKey:
 		key, err := h.getKey(ctx, rr.KeyName)
 		if err != nil {

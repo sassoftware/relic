@@ -57,7 +57,7 @@ func (t *awsToken) Close() error {
 	return nil
 }
 
-func (t *awsToken) Ping() error {
+func (t *awsToken) Ping(ctx context.Context) error {
 	// TODO
 	return nil
 }

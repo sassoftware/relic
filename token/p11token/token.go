@@ -17,6 +17,7 @@
 package p11token
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -211,7 +212,7 @@ func (tok *Token) isLoggedIn() (bool, error) {
 	return (info.State == CKS_RO_USER_FUNCTIONS || info.State == CKS_RW_USER_FUNCTIONS || info.State == CKS_RW_SO_FUNCTIONS), nil
 }
 
-func (tok *Token) Ping() error {
+func (tok *Token) Ping(ctx context.Context) error {
 	loggedIn, err := tok.isLoggedIn()
 	if err != nil {
 		return err

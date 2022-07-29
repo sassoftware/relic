@@ -66,7 +66,7 @@ func (t *gcloudToken) Close() error {
 	return t.cli.Close()
 }
 
-func (t *gcloudToken) Ping() error {
+func (t *gcloudToken) Ping(ctx context.Context) error {
 	// TODO
 	return nil
 }

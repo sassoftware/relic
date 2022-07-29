@@ -60,7 +60,7 @@ func Open(conf *config.Config, tokenName string, prompt passprompt.PasswordGette
 	}, nil
 }
 
-func (tok *fileToken) Ping() error {
+func (tok *fileToken) Ping(context.Context) error {
 	return nil
 }
 

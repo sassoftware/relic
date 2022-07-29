@@ -37,7 +37,7 @@ const (
 type Token interface {
 	io.Closer
 	// Check that the token is still alive
-	Ping() error
+	Ping(ctx context.Context) error
 	// Return the token config object used to instantiate this token
 	Config() *config.TokenConfig
 	// Get a key from the token by its config alias

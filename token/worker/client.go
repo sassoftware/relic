@@ -24,7 +24,6 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"time"
@@ -52,16 +51,12 @@ func (t *WorkerToken) request(ctx context.Context, path string, rr workerrpc.Req
 		return nil, err
 	}
 	req.GetBody = func() (io.ReadCloser, error) {
-		return ioutil.NopCloser(bytes.NewReader(blob)), nil
+		return io.NopCloser(bytes.NewReader(blob)), nil
 	}
 	return t.doRetry(req.WithContext(ctx))
 }
 
-func (t *WorkerToken) Ping() error {
-	return t.PingContext(context.Background())
-}
-
-func (t *WorkerToken) PingContext(ctx context.Context) error {
+func (t *WorkerToken) Ping(ctx context.Context) error {
 	_, err := t.request(ctx, workerrpc.Ping, workerrpc.Request{})
 	return err
 }

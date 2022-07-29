@@ -17,6 +17,7 @@
 package token
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -40,7 +41,7 @@ func pingCmd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return shared.Fail(err)
 	}
-	if err := token.Ping(); err != nil {
+	if err := token.Ping(context.Background()); err != nil {
 		return shared.Fail(err)
 	} else {
 		fmt.Println("OK")
