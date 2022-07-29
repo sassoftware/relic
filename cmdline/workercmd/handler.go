@@ -17,7 +17,6 @@
 package workercmd
 
 import (
-	"bytes"
 	"context"
 	"crypto"
 	"crypto/hmac"
@@ -29,7 +28,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/miekg/pkcs11"
@@ -38,6 +36,7 @@ import (
 	"github.com/sassoftware/relic/v7/cmdline/shared"
 	"github.com/sassoftware/relic/v7/internal/workerrpc"
 	"github.com/sassoftware/relic/v7/token"
+	"github.com/sassoftware/relic/v7/token/tokencache"
 )
 
 // an arbitarily-chosen set of error codes that indicate that the token session
@@ -96,10 +95,8 @@ func (h *handler) healthCheck() {
 }
 
 type handler struct {
-	token    token.Token
+	token    *tokencache.Cache
 	cookie   []byte
-	keys     map[string]cachedKey
-	mu       sync.Mutex
 	shutdown func()
 }
 
@@ -164,7 +161,7 @@ func (h *handler) handle(rw http.ResponseWriter, req *http.Request) (resp worker
 	case workerrpc.Ping:
 		return resp, h.token.Ping(ctx)
 	case workerrpc.GetKey:
-		key, err := h.getKey(ctx, rr.KeyName)
+		key, err := h.token.GetKey(ctx, rr.KeyName)
 		if err != nil {
 			return resp, err
 		}
@@ -178,7 +175,7 @@ func (h *handler) handle(rw http.ResponseWriter, req *http.Request) (resp worker
 		if rr.SaltLength != nil {
 			opts = &rsa.PSSOptions{SaltLength: *rr.SaltLength, Hash: hash}
 		}
-		key, err := h.getKey(ctx, rr.KeyName)
+		key, err := h.token.GetKey(ctx, rr.KeyName)
 		if err != nil {
 			return resp, err
 		}
@@ -187,38 +184,4 @@ func (h *handler) handle(rw http.ResponseWriter, req *http.Request) (resp worker
 	default:
 		return resp, errors.New("invalid method: " + req.URL.Path)
 	}
-}
-
-type cachedKey struct {
-	expires time.Time
-	key     token.Key
-}
-
-// cache key handles
-func (h *handler) getKey(ctx context.Context, keyName string) (token.Key, error) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	wantKeyID := token.KeyID(ctx)
-	cached := h.keys[keyName]
-	if cached.key != nil && cached.expires.After(time.Now()) {
-		// if caller is looking for a particular key ID, make sure the cached
-		// one matches before returning it
-		haveKeyID := cached.key.GetID()
-		if len(wantKeyID) == 0 || bytes.Equal(wantKeyID, haveKeyID) {
-			return cached.key, nil
-		}
-	}
-	key, err := h.token.GetKey(ctx, keyName)
-	if err != nil {
-		return nil, err
-	}
-	expires := time.Duration(shared.CurrentConfig.Server.TokenCacheSeconds) * time.Second
-	if expires > 0 && len(wantKeyID) == 0 {
-		// only cache if the caller did not request a specific key ID
-		h.keys[keyName] = cachedKey{
-			expires: time.Now().Add(expires),
-			key:     key,
-		}
-	}
-	return key, nil
 }

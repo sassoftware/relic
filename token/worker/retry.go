@@ -20,17 +20,17 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
-	"io/ioutil"
-	"log"
-	"net"
+	"io"
 	"net/http"
-	"net/url"
-	"os"
+	"strconv"
+	"strings"
 	"time"
 
+	"github.com/rs/zerolog/log"
+	"github.com/sassoftware/relic/v7/internal/httperror"
 	"github.com/sassoftware/relic/v7/internal/workerrpc"
 	"github.com/sassoftware/relic/v7/token"
+	"github.com/sassoftware/relic/v7/token/tokencache"
 )
 
 const (
@@ -53,7 +53,11 @@ func (t *WorkerToken) doRetry(req *http.Request) (rresp *workerrpc.Response, err
 	var last error
 	for i := 0; i < retries; i++ {
 		if i != 0 {
-			log.Printf("token error (attempt %d of %d): %s", i, retries, last)
+			log.Warn().
+				Int("attempt", i).
+				Int("max_attempts", retries).
+				AnErr("last_error", last).
+				Msg("token error; retrying")
 			// delay retry with backoff
 			ctx, cancel := context.WithTimeout(baseCtx, time.Duration(delay))
 			<-ctx.Done()
@@ -67,96 +71,92 @@ func (t *WorkerToken) doRetry(req *http.Request) (rresp *workerrpc.Response, err
 				delay = float32(maxDelay)
 			}
 		}
-		if req.GetBody != nil {
-			req.Body, err = req.GetBody()
-			if err != nil {
-				return nil, err
-			}
+		start := time.Now()
+		rresp, err := t.doOnce(req, timeout)
+		if err == nil {
+			t.observe(req, start, http.StatusOK)
+			return rresp, nil
 		}
-		ctx, cancel := context.WithTimeout(baseCtx, timeout)
-		defer cancel()
-		resp, err := http.DefaultClient.Do(req.WithContext(ctx))
-		if err != nil {
-			if baseCtx.Err() != nil {
-				// cancelled
-				return nil, baseCtx.Err()
-			}
-			// network errror
-			if !errIsTemporary(err) {
-				return nil, err
-			}
-			last = err
-		} else if resp.StatusCode == http.StatusOK {
-			// json response
-			blob, err := ioutil.ReadAll(resp.Body)
-			resp.Body.Close()
-			if err != nil {
-				return nil, err
-			}
-			rresp = new(workerrpc.Response)
-			if err := json.Unmarshal(blob, rresp); err != nil {
-				return nil, err
-			}
-			if rresp.Err == "" {
-				// success
-				return rresp, nil
-			} else if rresp.Usage {
-				return nil, token.KeyUsageError{
-					Key: rresp.Key,
-					Err: errors.New(rresp.Err),
-				}
-			}
-			last = errors.New(rresp.Err)
-			if !rresp.Retryable {
-				break
-			}
-		} else {
-			// http error
-			body, _ := ioutil.ReadAll(resp.Body)
-			resp.Body.Close()
-			last = fmt.Errorf("HTTP request failed: %s\nRequest: %s %s\n\n%s", resp.Status, req.Method, req.URL, string(body))
-			if !statusIsTemporary(resp.StatusCode) {
-				break
-			}
+		// translate various outcomes into a status code for metrics
+		var retry bool
+		code := http.StatusInternalServerError
+		if httperror.Temporary(err) {
+			code = http.StatusServiceUnavailable
+			retry = true
+		} else if errors.As(err, new(token.KeyUsageError)) {
+			code = http.StatusBadRequest
 		}
+		if e := new(httperror.ResponseError); errors.As(err, e) {
+			code = e.StatusCode
+		}
+		if baseCtx.Err() != nil {
+			// request canceled
+			code = 499
+		} else if errors.Is(err, context.DeadlineExceeded) {
+			code = http.StatusGatewayTimeout
+		}
+		t.observe(req, start, code)
+		if !retry {
+			return nil, err
+		}
+		last = err
 	}
 	return nil, last
 }
 
-type temporary interface {
-	Temporary() bool
+func (t *WorkerToken) doOnce(req *http.Request, timeout time.Duration) (*workerrpc.Response, error) {
+	ctx, cancel := context.WithTimeout(req.Context(), timeout)
+	defer cancel()
+	if req.GetBody != nil {
+		var err error
+		req.Body, err = req.GetBody()
+		if err != nil {
+			return nil, err
+		}
+	}
+	resp, err := http.DefaultClient.Do(req.WithContext(ctx))
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		// http error
+		return nil, httperror.FromResponse(resp)
+	}
+	// json response
+	blob, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	rresp := new(workerrpc.Response)
+	if err := json.Unmarshal(blob, rresp); err != nil {
+		return nil, err
+	}
+	if rresp.Err == "" {
+		// success
+		return rresp, nil
+	} else if rresp.Usage {
+		return nil, token.KeyUsageError{
+			Key: rresp.Key,
+			Err: errors.New(rresp.Err),
+		}
+	}
+	return nil, tokenError{Err: rresp.Err, Retryable: rresp.Retryable}
 }
 
-func errIsTemporary(err error) bool {
-	if err == context.DeadlineExceeded {
-		return true
-	}
-	if e, ok := err.(temporary); ok && e.Temporary() {
-		return true
-	}
-	// unpack error wrappers
-	if e, ok := err.(*url.Error); ok {
-		err = e.Err
-	}
-	if e, ok := err.(*net.OpError); ok {
-		err = e.Err
-	}
-	// treat any syscall error as something recoverable
-	if _, ok := err.(*os.SyscallError); ok {
-		return true
-	}
-	return false
+func (t *WorkerToken) observe(req *http.Request, start time.Time, code int) {
+	dur := time.Since(start).Seconds()
+	name := t.tconf.Name()
+	op := strings.TrimLeft(req.URL.Path, "/")
+	scode := strconv.FormatInt(int64(code), 10)
+	tokencache.MetricOperations.WithLabelValues(name, op).Observe(dur)
+	tokencache.MetricResponses.WithLabelValues(name, op, scode).Inc()
 }
 
-func statusIsTemporary(statusCode int) bool {
-	switch statusCode {
-	case http.StatusGatewayTimeout,
-		http.StatusBadGateway,
-		http.StatusServiceUnavailable,
-		http.StatusInsufficientStorage,
-		http.StatusInternalServerError:
-		return true
-	default:
-		return false
-	}
+type tokenError struct {
+	Err       string
+	Retryable bool
 }
+
+func (e tokenError) Error() string   { return e.Err }
+func (e tokenError) Temporary() bool { return e.Retryable }

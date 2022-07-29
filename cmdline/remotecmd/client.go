@@ -281,7 +281,7 @@ loop:
 			// try again without compression
 			encodings = ""
 			goto loop
-		} else if isTemporary(err) && i+1 < len(bases) {
+		} else if httperror.Temporary(err) && i+1 < len(bases) {
 			fmt.Printf("%s\nunable to connect to %s; trying next server\n", err, request.URL)
 		} else {
 			return nil, err
@@ -304,22 +304,4 @@ func setDigestQueryParam(query url.Values) error {
 	}
 	query.Add("digest", shared.ArgDigest)
 	return nil
-}
-
-// Check if an error is something recoverable, i.e. if we should continue to
-// try another server. In practice, anything other than a HTTP 4XX status will
-// result in a retry.
-func isTemporary(err error) bool {
-	if e, ok := err.(temporary); ok && e.Temporary() {
-		return true
-	}
-	if e := new(os.SyscallError); errors.As(err, &e) {
-		// treat any syscall error as something recoverable
-		return true
-	}
-	return false
-}
-
-type temporary interface {
-	Temporary() bool
 }

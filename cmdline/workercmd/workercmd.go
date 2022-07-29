@@ -18,20 +18,25 @@ package workercmd
 
 import (
 	"context"
-	"io/ioutil"
-	"log"
+	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
 	"github.com/sassoftware/relic/v7/cmdline/shared"
 	"github.com/sassoftware/relic/v7/internal/activation"
 	"github.com/sassoftware/relic/v7/internal/activation/activatecmd"
+	"github.com/sassoftware/relic/v7/internal/zhttp"
 	"github.com/sassoftware/relic/v7/token/open"
+	"github.com/sassoftware/relic/v7/token/tokencache"
 )
 
 func init() {
@@ -48,14 +53,13 @@ func AddWorkerCommand(parent *cobra.Command) {
 }
 
 func worker(cmd *cobra.Command, args []string) {
-	log.SetFlags(0)
 	if len(args) != 2 {
-		log.Fatalln("invalid argument")
+		log.Fatal().Msg("invalid argument")
 	}
 	shared.ArgConfig = args[0]
 	tokenName := args[1]
 	if err := runWorker(tokenName); err != nil {
-		log.Fatalf("error: worker for token \"%s\": %+v", tokenName, err)
+		log.Fatal().Msgf("worker stopping for token %s", tokenName)
 	}
 }
 
@@ -63,7 +67,7 @@ func runWorker(tokenName string) error {
 	if err := shared.InitConfig(); err != nil {
 		return err
 	}
-	cookie, err := ioutil.ReadAll(os.Stdin)
+	cookie, err := io.ReadAll(os.Stdin)
 	if err != nil {
 		return err
 	}
@@ -71,14 +75,21 @@ func runWorker(tokenName string) error {
 	if err != nil {
 		return err
 	}
-	tok, err := open.Token(shared.CurrentConfig, tokenName, nil)
+	cfg := shared.CurrentConfig
+	tok, err := open.Token(cfg, tokenName, nil)
 	if err != nil {
 		return err
 	}
+	if err := zhttp.SetupLogging(cfg.Server.LogLevel, cfg.Server.LogFile); err != nil {
+		return fmt.Errorf("configuring logging: %w", err)
+	}
+	log.Logger.UpdateContext(func(c zerolog.Context) zerolog.Context {
+		return c.Str("token", tokenName).Int("pid", os.Getpid())
+	})
+	expiry := time.Second * time.Duration(cfg.Server.TokenCacheSeconds)
 	handler := &handler{
-		token:  tok,
+		token:  tokencache.New(tok, expiry),
 		cookie: cookie,
-		keys:   make(map[string]cachedKey),
 	}
 	srv := &http.Server{Handler: handler}
 	wg := new(sync.WaitGroup)
