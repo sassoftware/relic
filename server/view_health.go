@@ -25,8 +25,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/rs/zerolog/log"
+
 	"github.com/sassoftware/relic/v7/internal/zhttp"
-	"github.com/sassoftware/relic/v7/token/worker"
+	"github.com/sassoftware/relic/v7/token"
 )
 
 var (
@@ -105,7 +106,7 @@ func (s *Server) healthCheck() bool {
 	return len(notOK) == 0
 }
 
-func (s *Server) pingOne(tok *worker.WorkerToken) bool {
+func (s *Server) pingOne(tok token.Token) bool {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*time.Duration(s.Config.Server.TokenCheckTimeout))
 	defer cancel()
 	if err := tok.Ping(ctx); err != nil {

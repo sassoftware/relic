@@ -19,6 +19,7 @@ package server
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/sassoftware/relic/v7/config"
@@ -26,6 +27,9 @@ import (
 	"github.com/sassoftware/relic/v7/internal/realip"
 	"github.com/sassoftware/relic/v7/internal/zhttp"
 	"github.com/sassoftware/relic/v7/lib/compresshttp"
+	"github.com/sassoftware/relic/v7/token"
+	"github.com/sassoftware/relic/v7/token/open"
+	"github.com/sassoftware/relic/v7/token/tokencache"
 	"github.com/sassoftware/relic/v7/token/worker"
 )
 
@@ -33,7 +37,7 @@ type Server struct {
 	Config  *config.Config
 	Closed  <-chan bool
 	closeCh chan<- bool
-	tokens  map[string]*worker.WorkerToken
+	tokens  map[string]token.Token
 	auth    authmodel.Authenticator
 	realIP  func(http.Handler) http.Handler
 }
@@ -83,21 +87,46 @@ func New(config *config.Config) (*Server, error) {
 		closeCh: closed,
 		auth:    auth,
 		realIP:  realIP,
-		tokens:  make(map[string]*worker.WorkerToken),
+		tokens:  make(map[string]token.Token),
 	}
-	// create a worker for each token used by any key
-	for _, name := range config.ListServedTokens() {
-		tok, err := worker.New(config, name)
-		if err != nil {
-			for _, t := range s.tokens {
-				t.Close()
-			}
-			return nil, err
+	if err := s.openTokens(); err != nil {
+		for _, t := range s.tokens {
+			t.Close()
 		}
-		s.tokens[name] = tok
+		return nil, err
 	}
 	if err := s.startHealthCheck(); err != nil {
 		return nil, err
 	}
 	return s, nil
+}
+
+// Open each token used by any key. pkcs11 tokens get a worker, while other
+// types are used in-process via a cache.
+func (s *Server) openTokens() error {
+	expiry := time.Second * time.Duration(s.Config.Server.TokenCacheSeconds)
+	for _, name := range s.Config.ListServedTokens() {
+		tconf, err := s.Config.GetToken(name)
+		if err != nil {
+			return err
+		}
+		var tok token.Token
+		switch tconf.Type {
+		case "pkcs11":
+			// worker is responsible for metrics and caching
+			tok, err = worker.New(s.Config, name)
+		default:
+			tok, err = open.Token(s.Config, name, nil)
+			if err == nil {
+				// instrument token with metrics and caching
+				tok = tokencache.Metrics{Token: tok}
+				tok = tokencache.New(tok, expiry)
+			}
+		}
+		if err != nil {
+			return fmt.Errorf("configuring token %q: %w", name, err)
+		}
+		s.tokens[name] = tok
+	}
+	return nil
 }
