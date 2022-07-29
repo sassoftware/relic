@@ -17,10 +17,12 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/bradfitz/gomemcache/memcache"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/rs/zerolog/log"
 
 	"github.com/sassoftware/relic/v7/lib/pkcs7"
 	"github.com/sassoftware/relic/v7/lib/pkcs9"
@@ -29,6 +31,14 @@ import (
 const (
 	memcacheTimeout = 1 * time.Second
 	memcacheExpiry  = 7 * 24 * time.Hour
+)
+
+var metricHits = promauto.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "timestamper_cache",
+		Help: "Timestamper cache hit and miss count",
+	},
+	[]string{"result"},
 )
 
 type timestampCache struct {
@@ -52,9 +62,10 @@ func (c *timestampCache) Timestamp(ctx context.Context, req *pkcs9.Request) (*pk
 	if err == nil {
 		token, err := pkcs7.Unmarshal(item.Value)
 		if err == nil {
+			metricHits.WithLabelValues("hit").Inc()
 			return token, nil
 		}
-		log.Printf("warning: failed to parse cached value for timestamp with key %s: %s", key, err)
+		log.Warn().Err(err).Str("key", key).Msg("failed to parse cached value for timestamp")
 		// bad cached value, fall through
 	}
 	token, err := c.Timestamper.Timestamp(ctx, req)
@@ -68,8 +79,9 @@ func (c *timestampCache) Timestamp(ctx context.Context, req *pkcs9.Request) (*pk
 			Value:      blob,
 			Expiration: int32(memcacheExpiry / time.Second),
 		}); err != nil {
-			log.Printf("warning: failed to save cached timestamp value: %s", err)
+			log.Warn().Err(err).Msg("failed to save cached value for timestamp")
 		}
+		metricHits.WithLabelValues("miss").Inc()
 	}
 	return token, err
 }

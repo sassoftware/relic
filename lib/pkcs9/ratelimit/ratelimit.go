@@ -15,14 +15,20 @@ package ratelimit
 
 import (
 	"context"
-	"log"
 	"time"
 
 	"golang.org/x/time/rate"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/sassoftware/relic/v7/lib/pkcs7"
 	"github.com/sassoftware/relic/v7/lib/pkcs9"
 )
+
+var metricRateLimited = promauto.NewCounter(prometheus.CounterOpts{
+	Name: "timestamper_rate_limited_seconds",
+	Help: "Cumulative number of seconds waiting for rate limits",
+})
 
 type limiter struct {
 	Timestamper pkcs9.Timestamper
@@ -44,8 +50,8 @@ func (l *limiter) Timestamp(ctx context.Context, req *pkcs9.Request) (*pkcs7.Con
 	if err := l.Limit.Wait(ctx); err != nil {
 		return nil, err
 	}
-	if waited := time.Since(start); waited > 50*time.Millisecond {
-		log.Printf("timestamper: waited %s due to rate limit", waited)
+	if waited := time.Since(start); waited > 1*time.Millisecond {
+		metricRateLimited.Add(time.Since(start).Seconds())
 	}
 	return l.Timestamper.Timestamp(ctx, req)
 }

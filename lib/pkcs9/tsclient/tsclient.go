@@ -18,11 +18,14 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sassoftware/relic/v7/config"
 	"github.com/sassoftware/relic/v7/lib/pkcs7"
 	"github.com/sassoftware/relic/v7/lib/pkcs9"
@@ -36,6 +39,26 @@ type tsClient struct {
 	client *http.Client
 }
 
+var (
+	buckets = []float64{.01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10}
+
+	metricCount = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "timestamper_request_count",
+			Help: "Outcome of timestamper requests",
+		},
+		[]string{"code"},
+	)
+	metricDuration = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "timestamper_request_duration_seconds",
+			Help:    "Histogram of timestamper request durations",
+			Buckets: buckets,
+		},
+		nil,
+	)
+)
+
 func New(conf *config.TimestampConfig) (t pkcs9.Timestamper, err error) {
 	tlsconf := &tls.Config{}
 	if err := x509tools.LoadCertPool(conf.CaCert, tlsconf); err != nil {
@@ -47,6 +70,8 @@ func New(conf *config.TimestampConfig) (t pkcs9.Timestamper, err error) {
 			TLSClientConfig: tlsconf,
 		},
 	}
+	client.Transport = promhttp.InstrumentRoundTripperCounter(metricCount, client.Transport)
+	client.Transport = promhttp.InstrumentRoundTripperDuration(metricDuration, client.Transport)
 	t = tsClient{conf, client}
 	if conf.RateLimit != 0 {
 		t = ratelimit.New(t, conf.RateLimit, conf.RateBurst)
@@ -110,7 +135,7 @@ func (c tsClient) do(ctx context.Context, url string, req *pkcs9.Request, imprin
 	if err != nil {
 		return nil, err
 	}
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	resp.Body.Close()
 	if err != nil {
 		return nil, err
