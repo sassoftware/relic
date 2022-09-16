@@ -85,6 +85,9 @@ func getListener(laddr string, tconf *tls.Config) (net.Listener, error) {
 }
 
 func New(config *config.Config, test bool) (*Daemon, error) {
+	if err := zhttp.SetupLogging(config.Server.LogLevel, config.Server.LogFile); err != nil {
+		return nil, fmt.Errorf("configuring logging: %w", err)
+	}
 	srv, err := server.New(config)
 	if err != nil {
 		return nil, err
@@ -104,9 +107,6 @@ func New(config *config.Config, test bool) (*Daemon, error) {
 	if test {
 		srv.Close()
 		return nil, nil
-	}
-	if err := zhttp.SetupLogging(config.Server.LogLevel, config.Server.LogFile); err != nil {
-		return nil, fmt.Errorf("configuring logging: %w", err)
 	}
 
 	var listeners []net.Listener
