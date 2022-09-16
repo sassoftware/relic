@@ -24,6 +24,7 @@ import (
 
 	"github.com/sassoftware/relic/v7/internal/httperror"
 	"github.com/sassoftware/relic/v7/internal/zhttp"
+	"github.com/sassoftware/relic/v7/signers/sigerrors"
 	"github.com/sassoftware/relic/v7/token"
 )
 
@@ -58,6 +59,8 @@ func errToProblem(err error) http.Handler {
 			Title:  "Incorrect Key Usage",
 			Detail: e.Error(),
 		}
+	} else if e := new(sigerrors.ErrNoCertificate); errors.As(err, e) {
+		return httperror.NoCertificateError(e.Type)
 	}
 	return nil
 }

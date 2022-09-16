@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+
+	"github.com/rs/zerolog"
+	"github.com/sassoftware/relic/v7/internal/zhttp"
 )
 
 // Problem implements a RFC 7807 HTTP "problem" response
@@ -34,6 +37,11 @@ func (e Problem) Error() string {
 }
 
 func (e Problem) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	if e.Type != "" {
+		zhttp.AppendAccessLog(req, func(ev *zerolog.Event) {
+			ev.Str("problem", e.Type)
+		})
+	}
 	blob, _ := json.MarshalIndent(e, "", "  ")
 	rw.Header().Set("Content-Type", "application/problem+json")
 	rw.WriteHeader(e.Status)
@@ -110,4 +118,12 @@ func TokenAuthorizationError(code int, errors []string) Problem {
 		p.Detail = strings.Join(errors, ", ")
 	}
 	return p
+}
+
+func NoCertificateError(certType string) Problem {
+	return Problem{
+		Status: http.StatusBadRequest,
+		Type:   ProblemBase + "certificate-not-defined",
+		Detail: "No certificate of type \"" + certType + "\" is defined for this key",
+	}
 }
