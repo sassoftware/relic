@@ -55,7 +55,7 @@ func Init(ctx context.Context, mod *signers.Signer, tok token.Token, keyName str
 		return nil, nil, err
 	}
 	// create audit info
-	auditInfo := audit.New(keyName, mod.Name, hash)
+	auditInfo := audit.New(kconf.Name(), mod.Name, hash)
 	now := time.Now().UTC()
 	auditInfo.SetTimestamp(now)
 	if cert.Leaf != nil {
