@@ -20,11 +20,11 @@
 package servecmd
 
 import (
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"github.com/rs/zerolog/log"
 	"github.com/sassoftware/relic/v7/server/daemon"
 )
 
@@ -45,13 +45,15 @@ func watchSignals(srv *daemon.Daemon) {
 		case sig == syscall.SIGUSR1:
 			// no longer used
 		case !already:
-			log.Printf("Received signal %d; shutting down gracefully", sig)
-			if err := srv.Close(); err != nil {
-				log.Printf("ERROR: failed to shutdown gracefully: %s", err)
-			}
+			log.Info().Stringer("signal", sig).Msg("initiating graceful shutdown")
+			go func() {
+				if err := srv.Close(); err != nil {
+					log.Err(err).Msg("failed to shutdown gracefully")
+				}
+			}()
 			already = true
 		default:
-			log.Printf("Received signal %d; shutting down immediately", sig)
+			log.Warn().Stringer("signal", sig).Msg("shutting down immediately")
 			os.Exit(0)
 		}
 	}
