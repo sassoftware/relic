@@ -94,7 +94,13 @@ func New(config *config.Config, test bool) (*Daemon, error) {
 	if err != nil {
 		return nil, err
 	}
-	httpServer := &http.Server{Handler: srv.Handler()}
+	httpServer := &http.Server{
+		Handler:           srv.Handler(),
+		ReadHeaderTimeout: time.Second * time.Duration(config.Server.ReadHeaderTimeout),
+		ReadTimeout:       time.Second * time.Duration(config.Server.ReadTimeout),
+		WriteTimeout:      time.Second * time.Duration(config.Server.WriteTimeout),
+		IdleTimeout:       10 * time.Second,
+	}
 	// configure TLS listener
 	if config.Server.Listen != "" {
 		tconf, err := makeTLSConfig(config)

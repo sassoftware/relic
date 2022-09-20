@@ -90,6 +90,10 @@ type ServerConfig struct {
 	TokenCheckTimeout  int
 	TokenCacheSeconds  int
 
+	ReadHeaderTimeout int
+	ReadTimeout       int
+	WriteTimeout      int
+
 	// URLs to all servers in the cluster. If a client uses DirectoryURL to
 	// point to this server (or a load balancer), then we will give them these
 	// URLs as a means to distribute load without needing a middle-box.
@@ -234,6 +238,15 @@ func (config *Config) Normalize(path string) error {
 		}
 		if s.TokenCacheSeconds == 0 {
 			s.TokenCacheSeconds = 600
+		}
+		if s.ReadHeaderTimeout == 0 {
+			s.ReadHeaderTimeout = 10
+		}
+		if s.ReadTimeout == 0 {
+			s.ReadTimeout = 600
+		}
+		if s.WriteTimeout == 0 {
+			s.WriteTimeout = 600
 		}
 	}
 	if r := config.Remote; r != nil {
