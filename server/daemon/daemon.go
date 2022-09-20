@@ -30,6 +30,7 @@ import (
 	"golang.org/x/net/http2"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog/log"
 	"github.com/sassoftware/relic/v7/config"
 	"github.com/sassoftware/relic/v7/internal/activation"
@@ -43,6 +44,7 @@ type Daemon struct {
 	server     *server.Server
 	httpServer *http.Server
 	listeners  []net.Listener
+	metrics    net.Listener
 	addrs      []string
 	eg         errgroup.Group
 }
@@ -73,8 +75,8 @@ func makeTLSConfig(config *config.Config) (*tls.Config, error) {
 	return tconf, nil
 }
 
-func getListener(laddr string, tconf *tls.Config) (net.Listener, error) {
-	listener, err := activation.GetListener(0, "tcp", laddr)
+func getListener(index uint, laddr string, tconf *tls.Config) (net.Listener, error) {
+	listener, err := activation.GetListener(index, "tcp", laddr)
 	if err == nil {
 		if listener.Addr().Network() != "tcp" {
 			return nil, errors.New("inherited a listener but it isn't tcp")
@@ -111,31 +113,44 @@ func New(config *config.Config, test bool) (*Daemon, error) {
 
 	var listeners []net.Listener
 	var addrs []string
+	var index uint
 	// open TLS listener
 	if config.Server.Listen != "" {
-		listener, err := getListener(config.Server.Listen, httpServer.TLSConfig)
+		listener, err := getListener(index, config.Server.Listen, httpServer.TLSConfig)
 		if err != nil {
 			return nil, err
 		}
 		listeners = append(listeners, listener)
 		addrs = append(addrs, "https://"+listener.Addr().String())
+		index++
 	}
 	// open plaintext listener
 	if config.Server.ListenHTTP != "" {
-		httpListener, err := activation.GetListener(1, "tcp", config.Server.ListenHTTP)
+		httpListener, err := activation.GetListener(index, "tcp", config.Server.ListenHTTP)
 		if err != nil {
 			return nil, err
 		}
 		listeners = append(listeners, httpListener)
 		addrs = append(addrs, "http://"+httpListener.Addr().String())
+		index++
 	}
 	if len(listeners) == 0 {
 		return nil, errors.New("no listeners configured")
+	}
+	// open metrics listener
+	var metricsListener net.Listener
+	if config.Server.ListenMetrics != "" {
+		metricsListener, err = activation.GetListener(index, "tcp", config.Server.ListenMetrics)
+		if err != nil {
+			return nil, err
+		}
+		// index++
 	}
 	return &Daemon{
 		server:     srv,
 		httpServer: httpServer,
 		listeners:  listeners,
+		metrics:    metricsListener,
 		addrs:      addrs,
 	}, nil
 }
@@ -153,6 +168,20 @@ func (d *Daemon) Serve() error {
 		})
 	}
 	log.Info().Strs("urls", d.addrs).Msg("listening for requests")
+	if d.metrics != nil {
+		srv := &http.Server{
+			Handler:      promhttp.Handler(),
+			ReadTimeout:  10 * time.Second,
+			WriteTimeout: 10 * time.Second,
+			IdleTimeout:  65 * time.Second,
+		}
+		go func() {
+			err := srv.Serve(d.metrics)
+			log.Err(err).Msg("metrics listener stopped")
+		}()
+		log.Info().Str("url", fmt.Sprintf("http://%s/metrics", d.metrics.Addr())).
+			Msg("listening for metrics")
+	}
 	return d.eg.Wait()
 }
 
