@@ -94,7 +94,13 @@ func (sr *streamReader) Read(d []byte) (copied int, err error) {
 			return copied, errors.New("unexpected end to stream")
 		}
 		if err := sr.readSector(sr.nextSector, sr.buf); err != nil {
-			return copied, err
+			// If the error is not an EOF, return it now. However,
+			// if it is an EOF, ignore it so the buffer can be
+			// copied into the destination and remaining bytes
+			// can be updated
+			if err != io.EOF {
+				return copied, err
+			}
 		}
 		copy(d, sr.buf)
 		copied += n
