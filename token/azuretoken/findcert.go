@@ -101,13 +101,18 @@ func (t *kvToken) loadCertificateLatest(ctx context.Context, baseURL, certName s
 	return t.loadCertificateVersion(ctx, baseURL, words[2], words[3])
 }
 
+var errKeyID = errors.New("id: expected URL of a certificate, certificate version, or key version")
+
 func parseKeyURL(keyURL string) (words []string, baseURL string, err error) {
+	if keyURL == "" {
+		return nil, "", errKeyID
+	}
 	// deconstruct URL to call GetKey so it can put it back together again
 	u, err := url.Parse(keyURL)
 	if err != nil {
 		return nil, "", fmt.Errorf("id: %w", err)
 	} else if u.Scheme == "" || u.Host == "" {
-		return nil, "", fmt.Errorf("id: invalid URL")
+		return nil, "", errKeyID
 	}
 	words = strings.Split(u.Path, "/")
 	u.Path = ""

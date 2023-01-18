@@ -75,7 +75,7 @@ func (t *kvToken) Ping(ctx context.Context) error {
 		}
 		ctx, cancel := context.WithTimeout(ctx, keyConf.GetTimeout())
 		defer cancel()
-		_, err := t.GetKey(ctx, keyConf.Name())
+		_, err := t.getKey(ctx, keyConf, true)
 		if err != nil {
 			return fmt.Errorf("checking key %q: %w", keyConf.Name(), err)
 		}
@@ -93,12 +93,13 @@ func (t *kvToken) GetKey(ctx context.Context, keyName string) (token.Key, error)
 	if err != nil {
 		return nil, err
 	}
-	if keyConf.ID == "" {
-		return nil, fmt.Errorf("key %q must have \"id\" set to the fully-qualified key identifier URL of an Azure key version, certificate or certificate version", keyName)
-	}
+	return t.getKey(ctx, keyConf, false)
+}
+
+func (t *kvToken) getKey(ctx context.Context, keyConf *config.KeyConfig, pingOnly bool) (token.Key, error) {
 	words, baseURL, err := parseKeyURL(keyConf.ID)
 	if err != nil {
-		return nil, fmt.Errorf("key %q: %w", keyName, err)
+		return nil, fmt.Errorf("key %q: %w", keyConf.Name(), err)
 	}
 	wantKeyID := token.KeyID(ctx)
 	var cert *certRef
@@ -117,20 +118,26 @@ func (t *kvToken) GetKey(ctx context.Context, keyName string) (token.Key, error)
 		// link to a cert version, get the key version and cert contents from it
 		cert, err = t.loadCertificateVersion(ctx, baseURL, words[2], words[3])
 		if err != nil {
-			return nil, fmt.Errorf("key %q: fetching certificate: %w", keyName, err)
+			return nil, fmt.Errorf("key %q: fetching certificate: %w", keyConf.Name(), err)
+		} else if pingOnly {
+			return nil, nil
 		}
 	case len(words) == 3 && words[1] == "certificates":
 		// link to a cert, pick the latest version
 		cert, err = t.loadCertificateLatest(ctx, baseURL, words[2])
 		if err != nil {
-			return nil, fmt.Errorf("key %q: fetching certificate: %w", keyName, err)
+			return nil, fmt.Errorf("key %q: fetching certificate: %w", keyConf.Name(), err)
+		} else if pingOnly {
+			return nil, nil
 		}
 	default:
-		return nil, fmt.Errorf("key %q must have \"id\" set to the fully-qualified key identifier URL of an Azure key version, certificate or certificate version", keyName)
+		return nil, fmt.Errorf("key %q: %w", keyConf.Name(), errKeyID)
 	}
 	key, err := t.cli.GetKey(ctx, baseURL, cert.KeyName, cert.KeyVersion)
 	if err != nil {
-		return nil, fmt.Errorf("key %q: %w", keyName, err)
+		return nil, fmt.Errorf("key %q: %w", keyConf.Name(), err)
+	} else if pingOnly {
+		return nil, nil
 	}
 	// strip off -HSM suffix to get a key type jose will accept
 	kty := strings.TrimSuffix(string(key.Key.Kty), "-HSM")
