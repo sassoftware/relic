@@ -27,6 +27,15 @@ func (s *Server) serveListKeys(rw http.ResponseWriter, req *http.Request) error 
 	userInfo := authmodel.RequestInfo(req)
 	keys := []string{}
 	for key, keyConf := range s.Config.Keys {
+		if keyConf.Hide {
+			continue
+		}
+		if keyConf.Alias != "" {
+			keyConf = s.Config.Keys[keyConf.Alias]
+			if keyConf == nil {
+				continue
+			}
+		}
 		if !keyConf.Hide && userInfo.Allowed(keyConf) {
 			keys = append(keys, key)
 		}
