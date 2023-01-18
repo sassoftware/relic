@@ -20,6 +20,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"crypto"
+	"fmt"
 	"io"
 	"io/ioutil"
 
@@ -97,7 +98,10 @@ func tarAddFile(tw *tar.Writer, name string, contents []byte) error {
 func msiToTarDir(cdf *comdoc.ComDoc, tw *tar.Writer, parent *comdoc.DirEnt, path string) error {
 	files, err := cdf.ListDir(parent)
 	if err != nil {
-		return err
+		if path == "" {
+			return fmt.Errorf("listing root storage: %w", err)
+		}
+		return fmt.Errorf("listing storage %q: %w", path, err)
 	}
 	sortMsiFiles(files)
 	for _, item := range files {
@@ -106,7 +110,7 @@ func msiToTarDir(cdf *comdoc.ComDoc, tw *tar.Writer, parent *comdoc.DirEnt, path
 		case comdoc.DirStream:
 			r, err := cdf.ReadStream(item)
 			if err != nil {
-				return err
+				return fmt.Errorf("reading MSI stream %q: %w", itemPath, err)
 			}
 			hdr := &tar.Header{
 				Name: itemPath,
@@ -117,7 +121,7 @@ func msiToTarDir(cdf *comdoc.ComDoc, tw *tar.Writer, parent *comdoc.DirEnt, path
 				return err
 			}
 			if _, err := io.Copy(tw, r); err != nil {
-				return err
+				return fmt.Errorf("transforming MSI stream %q: %w", itemPath, err)
 			}
 		case comdoc.DirStorage:
 			if err := msiToTarDir(cdf, tw, item, itemPath+"/"); err != nil {

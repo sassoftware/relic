@@ -18,6 +18,7 @@ package comdoc
 
 import (
 	"errors"
+	"fmt"
 	"io"
 )
 
@@ -26,7 +27,7 @@ type streamReader struct {
 	nextSector SecID
 	sat        []SecID
 	sectorSize int
-	readSector func(SecID, []byte) error
+	readSector func(SecID, []byte) (int, error)
 	buf, saved []byte
 }
 
@@ -63,43 +64,51 @@ func (sr *streamReader) Read(d []byte) (copied int, err error) {
 	}
 	// read from previously buffered sector
 	if len(sr.saved) > 0 {
-		n := len(sr.saved)
-		if n > len(d) {
-			n = len(d)
-		}
-		copy(d[:n], sr.saved[:n])
+		n := copy(d, sr.saved)
 		d = d[n:]
 		sr.saved = sr.saved[n:]
 		copied += n
 		sr.remaining -= uint32(n)
 	}
 	// read whole sectors
-	n := sr.sectorSize
-	for len(d) >= n {
+	for len(d) >= sr.sectorSize {
 		if sr.nextSector < 0 {
 			return copied, errors.New("unexpected end to stream")
 		}
-		if err := sr.readSector(sr.nextSector, d[:n]); err != nil {
-			return copied, err
+		n, err := sr.readSector(sr.nextSector, d[:sr.sectorSize])
+		if n > 0 {
+			d = d[n:]
+			copied += n
+			sr.remaining -= uint32(n)
 		}
-		d = d[n:]
-		copied += n
-		sr.remaining -= uint32(n)
+		if err != io.EOF && err != nil {
+			return copied, err
+		} else if n < sr.sectorSize && sr.remaining > 0 {
+			return copied, fmt.Errorf("short read of sector %d: expected %d bytes but got %d", sr.nextSector, sr.sectorSize, n)
+		}
 		sr.nextSector = sr.sat[sr.nextSector]
 	}
 	// read partial sector and buffer the rest
 	if len(d) > 0 {
-		n = len(d)
 		if sr.nextSector < 0 {
 			return copied, errors.New("unexpected end to stream")
 		}
-		if err := sr.readSector(sr.nextSector, sr.buf); err != nil {
-			return copied, err
+		// read the full sector
+		sectorN, err := sr.readSector(sr.nextSector, sr.buf)
+		if sectorN > 0 {
+			// fill the rest of the result
+			copyN := copy(d, sr.buf)
+			copied += copyN
+			sr.remaining -= uint32(copyN)
 		}
-		copy(d, sr.buf)
-		copied += n
-		sr.remaining -= uint32(n)
-		sr.saved = sr.buf[n:]
+		if err != io.EOF && err != nil {
+			return copied, err
+		} else if sectorN < sr.sectorSize && sr.remaining > 0 {
+			// it's ok if the final sector is truncated if there are no more bytes in the stream
+			return copied, fmt.Errorf("short read of sector %d: expected %d bytes but got %d", sr.nextSector, sr.remaining, sectorN)
+		}
+		// save the remainder, if anything
+		sr.saved = sr.buf[len(d):]
 		sr.nextSector = sr.sat[sr.nextSector]
 	}
 	return copied, nil

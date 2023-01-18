@@ -82,7 +82,7 @@ func (r *ComDoc) writeShortSAT() error {
 // sector stream" instead of within the file at large. The short sector stream
 // is a regular stream whose first block is pointed to by the root storage
 // dirent.
-func (r *ComDoc) readShortSector(shortSector SecID, buf []byte) error {
+func (r *ComDoc) readShortSector(shortSector SecID, buf []byte) (int, error) {
 	// figure out which big sector holds the short sector
 	bigSectorIndex := int(shortSector) * r.ShortSectorSize / r.SectorSize
 	bigSectorID := r.Files[r.rootStorage].NextSector
@@ -92,8 +92,7 @@ func (r *ComDoc) readShortSector(shortSector SecID, buf []byte) error {
 	// translate to a file position
 	n := r.sectorToOffset(bigSectorID)
 	n += int64(int(shortSector)*r.ShortSectorSize - bigSectorIndex*r.SectorSize)
-	_, err := r.File.ReadAt(buf, n)
-	return err
+	return r.File.ReadAt(buf, n)
 }
 
 // Write a short sector at the given position. This will allocate new space in

@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"io"
 )
 
 // Convert a sector ID to an absolute file position
@@ -31,16 +32,18 @@ func (r *ComDoc) sectorToOffset(sector SecID) int64 {
 }
 
 // Read the specified sector
-func (r *ComDoc) readSector(sector SecID, buf []byte) error {
-	_, err := r.File.ReadAt(buf, r.sectorToOffset(sector))
-	return err
+func (r *ComDoc) readSector(sector SecID, buf []byte) (int, error) {
+	return r.File.ReadAt(buf, r.sectorToOffset(sector))
 }
 
 // Read the specified sector into a binary structure. It must be exactly 1
 // sector in size already.
 func (r *ComDoc) readSectorStruct(sector SecID, v interface{}) error {
-	if err := r.readSector(sector, r.sectorBuf); err != nil {
+	n, err := r.readSector(sector, r.sectorBuf)
+	if err != nil && err != io.EOF {
 		return err
+	} else if n < r.SectorSize {
+		return io.ErrUnexpectedEOF
 	}
 	return binary.Read(bytes.NewReader(r.sectorBuf), binary.LittleEndian, v)
 }
