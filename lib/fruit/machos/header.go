@@ -175,7 +175,7 @@ func scanFile(r io.Reader) (*machoMarkers, error) {
 	return f, nil
 }
 
-func (f *machoMarkers) PatchSignature(oldHeader []byte, sigSize int64) (newHeader, sigBuf []byte, sigStart int64, patch *binpatch.PatchSet, err error) {
+func (f *machoMarkers) PatchSignature(oldHeader []byte, sigSize int64) (newHeader, sigBuf []byte, sigStart int64, patch *binpatch.PatchSet, padding int64, err error) {
 	patch = binpatch.New()
 	newHeader = oldHeader
 	sigStart = f.sigStart
@@ -191,7 +191,7 @@ func (f *machoMarkers) PatchSignature(oldHeader []byte, sigSize int64) (newHeade
 		sigStart = align(f.codeSize, alignSegmentFile)
 	}
 	// allocate patch buffer for signature
-	padding := sigStart - f.codeSize
+	padding = sigStart - f.codeSize
 	padded := make([]byte, padding+sigSize)
 	sigBuf = padded[padding:]
 	// make room for signature loadcmd if there isn't one already
@@ -243,12 +243,7 @@ func (f *machoMarkers) patchLoadCmd(newHeader []byte, patch *binpatch.PatchSet, 
 
 func (f *machoMarkers) patchLinkEdit(newHeader []byte, patch *binpatch.PatchSet, sigStart, sigSize int64) {
 	hdr := f.linkEditHdr
-	end := hdr.Offset + hdr.Filesz
-	if f.sigLen != 0 {
-		// truncate old signature
-		end = uint64(sigStart)
-	}
-	end += uint64(sigSize)
+	end := uint64(sigStart + sigSize)
 	hdr.Filesz = end - hdr.Offset
 	hdr.Memsz = uint64(align(int64(end-hdr.Offset), alignSegmentMem))
 	var patchStart, patchSize int64

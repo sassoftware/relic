@@ -27,7 +27,7 @@ func Sign(ctx context.Context, r io.Reader, cert *certloader.Certificate, params
 	estimatedSize += 16384
 	// patch header to make space
 	oldHeaderSize := len(headerBuf)
-	headerBuf, sigBuf, sigStart, patch, err := markers.PatchSignature(headerBuf, estimatedSize)
+	headerBuf, sigBuf, sigStart, patch, padding, err := markers.PatchSignature(headerBuf, estimatedSize)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -39,7 +39,7 @@ func Sign(ctx context.Context, r io.Reader, cert *certloader.Certificate, params
 		}
 	}
 	// splice the patched header with the rest of the stream
-	params.Pages = io.LimitReader(io.MultiReader(bytes.NewReader(headerBuf), r), sigStart)
+	params.Pages = io.LimitReader(io.MultiReader(bytes.NewReader(headerBuf), r, bytes.NewReader(make([]byte, padding))), sigStart)
 	if markers.sigLen != 0 {
 		// read the old signature after the pages are hashed
 		params.OldSignature = io.LimitReader(r, markers.sigLen)
