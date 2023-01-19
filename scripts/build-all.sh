@@ -18,7 +18,7 @@ set -ex -o pipefail
 version=$(./scripts/version.sh)
 commit=$(git rev-parse HEAD)
 ldflags="-s -w -X main.version=$version -X main.commit=$commit"
-goversion=1.18
+goversion=1.19
 
 rm -rf build
 mkdir build

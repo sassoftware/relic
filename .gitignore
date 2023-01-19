@@ -35,10 +35,12 @@ _*
 *.sig
 *.SIG
 *.xap
+*.zip
 
 *.orig
 *.rej
 *.swp
+*.log
 .vscode
 
 # Created by https://www.gitignore.io/api/go,vim
