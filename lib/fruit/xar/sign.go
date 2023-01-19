@@ -133,7 +133,7 @@ func reserveSignatures(toc *etree.Element, hashType crypto.Hash, certs []*x509.C
 		added++
 	}
 	// reserve space for CMS
-	cmsSize := int64(4096)
+	cmsSize := int64(6144)
 	for _, cert := range certs {
 		cmsSize += int64(len(cert.Raw))
 	}
