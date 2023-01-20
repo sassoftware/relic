@@ -21,6 +21,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/x509"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -28,7 +29,6 @@ import (
 
 	"github.com/miekg/pkcs11"
 
-	"github.com/sassoftware/relic/v7/lib/pkcs8"
 	"github.com/sassoftware/relic/v7/token"
 )
 
@@ -135,7 +135,7 @@ func (tok *Token) Import(keyName string, privKey crypto.PrivateKey) (token.Key, 
 		// only the flags, label etc. are useful for Unwrap
 		privAttrsUnwrap := attrConcat(commonAttrs, newPrivateKeyAttrs)
 		var pk8 []byte
-		pk8, err = pkcs8.MarshalPKCS8PrivateKey(privKey)
+		pk8, err = x509.MarshalPKCS8PrivateKey(privKey)
 		if err == nil {
 			err = tok.importPkcs8(pk8, privAttrsUnwrap)
 		}
