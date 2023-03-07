@@ -27,7 +27,7 @@ import (
 	"time"
 	"unicode/utf16"
 
-	uuid "github.com/satori/go.uuid"
+	"github.com/google/uuid"
 
 	"github.com/sassoftware/relic/v7/lib/certloader"
 	"github.com/sassoftware/relic/v7/lib/pkcs7"
@@ -53,9 +53,10 @@ func (cat *Catalog) makeCatalog() CertTrustList {
 	if cat.Version == 2 {
 		memberOid = OidCatalogListMemberV2
 	}
+	listID := uuid.Must(uuid.NewRandom())
 	return CertTrustList{
 		SubjectUsage:     []asn1.ObjectIdentifier{OidCatalogList},
-		ListIdentifier:   uuid.NewV4().Bytes(),
+		ListIdentifier:   listID[:],
 		EffectiveDate:    time.Now().UTC(),
 		SubjectAlgorithm: pkix.AlgorithmIdentifier{Algorithm: memberOid, Parameters: asn1.NullRawValue},
 		Entries:          append(cat.Sha2Entries, cat.Sha1Entries...),

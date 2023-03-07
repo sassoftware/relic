@@ -41,6 +41,7 @@ _*
 *.rej
 *.swp
 *.log
+.dccache
 .vscode
 
 # Created by https://www.gitignore.io/api/go,vim
