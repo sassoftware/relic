@@ -45,6 +45,7 @@ require (
 	google.golang.org/genproto v0.0.0-20230306155012-7f2fa6fef1f4
 	gopkg.in/yaml.v3 v3.0.1
 	howett.net/plist v1.0.0
+	software.sslmate.com/src/go-pkcs12 v0.2.0
 )
 
 require (
