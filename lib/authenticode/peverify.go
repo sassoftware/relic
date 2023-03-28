@@ -88,7 +88,10 @@ func checkSignatures(blob []byte, image io.ReadSeeker) ([]PESignature, error) {
 	phvalues := make(map[crypto.Hash][]byte)
 	allhashes := make(map[crypto.Hash]bool)
 	sigs := make([]PESignature, 0, 1)
-	for len(blob) > 3 {
+	for len(blob) != 0 {
+		if len(blob) < 4 {
+			return nil, errors.New("invalid certificate table")
+		}
 		wLen := binary.LittleEndian.Uint32(blob[:4])
 		end := (int(wLen) + 7) / 8 * 8
 		size := int(wLen) - 8
