@@ -63,6 +63,7 @@ type KeyConfig struct {
 	PgpCertificate  string   // Path to PGP certificate associated with this key
 	X509Certificate string   // Path to X.509 certificate associated with this key
 	KeyFile         string   // For "file" tokens, path to the private key
+	IsPkcs12        bool     // If true, key file contains PKCS#12 key and certificate chain
 	Roles           []string // List of user roles that can use this key
 	Timestamp       bool     // If true, attach a timestamped countersignature when possible
 	Hide            bool     // If true, then omit this key from 'remote list-keys'

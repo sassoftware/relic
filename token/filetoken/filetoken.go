@@ -99,9 +99,19 @@ func (tok *fileToken) GetKey(ctx context.Context, keyName string) (token.Key, er
 		}
 	}
 	*/
-	privateKey, err := certloader.ParseAnyPrivateKey(blob, tok.prompt)
-	if err != nil {
-		return nil, err
+	var privateKey crypto.PrivateKey
+	if keyConf.IsPkcs12 {
+		cert, err := certloader.ParsePKCS12(blob, tok.prompt)
+		if err != nil {
+			return nil, err
+		}
+		privateKey = cert.PrivateKey
+	} else {
+		var err error
+		privateKey, err = certloader.ParseAnyPrivateKey(blob, tok.prompt)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return &fileKey{
 		keyConf: keyConf,
