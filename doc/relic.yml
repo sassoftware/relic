@@ -105,6 +105,8 @@ keys:
     token: file
     # Path to the private key file. The password is specified in the token configuration above.
     keyfile: ./keys/rsa1.key
+    # true if key file contains PKCS#12 key and certificate chain
+    ispkcs12: false
     # Same options as above: pgpcertificate, x509certificate, timestamp, roles
 
   my_gcloud_key:
