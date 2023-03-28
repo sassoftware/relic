@@ -22,7 +22,7 @@ import (
 	"encoding/pem"
 	"errors"
 
-	"golang.org/x/crypto/pkcs12"
+	"software.sslmate.com/src/go-pkcs12"
 
 	"github.com/sassoftware/relic/v7/lib/passprompt"
 	"github.com/sassoftware/relic/v7/lib/x509tools"
