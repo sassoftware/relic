@@ -63,13 +63,14 @@ func verifyBundle(r io.ReaderAt, files zipFiles, sig *AppxSignature, skipDigests
 	for i, pkg := range bundle.Packages {
 		packages[pkg.FileName] = i
 	}
+
 	sig.Bundled = make(map[string]*AppxSignature)
 	publisher := x509tools.FormatPkixName(sig.Signature.Certificate.RawSubject, x509tools.NameStyleMsOsco)
 	if bundle.Identity.Publisher != publisher {
 		return fmt.Errorf("bundle manifest: publisher identity mismatch:\nexpected: %s\nactual: %s", publisher, bundle.Identity.Publisher)
 	}
 	for _, zf := range files {
-		if !strings.HasSuffix(zf.Name, ".appx") {
+		if !strings.HasSuffix(zf.Name, ".appx") && !strings.HasSuffix(zf.Name, ".msix") {
 			continue
 		}
 		if zf.Method != zip.Store {
@@ -93,7 +94,7 @@ func verifyBundle(r io.ReaderAt, files zipFiles, sig *AppxSignature, skipDigests
 			return fmt.Errorf("bundle manifest: %s claimed size of %d but actual size is %d", zf.Name, pkg.Size, zf.UncompressedSize64)
 		}
 		nested := io.NewSectionReader(r, offset, int64(zf.UncompressedSize64))
-		nestedSig, err := Verify(nested, int64(zf.UncompressedSize64), skipDigests)
+		nestedSig, err := Verify(nested, int64(zf.UncompressedSize64), skipDigests, pkg.Type != "application")
 		if err != nil {
 			return fmt.Errorf("bundled file %s: %w", zf.Name, err)
 		}
@@ -104,7 +105,7 @@ func verifyBundle(r io.ReaderAt, files zipFiles, sig *AppxSignature, skipDigests
 	}
 	for name, unseen := range packages {
 		if unseen >= 0 {
-			return fmt.Errorf("bundle missing file: %s", name)
+			return fmt.Errorf("bundle missing file: %s; %v", name, packages)
 		}
 	}
 	return nil

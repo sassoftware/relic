@@ -24,13 +24,13 @@ import (
 )
 
 const (
-	appxSignature     = "AppxSignature.p7x"
-	appxCodeIntegrity = "AppxMetadata/CodeIntegrity.cat"
-	appxBlockMap      = "AppxBlockMap.xml"
-	appxManifest      = "AppxManifest.xml"
-	appxContentTypes  = "[Content_Types].xml"
-
+	appxSignature      = "AppxSignature.p7x"
+	appxCodeIntegrity  = "AppxMetadata/CodeIntegrity.cat"
+	appxBlockMap       = "AppxBlockMap.xml"
+	appxManifest       = "AppxManifest.xml"
+	appxContentTypes   = "[Content_Types].xml"
 	bundleManifestFile = "AppxMetadata/AppxBundleManifest.xml"
+	resourcesPri       = "resources.pri"
 )
 
 type AppxSignature struct {

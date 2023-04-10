@@ -32,7 +32,7 @@ import (
 	"github.com/sassoftware/relic/v7/signers/sigerrors"
 )
 
-func Verify(r io.ReaderAt, size int64, skipDigests bool) (*AppxSignature, error) {
+func Verify(r io.ReaderAt, size int64, skipDigests bool, skipCatalog bool) (*AppxSignature, error) {
 	inz, err := zip.NewReader(r, size)
 	if err != nil {
 		return nil, err
@@ -46,6 +46,8 @@ func Verify(r io.ReaderAt, size int64, skipDigests bool) (*AppxSignature, error)
 		return nil, err
 	}
 	sig.IsBundle = files[bundleManifestFile] != nil
+	skipCatalog = skipCatalog || files[resourcesPri] != nil
+
 	if err := verifyFile(files, sig, "AXBM", appxBlockMap); err != nil {
 		return nil, err
 	}
@@ -58,9 +60,11 @@ func Verify(r io.ReaderAt, size int64, skipDigests bool) (*AppxSignature, error)
 	if err := verifyBlockMap(inz, files, skipDigests); err != nil {
 		return nil, err
 	}
-	if err := verifyCatalog(files[appxCodeIntegrity], sig); err != nil {
+
+	if err := verifyCatalog(files[appxCodeIntegrity], sig); err != nil && !skipCatalog {
 		return nil, err
 	}
+
 	if err := verifyMeta(r, size, sig, skipDigests); err != nil {
 		return nil, err
 	}
@@ -100,15 +104,17 @@ func readSignature(zf *zip.File) (*AppxSignature, error) {
 	}
 	ts, err := pkcs9.VerifyOptionalTimestamp(pksig)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error verifying timestamp: %w", err)
 	}
+
 	indirect := new(authenticode.SpcIndirectDataContentMsi)
 	if err := psd.Content.ContentInfo.Unmarshal(indirect); err != nil {
 		return nil, fmt.Errorf("invalid appx signature: %w", err)
 	}
+
 	hash, err := x509tools.PkixDigestToHashE(indirect.MessageDigest.DigestAlgorithm)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error digesting: %w", err)
 	}
 	digests := indirect.MessageDigest.Digest
 	if !bytes.HasPrefix(digests, []byte("APPX")) {

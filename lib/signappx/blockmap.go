@@ -25,6 +25,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	"strings"
 
 	"github.com/sassoftware/relic/v7/lib/zipslicer"
@@ -93,7 +94,7 @@ func verifyBlockMap(inz *zip.Reader, files zipFiles, skipDigests bool) error {
 	bm.Hash = hash
 	bmfiles := bm.File
 	for _, zf := range inz.File {
-		if noHashFiles[zf.Name] || (isBundle && strings.HasSuffix(zf.Name, ".appx")) {
+		if noHashFiles[zf.Name] || (isBundle && (strings.HasSuffix(zf.Name, ".appx") || strings.HasSuffix(zf.Name, ".msix"))) {
 			continue
 		}
 		if len(bmfiles) == 0 {
@@ -172,12 +173,11 @@ func (b *blockMap) CopySizes(blob []byte) error {
 			// compression to avoid screwing up the sizes.
 			continue
 		} else if i >= len(b.File) {
-			return errors.New("old block map has too many files")
+			return fmt.Errorf("old block map has too many files: %v", oldf.Name)
 		}
 		newf := &b.File[i]
-		if newf.Name != oldf.Name {
-			return fmt.Errorf("old block map doesn't match new: %s", oldf.Name)
-		}
+		newf.Name = oldf.Name
+
 		for j, oldblock := range oldf.Block {
 			newf.Block[j].Size = oldblock.Size
 		}
@@ -233,7 +233,7 @@ func (b *blockMap) AddFile(f *zipslicer.File, raw, cooked io.Writer) error {
 			return err
 		}
 	}
-	if !(noHashFiles[f.Name] || strings.HasSuffix(f.Name, ".appx")) {
+	if !(noHashFiles[f.Name] || strings.HasSuffix(f.Name, ".appx") || strings.HasSuffix(f.Name, ".msix")) {
 		if f.Method != zip.Store {
 			b.unverifiedSizes = true
 		}
@@ -250,7 +250,12 @@ func (b *blockMap) Marshal() ([]byte, error) {
 }
 
 func zipToDos(name string) string {
-	return strings.ReplaceAll(name, "/", "\\")
+	k1 := strings.ReplaceAll(name, "/", "\\")
+	s, err := url.QueryUnescape(k1)
+	if err != nil {
+		return ""
+	}
+	return s
 }
 
 func dosToZip(name string) string {

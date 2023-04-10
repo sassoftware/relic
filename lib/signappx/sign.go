@@ -55,6 +55,18 @@ func (i *AppxDigest) Sign(ctx context.Context, cert *certloader.Certificate) (pa
 	if err := i.outz.WriteDirectory(w, w, true); err != nil {
 		return nil, nil, nil, err
 	}
+
+	// the patch start segment could have changed while rebuilding the output file
+	// calculate it again by identifying the first metadata related file
+copyf:
+	for _, f := range i.outz.File {
+		switch f.Name {
+		case appxManifest, appxBlockMap, appxContentTypes, appxCodeIntegrity, appxSignature, bundleManifestFile:
+			i.patchStart = int64(f.Offset)
+			break copyf
+		}
+	}
+
 	patch = binpatch.New()
 	patch.Add(i.patchStart, i.patchLen, i.patchBuf.Bytes())
 	return patch, ts, catSig, nil
@@ -65,6 +77,7 @@ func (i *AppxDigest) addZipEntry(name string, contents []byte) error {
 	// calculate block sizes. The blocks for the rest of the files can be
 	// cribbed from the old blockmap.
 	deflate := !(name == appxManifest || name == bundleManifestFile)
+
 	// Don't use descriptors for the 3 files that signtool adds, it seems to
 	// aggrevate the generic verifier although the appx works fine.
 	useDesc := !(name == appxContentTypes || name == appxCodeIntegrity || name == appxSignature)

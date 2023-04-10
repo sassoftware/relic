@@ -61,7 +61,7 @@ func verify(f *os.File, opts signers.VerifyOpts) ([]*signers.Signature, error) {
 	if err != nil {
 		return nil, err
 	}
-	sig, err := signappx.Verify(f, size, opts.NoDigests)
+	sig, err := signappx.Verify(f, size, opts.NoDigests, false)
 	if err != nil {
 		return nil, err
 	}
