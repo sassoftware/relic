@@ -240,6 +240,7 @@ func readOptHeader(r io.Reader, d io.Writer, peStart int64, fh *pe.FileHeader) (
 		dd4Start = 128
 		hvals.sizeOfHdr = int64(opt.SizeOfHeaders)
 		hvals.sectionAlign = int(opt.SectionAlignment)
+		hvals.fileAlign = int(opt.FileAlignment)
 	case 0x20b:
 		// PE32+
 		var opt pe.OptionalHeader64
@@ -253,6 +254,7 @@ func readOptHeader(r io.Reader, d io.Writer, peStart int64, fh *pe.FileHeader) (
 		dd4Start = 144
 		hvals.sizeOfHdr = int64(opt.SizeOfHeaders)
 		hvals.sectionAlign = int(opt.SectionAlignment)
+		hvals.fileAlign = int(opt.FileAlignment)
 	default:
 		return nil, errors.New("unrecognized optional header magic")
 	}
@@ -293,6 +295,16 @@ func readSections(r io.Reader, d io.Writer, fh *pe.FileHeader, hvals *peHeaderVa
 		}
 		break
 	}
+	// Check for any sections that are not properly aligned
+	// and adjust alignment if required
+	for i := 0; i < len(sections); i++ {
+		if sections[i].SizeOfRawData == 0 {
+			continue
+		}
+		if v := sections[i].SizeOfRawData % uint32(hvals.fileAlign); v != 0 {
+			sections[i].SizeOfRawData += uint32(hvals.fileAlign) - v
+		}
+	}
 	// hash the padding after the section table
 	if _, err := io.CopyN(d, r, hvals.sizeOfHdr-secTblEnd); err != nil {
 		return nil, err
@@ -331,6 +343,8 @@ type peHeaderValues struct {
 	sizeOfHdr int64
 	// section alignment in memory
 	sectionAlign int
+	// section alignment in file
+	fileAlign int
 	// file offset and size of the certificate table
 	certStart, certSize int64
 }
