@@ -17,20 +17,16 @@
 package certloader
 
 import (
-	"crypto"
 	"crypto/x509"
-	"encoding/pem"
 	"errors"
 
 	"software.sslmate.com/src/go-pkcs12"
 
 	"github.com/sassoftware/relic/v7/lib/passprompt"
-	"github.com/sassoftware/relic/v7/lib/x509tools"
 )
 
 func ParsePKCS12(blob []byte, prompt passprompt.PasswordGetter) (*Certificate, error) {
 	var password string
-	var blocks []*pem.Block
 	var triedEmpty bool
 	for {
 		var err error
@@ -43,45 +39,17 @@ func ParsePKCS12(blob []byte, prompt passprompt.PasswordGetter) (*Certificate, e
 			}
 			triedEmpty = true
 		}
-		blocks, err = pkcs12.ToPEM(blob, password)
-		if err == nil {
-			break
-		} else if err != pkcs12.ErrIncorrectPassword {
+		priv, leaf, chain, err := pkcs12.DecodeChain(blob, password)
+		if errors.Is(err, pkcs12.ErrIncorrectPassword) {
+			continue
+		} else if err != nil {
 			return nil, err
 		}
+		certs := append([]*x509.Certificate{leaf}, chain...)
+		return &Certificate{
+			PrivateKey:   priv,
+			Leaf:         leaf,
+			Certificates: certs,
+		}, nil
 	}
-	var certs []*x509.Certificate
-	var privKey crypto.PrivateKey
-	for _, block := range blocks {
-		switch block.Type {
-		case "CERTIFICATE":
-			newcerts, err := parseCertificatesDer(block.Bytes)
-			if err != nil {
-				return nil, err
-			}
-			certs = append(certs, newcerts.Certificates...)
-		case "PRIVATE KEY":
-			if privKey != nil {
-				return nil, errors.New("multiple private keys")
-			}
-			var err error
-			privKey, err = parsePrivateKey(block.Bytes)
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
-	if privKey == nil {
-		return nil, errors.New("incorrect password or no private key")
-	}
-	ret := &Certificate{PrivateKey: privKey, Certificates: certs}
-	for _, cert := range certs {
-		if x509tools.SameKey(cert.PublicKey, privKey) {
-			ret.Leaf = cert
-		}
-	}
-	if ret.Leaf == nil {
-		return nil, errors.New("leaf certificate not found")
-	}
-	return ret, nil
 }
