@@ -46,6 +46,7 @@ type fileToken struct {
 type fileKey struct {
 	keyConf *config.KeyConfig
 	signer  crypto.Signer
+	cert    []byte
 }
 
 func Open(conf *config.Config, tokenName string, prompt passprompt.PasswordGetter) (token.Token, error) {
@@ -100,12 +101,16 @@ func (tok *fileToken) GetKey(ctx context.Context, keyName string) (token.Key, er
 	}
 	*/
 	var privateKey crypto.PrivateKey
+	var certBlob []byte
 	if keyConf.IsPkcs12 {
 		cert, err := certloader.ParsePKCS12(blob, tok.prompt)
 		if err != nil {
 			return nil, err
 		}
 		privateKey = cert.PrivateKey
+		for _, oneCert := range cert.Chain() {
+			certBlob = append(certBlob, oneCert.Raw...)
+		}
 	} else {
 		var err error
 		privateKey, err = certloader.ParseAnyPrivateKey(blob, tok.prompt)
@@ -116,6 +121,7 @@ func (tok *fileToken) GetKey(ctx context.Context, keyName string) (token.Key, er
 	return &fileKey{
 		keyConf: keyConf,
 		signer:  privateKey.(crypto.Signer),
+		cert:    certBlob,
 	}, nil
 }
 
@@ -136,7 +142,7 @@ func (key *fileKey) Config() *config.KeyConfig {
 }
 
 func (key *fileKey) Certificate() []byte {
-	return nil
+	return key.cert
 }
 
 func (key *fileKey) GetID() []byte {
