@@ -43,3 +43,12 @@ func readAndHash(r io.Reader, d io.Writer, n int) ([]byte, error) {
 func binaryReadBytes(buf []byte, val interface{}) error {
 	return binary.Read(bytes.NewReader(buf), binary.LittleEndian, val)
 }
+
+// pad an address to a multiple of align
+func align32(addr, align uint32) uint32 {
+	n := addr % align
+	if n != 0 {
+		addr += align - n
+	}
+	return addr
+}
