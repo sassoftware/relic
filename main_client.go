@@ -30,6 +30,7 @@ import (
 	_ "github.com/sassoftware/relic/v7/signers/appx"
 	_ "github.com/sassoftware/relic/v7/signers/cab"
 	_ "github.com/sassoftware/relic/v7/signers/cat"
+	_ "github.com/sassoftware/relic/v7/signers/cosign"
 	_ "github.com/sassoftware/relic/v7/signers/deb"
 	_ "github.com/sassoftware/relic/v7/signers/dmg"
 	_ "github.com/sassoftware/relic/v7/signers/jar"
