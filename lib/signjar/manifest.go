@@ -47,6 +47,9 @@ func ParseManifest(manifest []byte) (files *FilesMap, err error) {
 	if err != nil {
 		return nil, err
 	}
+	if len(sections) == 0 {
+		return nil, errors.New("manifest has no sections")
+	}
 	files = &FilesMap{
 		Order: make([]string, 0, len(sections)-1),
 		Files: make(map[string]http.Header, len(sections)-1),
