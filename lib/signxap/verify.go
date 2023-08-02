@@ -33,7 +33,8 @@ import (
 
 type XapSignature struct {
 	pkcs9.TimestampedSignature
-	Hash crypto.Hash
+	Hash     crypto.Hash
+	OpusInfo *authenticode.SpcSpOpusInfo
 }
 
 func Verify(r io.ReaderAt, size int64, skipDigests bool) (*XapSignature, error) {
@@ -88,6 +89,10 @@ func Verify(r io.ReaderAt, size int64, skipDigests bool) (*XapSignature, error) 
 	if err != nil {
 		return nil, err
 	}
+	opus, err := authenticode.GetOpusInfo(pksig.SignerInfo)
+	if err != nil {
+		return nil, err
+	}
 	if !skipDigests {
 		d := hash.New()
 		if _, err := io.Copy(d, io.NewSectionReader(r, 0, size)); err != nil {
@@ -99,5 +104,9 @@ func Verify(r io.ReaderAt, size int64, skipDigests bool) (*XapSignature, error) 
 			return nil, fmt.Errorf("digest mismatch: calculated %x != found %x", calc, expected)
 		}
 	}
-	return &XapSignature{TimestampedSignature: ts, Hash: hash}, nil
+	return &XapSignature{
+		TimestampedSignature: ts,
+		Hash:                 hash,
+		OpusInfo:             opus,
+	}, nil
 }

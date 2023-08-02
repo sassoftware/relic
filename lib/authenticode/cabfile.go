@@ -36,6 +36,7 @@ import (
 type CabSignature struct {
 	pkcs9.TimestampedSignature
 	Indirect *SpcIndirectDataContentPe
+	OpusInfo *SpcSpOpusInfo
 	HashFunc crypto.Hash
 	PatchSet *binpatch.PatchSet
 }
@@ -72,10 +73,15 @@ func VerifyCab(f io.ReaderAt, skipDigests bool) (*CabSignature, error) {
 	if err != nil {
 		return nil, err
 	}
+	opus, err := GetOpusInfo(pksig.SignerInfo)
+	if err != nil {
+		return nil, err
+	}
 	cabsig := &CabSignature{
 		TimestampedSignature: ts,
 		Indirect:             indirect,
 		HashFunc:             hash,
+		OpusInfo:             opus,
 	}
 	if !skipDigests {
 		digest, err := cabfile.Digest(io.NewSectionReader(f, 0, 1<<63-1), hash)
@@ -93,12 +99,12 @@ func VerifyCab(f io.ReaderAt, skipDigests bool) (*CabSignature, error) {
 }
 
 // Create the Authenticode structure for a CAB file signature using a previously-calculated digest (imprint).
-func SignCabImprint(ctx context.Context, digest *cabfile.CabinetDigest, cert *certloader.Certificate) (*binpatch.PatchSet, *pkcs9.TimestampedSignature, error) {
+func SignCabImprint(ctx context.Context, digest *cabfile.CabinetDigest, cert *certloader.Certificate, params *OpusParams) (*binpatch.PatchSet, *pkcs9.TimestampedSignature, error) {
 	indirect, err := makePeIndirect(digest.Imprint, digest.HashFunc, OidSpcCabImageData)
 	if err != nil {
 		return nil, nil, err
 	}
-	ts, err := signIndirect(ctx, indirect, digest.HashFunc, cert)
+	ts, err := signIndirect(ctx, indirect, digest.HashFunc, cert, params)
 	if err != nil {
 		return nil, nil, err
 	}

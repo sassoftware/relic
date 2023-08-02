@@ -29,6 +29,7 @@ import (
 	"github.com/sassoftware/relic/v7/lib/comdoc"
 	"github.com/sassoftware/relic/v7/lib/magic"
 	"github.com/sassoftware/relic/v7/signers"
+	"github.com/sassoftware/relic/v7/signers/pecoff"
 )
 
 var MsiSigner = &signers.Signer{
@@ -43,6 +44,7 @@ var MsiSigner = &signers.Signer{
 
 func init() {
 	MsiSigner.Flags().Bool("no-extended-sig", false, "(MSI) Don't emit a MsiDigitalSignatureEx digest")
+	pecoff.AddOpusFlags(MsiSigner)
 	signers.Register(MsiSigner)
 }
 
@@ -110,7 +112,7 @@ func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]b
 	if err != nil {
 		return nil, err
 	}
-	ts, err := authenticode.SignMSIImprint(opts.Context(), sum, opts.Hash, cert)
+	ts, err := authenticode.SignMSIImprint(opts.Context(), sum, opts.Hash, cert, pecoff.OpusFlags(opts))
 	if err != nil {
 		return nil, err
 	}
@@ -122,8 +124,9 @@ func verify(f *os.File, opts signers.VerifyOpts) ([]*signers.Signature, error) {
 	if err != nil {
 		return nil, err
 	}
-	return []*signers.Signature{&signers.Signature{
+	return []*signers.Signature{{
 		Hash:          sig.HashFunc,
 		X509Signature: &sig.TimestampedSignature,
+		SigInfo:       pecoff.FormatOpus(sig.OpusInfo),
 	}}, nil
 }

@@ -26,8 +26,8 @@ import (
 )
 
 // Create the Authenticode structure for a MSI file signature using a previously-calculated digest (imprint).
-func SignMSIImprint(ctx context.Context, digest []byte, hash crypto.Hash, cert *certloader.Certificate) (*pkcs9.TimestampedSignature, error) {
-	return SignSip(ctx, digest, hash, msiSipInfo, cert)
+func SignMSIImprint(ctx context.Context, digest []byte, hash crypto.Hash, cert *certloader.Certificate, params *OpusParams) (*pkcs9.TimestampedSignature, error) {
+	return SignSip(ctx, digest, hash, msiSipInfo, cert, params)
 }
 
 // Add a signature blob to an open MSI file. The extended signature blob is

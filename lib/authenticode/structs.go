@@ -19,7 +19,9 @@ package authenticode
 import (
 	"crypto/x509/pkix"
 	"encoding/asn1"
+	"encoding/binary"
 	"time"
+	"unicode/utf16"
 )
 
 var (
@@ -88,8 +90,29 @@ type SpcLink struct {
 }
 
 type SpcString struct {
-	Unicode string `asn1:"optional,tag:0,utf8"`
+	Unicode []byte `asn1:"optional,tag:0"` // BMPString
 	ASCII   string `asn1:"optional,tag:1,ia5"`
+}
+
+func NewSpcString(value string) SpcString {
+	runes := utf16.Encode([]rune(value))
+	raw := make([]byte, 2*len(runes))
+	for i, r := range runes {
+		binary.BigEndian.PutUint16(raw[i*2:], r)
+	}
+	return SpcString{Unicode: raw}
+}
+
+func (s SpcString) String() string {
+	if len(s.Unicode) != 0 && len(s.Unicode)%2 == 0 {
+		words := make([]uint16, len(s.Unicode)/2)
+		for i := range words {
+			words[i] = binary.BigEndian.Uint16(s.Unicode[i*2:])
+		}
+		runes := utf16.Decode(words)
+		return string(runes)
+	}
+	return s.ASCII
 }
 
 type SpcSerializedObject struct {

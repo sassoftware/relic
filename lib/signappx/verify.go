@@ -23,7 +23,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 
 	"github.com/sassoftware/relic/v7/lib/authenticode"
 	"github.com/sassoftware/relic/v7/lib/pkcs7"
@@ -124,10 +123,15 @@ func readSignature(zf *zip.File) (*AppxSignature, error) {
 		digestmap[name] = digests[4 : 4+hash.Size()]
 		digests = digests[4+hash.Size():]
 	}
+	opus, err := authenticode.GetOpusInfo(ts.SignerInfo)
+	if err != nil {
+		return nil, err
+	}
 	return &AppxSignature{
 		Signature:  &ts,
 		Hash:       hash,
 		HashValues: digestmap,
+		OpusInfo:   opus,
 	}, nil
 }
 
@@ -168,7 +172,7 @@ func readZipFile(zf *zip.File) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	blob, err := ioutil.ReadAll(r)
+	blob, err := io.ReadAll(r)
 	if err != nil {
 		return nil, err
 	}

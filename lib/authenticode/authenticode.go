@@ -28,6 +28,11 @@ import (
 	"github.com/sassoftware/relic/v7/lib/x509tools"
 )
 
+type OpusParams struct {
+	Description string
+	URL         string
+}
+
 func makePeIndirect(imprint []byte, hash crypto.Hash, oid asn1.ObjectIdentifier) (indirect SpcIndirectDataContentPe, err error) {
 	alg, ok := x509tools.PkixDigestAlgorithm(hash)
 	if !ok {
@@ -37,16 +42,16 @@ func makePeIndirect(imprint []byte, hash crypto.Hash, oid asn1.ObjectIdentifier)
 	indirect.Data.Type = oid
 	indirect.MessageDigest.Digest = imprint
 	indirect.MessageDigest.DigestAlgorithm = alg
-	indirect.Data.Value.File.File.Unicode = "<<<Obsolete>>>"
+	indirect.Data.Value.File.File = NewSpcString("")
 	return
 }
 
-func signIndirect(ctx context.Context, indirect interface{}, hash crypto.Hash, cert *certloader.Certificate) (*pkcs9.TimestampedSignature, error) {
+func signIndirect(ctx context.Context, indirect interface{}, hash crypto.Hash, cert *certloader.Certificate, params *OpusParams) (*pkcs9.TimestampedSignature, error) {
 	sig := pkcs7.NewBuilder(cert.Signer(), cert.Chain(), hash)
 	if err := sig.SetContent(OidSpcIndirectDataContent, indirect); err != nil {
 		return nil, err
 	}
-	if err := addOpusAttrs(sig); err != nil {
+	if err := addOpusAttrs(sig, params); err != nil {
 		return nil, err
 	}
 	psd, err := sig.Sign()
@@ -56,17 +61,26 @@ func signIndirect(ctx context.Context, indirect interface{}, hash crypto.Hash, c
 	return pkcs9.TimestampAndMarshal(ctx, psd, cert.Timestamper, true)
 }
 
-func addOpusAttrs(sig *pkcs7.SignatureBuilder) error {
+func addOpusAttrs(sig *pkcs7.SignatureBuilder, params *OpusParams) error {
 	if err := sig.AddAuthenticatedAttribute(OidSpcStatementType, SpcSpStatementType{Type: OidSpcIndividualPurpose}); err != nil {
 		return err
 	}
-	if err := sig.AddAuthenticatedAttribute(OidSpcSpOpusInfo, SpcSpOpusInfo{}); err != nil {
+	var info SpcSpOpusInfo
+	if params != nil {
+		if params.Description != "" {
+			info.ProgramName = NewSpcString(params.Description)
+		}
+		if params.URL != "" {
+			info.MoreInfo.URL = params.URL
+		}
+	}
+	if err := sig.AddAuthenticatedAttribute(OidSpcSpOpusInfo, info); err != nil {
 		return err
 	}
 	return nil
 }
 
-func SignSip(ctx context.Context, imprint []byte, hash crypto.Hash, sipInfo SpcSipInfo, cert *certloader.Certificate) (*pkcs9.TimestampedSignature, error) {
+func SignSip(ctx context.Context, imprint []byte, hash crypto.Hash, sipInfo SpcSipInfo, cert *certloader.Certificate, params *OpusParams) (*pkcs9.TimestampedSignature, error) {
 	alg, ok := x509tools.PkixDigestAlgorithm(hash)
 	if !ok {
 		return nil, errors.New("unsupported digest algorithm")
@@ -76,5 +90,5 @@ func SignSip(ctx context.Context, imprint []byte, hash crypto.Hash, sipInfo SpcS
 	indirect.Data.Value = sipInfo
 	indirect.MessageDigest.Digest = imprint
 	indirect.MessageDigest.DigestAlgorithm = alg
-	return signIndirect(ctx, indirect, hash, cert)
+	return signIndirect(ctx, indirect, hash, cert, params)
 }

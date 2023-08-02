@@ -29,6 +29,7 @@ import (
 	"github.com/sassoftware/relic/v7/lib/certloader"
 	"github.com/sassoftware/relic/v7/lib/x509tools"
 	"github.com/sassoftware/relic/v7/signers"
+	"github.com/sassoftware/relic/v7/signers/pecoff"
 )
 
 var PsSigner = &signers.Signer{
@@ -42,6 +43,7 @@ var PsSigner = &signers.Signer{
 
 func init() {
 	PsSigner.Flags().String("ps-style", "", "(Powershell) signature type")
+	pecoff.AddOpusFlags(PsSigner)
 	signers.Register(PsSigner)
 }
 
@@ -73,7 +75,7 @@ func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]b
 	if err != nil {
 		return nil, err
 	}
-	patch, ts, err := digest.Sign(opts.Context(), cert)
+	patch, ts, err := digest.Sign(opts.Context(), cert, pecoff.OpusFlags(opts))
 	if err != nil {
 		return nil, err
 	}
@@ -91,9 +93,10 @@ func verify(f *os.File, opts signers.VerifyOpts) ([]*signers.Signature, error) {
 		return nil, err
 	}
 	hash, _ := x509tools.PkixDigestToHash(ts.SignerInfo.DigestAlgorithm)
-	return []*signers.Signature{&signers.Signature{
+	return []*signers.Signature{{
 		Hash:          hash,
-		X509Signature: ts,
+		X509Signature: &ts.TimestampedSignature,
+		SigInfo:       pecoff.FormatOpus(ts.OpusInfo),
 	}}, nil
 }
 

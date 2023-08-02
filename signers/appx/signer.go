@@ -27,6 +27,7 @@ import (
 	"github.com/sassoftware/relic/v7/lib/magic"
 	"github.com/sassoftware/relic/v7/lib/signappx"
 	"github.com/sassoftware/relic/v7/signers"
+	"github.com/sassoftware/relic/v7/signers/pecoff"
 	"github.com/sassoftware/relic/v7/signers/zipbased"
 )
 
@@ -40,6 +41,7 @@ var AppxSigner = &signers.Signer{
 }
 
 func init() {
+	pecoff.AddOpusFlags(AppxSigner)
 	signers.Register(AppxSigner)
 }
 
@@ -48,7 +50,7 @@ func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]b
 	if err != nil {
 		return nil, err
 	}
-	patch, priSig, _, err := digest.Sign(opts.Context(), cert)
+	patch, priSig, _, err := digest.Sign(opts.Context(), cert, pecoff.OpusFlags(opts))
 	if err != nil {
 		return nil, err
 	}
@@ -72,8 +74,9 @@ func verify(f *os.File, opts signers.VerifyOpts) ([]*signers.Signature, error) {
 			break
 		}
 	}
-	return []*signers.Signature{&signers.Signature{
+	return []*signers.Signature{{
 		Package:       fmt.Sprintf("{%s} %s %s", appxSig.Name, appxSig.DisplayName, appxSig.Version),
+		SigInfo:       pecoff.FormatOpus(sig.OpusInfo),
 		Hash:          sig.Hash,
 		X509Signature: sig.Signature,
 	}}, nil

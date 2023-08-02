@@ -89,8 +89,8 @@ func removeSignature(cd []byte) []byte {
 	return cd
 }
 
-func (d *XapDigest) Sign(ctx context.Context, cert *certloader.Certificate) (*binpatch.PatchSet, *pkcs9.TimestampedSignature, error) {
-	ts, err := authenticode.SignSip(ctx, d.Imprint, d.Hash, xapSipInfo, cert)
+func (d *XapDigest) Sign(ctx context.Context, cert *certloader.Certificate, params *authenticode.OpusParams) (*binpatch.PatchSet, *pkcs9.TimestampedSignature, error) {
+	ts, err := authenticode.SignSip(ctx, d.Imprint, d.Hash, xapSipInfo, cert, params)
 	if err != nil {
 		return nil, nil, err
 	}

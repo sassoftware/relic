@@ -27,6 +27,7 @@ import (
 	"github.com/sassoftware/relic/v7/lib/certloader"
 	"github.com/sassoftware/relic/v7/lib/magic"
 	"github.com/sassoftware/relic/v7/signers"
+	"github.com/sassoftware/relic/v7/signers/pecoff"
 )
 
 var CabSigner = &signers.Signer{
@@ -38,6 +39,7 @@ var CabSigner = &signers.Signer{
 }
 
 func init() {
+	pecoff.AddOpusFlags(CabSigner)
 	signers.Register(CabSigner)
 }
 
@@ -46,7 +48,7 @@ func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]b
 	if err != nil {
 		return nil, err
 	}
-	patch, ts, err := authenticode.SignCabImprint(opts.Context(), digest, cert)
+	patch, ts, err := authenticode.SignCabImprint(opts.Context(), digest, cert, pecoff.OpusFlags(opts))
 	if err != nil {
 		return nil, err
 	}
@@ -59,8 +61,9 @@ func verify(f *os.File, opts signers.VerifyOpts) ([]*signers.Signature, error) {
 	if err != nil {
 		return nil, err
 	}
-	return []*signers.Signature{&signers.Signature{
+	return []*signers.Signature{{
 		Hash:          sig.HashFunc,
 		X509Signature: &sig.TimestampedSignature,
+		SigInfo:       pecoff.FormatOpus(sig.OpusInfo),
 	}}, nil
 }

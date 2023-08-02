@@ -27,7 +27,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"path/filepath"
 	"strings"
 	"unicode/utf16"
@@ -126,7 +125,7 @@ func DigestPowershell(r io.Reader, style PsSigStyle, hash crypto.Hash) (*PsDiges
 			}
 			// count the size of the signature
 			sigSize += int64(len(line))
-			n, err := io.Copy(ioutil.Discard, br)
+			n, err := io.Copy(io.Discard, br)
 			if err != nil {
 				return nil, err
 			}
@@ -156,9 +155,15 @@ func detectUtf16(br *bufio.Reader, start, end string) (bool, string, string) {
 	return false, first, last
 }
 
+type PowershellSignature struct {
+	pkcs9.TimestampedSignature
+	OpusInfo *SpcSpOpusInfo
+	HashFunc crypto.Hash
+}
+
 // Verify a PowerShell script. The signature "style" must already have been
 // determined by calling GetSigStyle
-func VerifyPowershell(r io.ReadSeeker, style PsSigStyle, skipDigests bool) (*pkcs9.TimestampedSignature, error) {
+func VerifyPowershell(r io.ReadSeeker, style PsSigStyle, skipDigests bool) (*PowershellSignature, error) {
 	si, ok := psStyles[style]
 	if !ok {
 		return nil, errors.New("invalid powershell signature style")
@@ -239,12 +244,21 @@ func VerifyPowershell(r io.ReadSeeker, style PsSigStyle, skipDigests bool) (*pkc
 			return nil, fmt.Errorf("digest mismatch: %x != %x", digest.Imprint, indirect.MessageDigest.Digest)
 		}
 	}
-	return &ts, nil
+	opus, err := GetOpusInfo(ts.SignerInfo)
+	if err != nil {
+		return nil, err
+	}
+	pss := &PowershellSignature{
+		TimestampedSignature: ts,
+		HashFunc:             hash,
+		OpusInfo:             opus,
+	}
+	return pss, nil
 }
 
 // Sign a previously digested PowerShell script and return the Authenticode structure
-func (pd *PsDigest) Sign(ctx context.Context, cert *certloader.Certificate) (*binpatch.PatchSet, *pkcs9.TimestampedSignature, error) {
-	ts, err := SignSip(ctx, pd.Imprint, pd.HashFunc, psSipInfo, cert)
+func (pd *PsDigest) Sign(ctx context.Context, cert *certloader.Certificate, params *OpusParams) (*binpatch.PatchSet, *pkcs9.TimestampedSignature, error) {
+	ts, err := SignSip(ctx, pd.Imprint, pd.HashFunc, psSipInfo, cert, params)
 	if err != nil {
 		return nil, nil, err
 	}

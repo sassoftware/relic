@@ -31,12 +31,12 @@ import (
 )
 
 // Sign the digest and return an Authenticode structure
-func (pd *PEDigest) Sign(ctx context.Context, cert *certloader.Certificate) (*binpatch.PatchSet, *pkcs9.TimestampedSignature, error) {
+func (pd *PEDigest) Sign(ctx context.Context, cert *certloader.Certificate, params *OpusParams) (*binpatch.PatchSet, *pkcs9.TimestampedSignature, error) {
 	indirect, err := pd.GetIndirect()
 	if err != nil {
 		return nil, nil, err
 	}
-	ts, err := signIndirect(ctx, indirect, pd.Hash, cert)
+	ts, err := signIndirect(ctx, indirect, pd.Hash, cert, params)
 	if err != nil {
 		return nil, nil, err
 	}

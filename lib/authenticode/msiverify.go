@@ -24,7 +24,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"sort"
 
 	"github.com/sassoftware/relic/v7/lib/comdoc"
@@ -38,6 +37,7 @@ type MSISignature struct {
 	pkcs9.TimestampedSignature
 	Indirect *SpcIndirectDataContentMsi
 	HashFunc crypto.Hash
+	OpusInfo *SpcSpOpusInfo
 }
 
 // Extract and verify the signature of a MSI file. Does not check X509 chains.
@@ -56,7 +56,7 @@ func VerifyMSI(f io.ReaderAt, skipDigests bool) (*MSISignature, error) {
 		if name == msiDigitalSignature {
 			r, err := cdf.ReadStream(item)
 			if err == nil {
-				sig, err = ioutil.ReadAll(r)
+				sig, err = io.ReadAll(r)
 			}
 			if err != nil {
 				return nil, err
@@ -64,7 +64,7 @@ func VerifyMSI(f io.ReaderAt, skipDigests bool) (*MSISignature, error) {
 		} else if name == msiDigitalSignatureEx {
 			r, err := cdf.ReadStream(item)
 			if err == nil {
-				exsig, err = ioutil.ReadAll(r)
+				exsig, err = io.ReadAll(r)
 			}
 			if err != nil {
 				return nil, err
@@ -97,10 +97,15 @@ func VerifyMSI(f io.ReaderAt, skipDigests bool) (*MSISignature, error) {
 	if err != nil {
 		return nil, err
 	}
+	opus, err := GetOpusInfo(pksig.SignerInfo)
+	if err != nil {
+		return nil, err
+	}
 	msisig := &MSISignature{
 		TimestampedSignature: ts,
 		Indirect:             indirect,
 		HashFunc:             hash,
+		OpusInfo:             opus,
 	}
 	if !skipDigests {
 		imprint, prehash, err := DigestMSI(cdf, hash, exsig != nil)

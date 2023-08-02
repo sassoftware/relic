@@ -25,7 +25,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 
 	"github.com/sassoftware/relic/v7/lib/pkcs7"
 	"github.com/sassoftware/relic/v7/lib/pkcs9"
@@ -36,6 +35,7 @@ import (
 type PESignature struct {
 	pkcs9.TimestampedSignature
 	Indirect      *SpcIndirectDataContentPe
+	OpusInfo      *SpcSpOpusInfo
 	ImageHashFunc crypto.Hash
 	PageHashes    []byte
 	PageHashFunc  crypto.Hash
@@ -68,7 +68,7 @@ func findSignatures(r io.ReadSeeker) (*peHeaderValues, error) {
 	if _, err := r.Seek(0, 0); err != nil {
 		return nil, err
 	}
-	d := ioutil.Discard
+	d := io.Discard
 	peStart, err := readDosHeader(r, d)
 	if err != nil {
 		return nil, err
@@ -167,15 +167,31 @@ func checkSignature(der []byte) (*PESignature, error) {
 	if err != nil {
 		return nil, err
 	}
+	opus, err := GetOpusInfo(sig.SignerInfo)
+	if err != nil {
+		return nil, err
+	}
 	pesig := &PESignature{
 		TimestampedSignature: ts,
 		Indirect:             indirect,
+		OpusInfo:             opus,
 		ImageHashFunc:        hash,
 	}
 	if err := readPageHashes(pesig); err != nil {
 		return nil, err
 	}
 	return pesig, nil
+}
+
+func GetOpusInfo(si *pkcs7.SignerInfo) (*SpcSpOpusInfo, error) {
+	opus := new(SpcSpOpusInfo)
+	err := si.AuthenticatedAttributes.GetOne(OidSpcSpOpusInfo, opus)
+	if err == nil {
+		return opus, nil
+	} else if errors.As(err, &pkcs7.ErrNoAttribute{}) {
+		return nil, nil
+	}
+	return nil, fmt.Errorf("parsing SpcSpOpusInfo attribute: %w", err)
 }
 
 func readPageHashes(sig *PESignature) error {

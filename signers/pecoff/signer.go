@@ -19,8 +19,10 @@ package pecoff
 // Sign Microsoft PE/COFF executables
 
 import (
+	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/sassoftware/relic/v7/lib/authenticode"
 	"github.com/sassoftware/relic/v7/lib/certloader"
@@ -39,7 +41,20 @@ var PeSigner = &signers.Signer{
 
 func init() {
 	PeSigner.Flags().Bool("page-hashes", false, "(PE-COFF) Add page hashes to signature")
+	AddOpusFlags(PeSigner)
 	signers.Register(PeSigner)
+}
+
+func AddOpusFlags(s *signers.Signer) {
+	s.Flags().String("description", "", "(Win) Set description of signed content")
+	s.Flags().String("desc-url", "", "(Win) Set URL for description of signed content")
+}
+
+func OpusFlags(opts signers.SignOpts) *authenticode.OpusParams {
+	return &authenticode.OpusParams{
+		Description: opts.Flags.GetString("description"),
+		URL:         opts.Flags.GetString("desc-url"),
+	}
 }
 
 func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]byte, error) {
@@ -48,13 +63,27 @@ func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]b
 	if err != nil {
 		return nil, err
 	}
-	patch, ts, err := digest.Sign(opts.Context(), cert)
+	patch, ts, err := digest.Sign(opts.Context(), cert, OpusFlags(opts))
 	if err != nil {
 		return nil, err
 	}
 	opts.Audit.Attributes["pe-coff.pagehashes"] = pageHashes
 	opts.Audit.SetCounterSignature(ts.CounterSignature)
 	return opts.SetBinPatch(patch)
+}
+
+func FormatOpus(info *authenticode.SpcSpOpusInfo) string {
+	if info == nil {
+		return ""
+	}
+	var infos []string
+	if desc := info.ProgramName.String(); desc != "" {
+		infos = append(infos, fmt.Sprintf("[desc:%q]", desc))
+	}
+	if u := info.MoreInfo.URL; u != "" {
+		infos = append(infos, fmt.Sprintf("[url:%q]", u))
+	}
+	return strings.Join(infos, "")
 }
 
 func verify(f *os.File, opts signers.VerifyOpts) ([]*signers.Signature, error) {
@@ -65,6 +94,7 @@ func verify(f *os.File, opts signers.VerifyOpts) ([]*signers.Signature, error) {
 	var ret []*signers.Signature
 	for _, sig := range sigs {
 		ret = append(ret, &signers.Signature{
+			SigInfo:       FormatOpus(sig.OpusInfo),
 			Hash:          sig.ImageHashFunc,
 			X509Signature: &sig.TimestampedSignature,
 		})

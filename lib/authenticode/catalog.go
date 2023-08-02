@@ -67,12 +67,12 @@ func (cat *Catalog) Marshal() ([]byte, error) {
 	return asn1.Marshal(cat.makeCatalog())
 }
 
-func (cat *Catalog) Sign(ctx context.Context, cert *certloader.Certificate) (*pkcs9.TimestampedSignature, error) {
+func (cat *Catalog) Sign(ctx context.Context, cert *certloader.Certificate, params *OpusParams) (*pkcs9.TimestampedSignature, error) {
 	sig := pkcs7.NewBuilder(cert.Signer(), cert.Chain(), cat.Hash)
 	if err := sig.SetContent(OidCertTrustList, cat.makeCatalog()); err != nil {
 		return nil, err
 	}
-	if err := addOpusAttrs(sig); err != nil {
+	if err := addOpusAttrs(sig, params); err != nil {
 		return nil, err
 	}
 	psd, err := sig.Sign()

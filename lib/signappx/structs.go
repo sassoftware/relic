@@ -20,6 +20,7 @@ import (
 	"archive/zip"
 	"crypto"
 
+	"github.com/sassoftware/relic/v7/lib/authenticode"
 	"github.com/sassoftware/relic/v7/lib/pkcs9"
 )
 
@@ -41,6 +42,7 @@ type AppxSignature struct {
 	Hash              crypto.Hash
 	HashValues        map[string][]byte
 	Bundled           map[string]*AppxSignature
+	OpusInfo          *authenticode.SpcSpOpusInfo
 }
 
 type zipFiles map[string]*zip.File
