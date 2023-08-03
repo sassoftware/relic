@@ -22,7 +22,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"strings"
 
@@ -62,7 +61,7 @@ func digestFiles(jar *zipslicer.Directory, hash crypto.Hash) (*JarDigest, error)
 			if err != nil {
 				return nil, fmt.Errorf("failed to read JAR manifest: %w", err)
 			}
-			jd.Manifest, err = ioutil.ReadAll(r)
+			jd.Manifest, err = io.ReadAll(r)
 			if err != nil {
 				return nil, fmt.Errorf("failed to read JAR manifest: %w", err)
 			}
@@ -131,6 +130,15 @@ func updateManifest(jar *zipslicer.Directory, hash crypto.Hash) (*JarDigest, err
 			}
 		} else {
 			// file in manifest but no matching digest
+			attrs.Set(hashName, calculated)
+			changed = true
+		}
+	}
+	// Add empty digests for any dir entries with metadata
+	for name, attrs := range files.Files {
+		if strings.HasSuffix(name, "/") && attrs.Get(hashName) == "" {
+			d := hash.New()
+			calculated := base64.StdEncoding.EncodeToString(d.Sum(nil))
 			attrs.Set(hashName, calculated)
 			changed = true
 		}

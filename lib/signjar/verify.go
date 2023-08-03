@@ -25,7 +25,6 @@ import (
 	"fmt"
 	"hash"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"path"
 	"strings"
@@ -62,7 +61,7 @@ func Verify(inz *zip.Reader, skipDigests bool) ([]*JarSignature, error) {
 		if err != nil {
 			return nil, err
 		}
-		contents, err := ioutil.ReadAll(r2)
+		contents, err := io.ReadAll(r2)
 		if err != nil {
 			return nil, err
 		}
