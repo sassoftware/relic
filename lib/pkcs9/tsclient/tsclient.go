@@ -114,6 +114,9 @@ func (c tsClient) Timestamp(ctx context.Context, req *pkcs9.Request) (*pkcs7.Con
 		if err == nil {
 			return token, nil
 		}
+		if ctx.Err() != nil {
+			return nil, err
+		}
 	}
 	return nil, fmt.Errorf("timestamping failed: %w", err)
 }
