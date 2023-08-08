@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto"
 	"errors"
+	"io"
 	"net/http"
 	"strconv"
 	"time"
@@ -79,6 +80,13 @@ func (m Metrics) GetKey(ctx context.Context, keyName string) (key token.Key, err
 
 type metricsKey struct {
 	token.Key
+}
+
+func (k metricsKey) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts) (sig []byte, err error) {
+	defer func(start time.Time) {
+		observe(k.Config().Token, "sign", start, err)
+	}(time.Now())
+	return k.Key.Sign(rand, digest, opts)
 }
 
 func (k metricsKey) SignContext(ctx context.Context, digest []byte, opts crypto.SignerOpts) (sig []byte, err error) {
