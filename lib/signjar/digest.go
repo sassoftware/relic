@@ -65,7 +65,7 @@ func digestFiles(jar *zipslicer.Directory, hash crypto.Hash) (*JarDigest, error)
 			if err != nil {
 				return nil, fmt.Errorf("failed to read JAR manifest: %w", err)
 			}
-		} else if (len(f.Name) > 0 && f.Name[len(f.Name)-1] == '/') || strings.HasPrefix(f.Name, "META-INF/") {
+		} else if strings.HasSuffix(f.Name, "/") || !keepFile(f.Name) {
 			// not hashing
 		} else {
 			r, err := f.Open()

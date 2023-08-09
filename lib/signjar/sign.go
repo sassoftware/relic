@@ -158,14 +158,15 @@ func keepFile(name string) bool {
 		return true
 	}
 	name = path.Base(name)
-	if strings.HasPrefix(name, "SIG-") {
+	switch {
+	case strings.HasPrefix(name, "SIG-"):
 		// delete all old signatures
+		return false
+	case name == "MANIFEST.MF":
+		// replace the manifest
 		return false
 	}
 	switch path.Ext(name) {
-	case ".MF":
-		// replace the manifest
-		return false
 	case ".SF":
 		// delete all old signatures
 		return false
