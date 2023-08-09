@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"sort"
 	"strings"
 
 	"github.com/sassoftware/relic/v7/config"
@@ -94,13 +95,19 @@ func splitManifest(manifest []byte) ([][]byte, error) {
 		i1 := bytes.Index(manifest, []byte("\r\n\r\n"))
 		i2 := bytes.Index(manifest, []byte("\n\n"))
 		var idx int
-		if i1 < 0 {
-			if i2 < 0 {
-				return nil, errors.New("trailing bytes after last newline")
-			}
-			idx = i2 + 2
-		} else {
+		switch {
+		case i1 >= 0:
 			idx = i1 + 4
+		case i2 >= 0:
+			idx = i2 + 2
+		case len(sections) == 0:
+			// as a special case, accept a single final newline if it's the only section
+			if manifest[len(manifest)-1] == '\n' {
+				return [][]byte{manifest}, nil
+			}
+			fallthrough
+		default:
+			return nil, errors.New("trailing bytes after last newline")
 		}
 		section := manifest[:idx]
 		manifest = manifest[idx:]
@@ -178,16 +185,19 @@ const maxLineLength = 70
 // Write a key-value pair, wrapping long lines as necessary
 func writeAttribute(out *bytes.Buffer, key, value string) {
 	line := []byte(fmt.Sprintf("%s: %s", key, value))
-	for i := 0; i < len(line); i += maxLineLength {
-		j := i + maxLineLength
+	for i := 0; i < len(line); {
+		goal := maxLineLength
+		if i != 0 {
+			out.Write([]byte{' '})
+			goal--
+		}
+		j := i + goal
 		if j > len(line) {
 			j = len(line)
 		}
-		if i != 0 {
-			out.Write([]byte{' '})
-		}
 		out.Write(line[i:j])
 		out.Write([]byte("\r\n"))
+		i = j
 	}
 }
 
@@ -196,11 +206,16 @@ func writeSection(out *bytes.Buffer, hdr http.Header, first string) {
 	if value != "" {
 		writeAttribute(out, first, value)
 	}
-	for key, values := range hdr {
+	keys := make([]string, 0, len(hdr))
+	for key := range hdr {
 		if key == first {
 			continue
 		}
-		for _, value := range values {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		for _, value := range hdr[key] {
 			writeAttribute(out, key, value)
 		}
 	}
