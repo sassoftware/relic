@@ -50,7 +50,7 @@ Eggs: bacon
 		require.NoError(t, err)
 		assert.Equal(t, expected, parsed)
 	})
-	t.Run("Truncated", func(t *testing.T) {
+	t.Run("TruncatedMain", func(t *testing.T) {
 		const manifest = "Manifest-Version: 1.0\n"
 		expected := &FilesMap{
 			Main: http.Header{
@@ -59,14 +59,50 @@ Eggs: bacon
 			Order: []string{},
 			Files: map[string]http.Header{},
 		}
-		parsed, err := ParseManifest([]byte(manifest))
+		_, err := ParseManifest([]byte(manifest))
+		require.ErrorIs(t, err, ErrManifestLineEndings)
+		parsed, malformed, err := parseManifest([]byte(manifest))
 		require.NoError(t, err)
+		assert.True(t, malformed)
 		assert.Equal(t, expected, parsed)
 	})
-	t.Run("InvalidTruncated", func(t *testing.T) {
+	t.Run("TruncatedFile", func(t *testing.T) {
 		const manifest = "Manifest-Version: 1.0\n\nName: foo\n"
+		file := http.Header{
+			"Name": []string{"foo"},
+		}
+		expected := &FilesMap{
+			Main: http.Header{
+				"Manifest-Version": []string{"1.0"},
+			},
+			Order: []string{"foo"},
+			Files: map[string]http.Header{"foo": file},
+		}
 		_, err := ParseManifest([]byte(manifest))
-		require.Error(t, err)
+		require.ErrorIs(t, err, ErrManifestLineEndings)
+		parsed, malformed, err := parseManifest([]byte(manifest))
+		require.NoError(t, err)
+		assert.True(t, malformed)
+		assert.Equal(t, expected, parsed)
+	})
+	t.Run("TrailingWhitespace", func(t *testing.T) {
+		const manifest = "Manifest-Version: 1.0\n\nName: foo\n\n\n"
+		file := http.Header{
+			"Name": []string{"foo"},
+		}
+		expected := &FilesMap{
+			Main: http.Header{
+				"Manifest-Version": []string{"1.0"},
+			},
+			Order: []string{"foo"},
+			Files: map[string]http.Header{"foo": file},
+		}
+		_, err := ParseManifest([]byte(manifest))
+		require.ErrorIs(t, err, ErrManifestLineEndings)
+		parsed, malformed, err := parseManifest([]byte(manifest))
+		require.NoError(t, err)
+		assert.True(t, malformed)
+		assert.Equal(t, expected, parsed)
 	})
 	t.Run("InvalidNoName", func(t *testing.T) {
 		const manifest = "Manifest-Version: 1.0\n\nFoo: bar\n\n"

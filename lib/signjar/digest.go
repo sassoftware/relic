@@ -99,7 +99,7 @@ func updateManifest(jar *zipslicer.Directory, hash crypto.Hash) (*JarDigest, err
 	} else if jd.Manifest == nil {
 		return nil, errors.New("JAR did not contain a manifest")
 	}
-	files, err := ParseManifest(jd.Manifest)
+	files, malformed, err := parseManifest(jd.Manifest)
 	if err != nil {
 		return nil, err
 	}
@@ -143,7 +143,7 @@ func updateManifest(jar *zipslicer.Directory, hash crypto.Hash) (*JarDigest, err
 			changed = true
 		}
 	}
-	if changed {
+	if changed || malformed {
 		jd.Manifest = files.Dump()
 	}
 	return jd, nil

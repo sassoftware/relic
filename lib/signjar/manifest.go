@@ -37,6 +37,8 @@ const (
 	manifestName = metaInf + "MANIFEST.MF"
 )
 
+var ErrManifestLineEndings = errors.New("manifest has incorrect line ending sequence")
+
 type FilesMap struct {
 	Main  http.Header
 	Order []string
@@ -44,12 +46,19 @@ type FilesMap struct {
 }
 
 func ParseManifest(manifest []byte) (files *FilesMap, err error) {
-	sections, err := splitManifest(manifest)
+	files, malformed, err := parseManifest(manifest)
 	if err != nil {
 		return nil, err
+	} else if malformed {
+		return nil, ErrManifestLineEndings
 	}
+	return files, nil
+}
+
+func parseManifest(manifest []byte) (files *FilesMap, malformed bool, err error) {
+	sections, malformed := splitManifest(manifest)
 	if len(sections) == 0 {
-		return nil, errors.New("manifest has no sections")
+		return nil, false, errors.New("manifest has no sections")
 	}
 	files = &FilesMap{
 		Order: make([]string, 0, len(sections)-1),
@@ -61,20 +70,20 @@ func ParseManifest(manifest []byte) (files *FilesMap, err error) {
 		}
 		hdr, err := parseSection(section)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 		if i == 0 {
 			files.Main = hdr
 		} else {
 			name := hdr.Get("Name")
 			if name == "" {
-				return nil, errors.New("manifest has section with no \"Name\" attribute")
+				return nil, false, errors.New("manifest has section with no \"Name\" attribute")
 			}
 			files.Order = append(files.Order, name)
 			files.Files[name] = hdr
 		}
 	}
-	return files, nil
+	return files, malformed, nil
 }
 
 func (m *FilesMap) Dump() []byte {
@@ -89,7 +98,8 @@ func (m *FilesMap) Dump() []byte {
 	return out.Bytes()
 }
 
-func splitManifest(manifest []byte) ([][]byte, error) {
+func splitManifest(manifest []byte) ([][]byte, bool) {
+	var malformed bool
 	sections := make([][]byte, 0)
 	for len(manifest) != 0 {
 		i1 := bytes.Index(manifest, []byte("\r\n\r\n"))
@@ -100,20 +110,23 @@ func splitManifest(manifest []byte) ([][]byte, error) {
 			idx = i1 + 4
 		case i2 >= 0:
 			idx = i2 + 2
-		case len(sections) == 0:
-			// as a special case, accept a single final newline if it's the only section
-			if manifest[len(manifest)-1] == '\n' {
-				return [][]byte{manifest}, nil
-			}
-			fallthrough
 		default:
-			return nil, errors.New("trailing bytes after last newline")
+			// If there is not a proper 2x line ending,
+			// then it's technically not valid but we can sign it anyway
+			// as long as it gets rewritten with correct endings.
+			idx = len(manifest)
+			malformed = true
 		}
 		section := manifest[:idx]
 		manifest = manifest[idx:]
+		if len(bytes.TrimSpace(section)) == 0 {
+			// Excessive line endings have created an empty section
+			malformed = true
+			continue
+		}
 		sections = append(sections, section)
 	}
-	return sections, nil
+	return sections, malformed
 }
 
 func parseSection(section []byte) (http.Header, error) {
@@ -145,9 +158,9 @@ func hashSection(hash crypto.Hash, section []byte) string {
 // Transform a MANIFEST.MF into a *.SF by digesting each section with the
 // specified hash
 func DigestManifest(manifest []byte, hash crypto.Hash, sectionsOnly, apkV2 bool) ([]byte, error) {
-	sections, err := splitManifest(manifest)
-	if err != nil {
-		return nil, err
+	sections, malformed := splitManifest(manifest)
+	if malformed {
+		return nil, ErrManifestLineEndings
 	}
 	hashName := x509tools.HashNames[hash]
 	if hashName == "" {

@@ -211,9 +211,9 @@ func verifySigFile(sigfile, manifest []byte) (http.Header, error) {
 		// if the whole-file digest passed then skip the sections
 		return sfParsed.Main, nil
 	}
-	sections, err := splitManifest(manifest)
-	if err != nil {
-		return nil, err
+	sections, malformed := splitManifest(manifest)
+	if malformed {
+		return nil, ErrManifestLineEndings
 	}
 	sectionMap := make(map[string][]byte, len(sections)-1)
 	for i, section := range sections {
