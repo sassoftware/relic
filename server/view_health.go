@@ -50,6 +50,7 @@ func (s *Server) healthCheckInterval() time.Duration {
 
 func (s *Server) startHealthCheck() error {
 	healthStatus = s.Config.Server.TokenCheckFailures
+	healthLastPing = time.Now()
 	go s.healthCheckLoop()
 	return nil
 }
