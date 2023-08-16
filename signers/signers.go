@@ -185,6 +185,7 @@ func MergeFlags(cmd *cobra.Command) {
 		flagMap = make(map[string][]string)
 	}
 	fs := cmd.Flags()
+	fs.AddFlagSet(common)
 	for _, s := range registered {
 		if s.flags == nil {
 			continue

@@ -35,6 +35,13 @@ import (
 	"github.com/sassoftware/relic/v7/lib/pkcs9"
 )
 
+var common *pflag.FlagSet
+
+func init() {
+	common = pflag.NewFlagSet("common", pflag.ExitOnError)
+	common.Bool("no-timestamp", false, "Do not attach a trusted timestamp even if the selected key configures one")
+}
+
 type SignOpts struct {
 	Path  string
 	Hash  crypto.Hash
@@ -89,6 +96,22 @@ type FlagValues struct {
 	Values map[string]string
 }
 
+func (v *FlagValues) mergeAll(defs *pflag.FlagSet, getter func(string) string) {
+	if defs != nil {
+		v.mergeSet(defs, getter)
+	}
+	v.mergeSet(common, getter)
+}
+
+func (v *FlagValues) mergeSet(defs *pflag.FlagSet, getter func(string) string) {
+	defs.VisitAll(func(flag *pflag.Flag) {
+		value := getter(flag.Name)
+		if value != "" {
+			v.Values[flag.Name] = value
+		}
+	})
+}
+
 // FlagsFromCmdline creates a FlagValues from the (merged) command-line options of a command
 func (s *Signer) FlagsFromCmdline(fs *pflag.FlagSet) (*FlagValues, error) {
 	for flag, users := range flagMap {
@@ -106,43 +129,31 @@ func (s *Signer) FlagsFromCmdline(fs *pflag.FlagSet) (*FlagValues, error) {
 			return nil, fmt.Errorf("flag \"%s\" is not allowed for signature type \"%s\"", flag, s.Name)
 		}
 	}
-	if s.flags == nil {
-		return nil, nil
-	}
 	values := &FlagValues{
 		Defs:   s.flags,
 		Values: make(map[string]string),
 	}
-	s.flags.VisitAll(func(flag *pflag.Flag) {
-		if fs.Changed(flag.Name) {
-			values.Values[flag.Name] = fs.Lookup(flag.Name).Value.String()
+	values.mergeAll(s.flags, func(name string) string {
+		if !fs.Changed(name) {
+			return ""
 		}
+		return fs.Lookup(name).Value.String()
 	})
 	return values, nil
 }
 
 // FlagsFromQuery creates a FlagValues from URL query parameters
 func (s *Signer) FlagsFromQuery(q url.Values) (*FlagValues, error) {
-	if s.flags == nil {
-		return nil, nil
-	}
 	values := &FlagValues{
 		Defs:   s.flags,
 		Values: make(map[string]string),
 	}
-	s.flags.VisitAll(func(flag *pflag.Flag) {
-		if value := q.Get(flag.Name); value != "" {
-			values.Values[flag.Name] = value
-		}
-	})
+	values.mergeAll(s.flags, q.Get)
 	return values, nil
 }
 
 // ToQuery appends query parameters to a URL for each option in the flag set
 func (values *FlagValues) ToQuery(q url.Values) error {
-	if values == nil {
-		return nil
-	}
 	for key, value := range values.Values {
 		q.Set(key, value)
 	}
@@ -151,10 +162,10 @@ func (values *FlagValues) ToQuery(q url.Values) error {
 
 // GetString returns the flag's value as a string
 func (values *FlagValues) GetString(name string) string {
-	if values == nil {
-		panic("flag " + name + " not defined for signer module")
+	flag := common.Lookup(name)
+	if flag == nil && values.Defs != nil {
+		flag = values.Defs.Lookup(name)
 	}
-	flag := values.Defs.Lookup(name)
 	if flag == nil {
 		panic("flag " + name + " not defined for signer module")
 	}

@@ -68,7 +68,7 @@ func Init(ctx context.Context, mod *signers.Signer, tok token.Token, keyName str
 	} else if mod.CertTypes&signers.CertTypePgp != 0 {
 		return nil, nil, sigerrors.ErrNoCertificate{Type: "pgp"}
 	}
-	if kconf.Timestamp {
+	if kconf.Timestamp && !flags.GetBool("no-timestamp") {
 		cert.Timestamper, err = GetTimestamper()
 		if err != nil {
 			return nil, nil, err
