@@ -86,6 +86,10 @@ func runWorker(tokenName string) error {
 	log.Logger.UpdateContext(func(c zerolog.Context) zerolog.Context {
 		return c.Str("token", tokenName).Int("pid", os.Getpid())
 	})
+	tconf := tok.Config()
+	if tconf.RateLimit != 0 {
+		tok = tokencache.NewLimiter(tok, tconf.RateLimit, tconf.RateBurst)
+	}
 	expiry := time.Second * time.Duration(cfg.Server.TokenCacheSeconds)
 	handler := &handler{
 		token:  tokencache.New(tok, expiry),

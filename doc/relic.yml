@@ -26,8 +26,10 @@ tokens:
     #user: 1
 
     # Optional parameters for server mode
-    #timeout: 60  # Terminate each attempt after N seconds (default: 60)
-    #retries: 5   # Retry failed commands N times (default: 5)
+    #timeout: 60   # Terminate each attempt after N seconds (default: 60)
+    #retries: 5    # Retry failed commands N times (default: 5)
+    #ratelimit: 10 # Limit token operations per second
+    #rateburst: 10 # Allow burst of requests before limit kicks in
 
   # Use GnuPG scdaemon as a token
   myscd:

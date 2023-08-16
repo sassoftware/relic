@@ -49,6 +49,8 @@ type TokenConfig struct {
 	Pin        *string // PIN to use, otherwise will be prompted. Can be empty. (optional)
 	Timeout    int     // (server) Terminate command after N seconds (default 60)
 	Retries    int     // (server) Retry failed commands N times (default 5)
+	RateLimit  float64 // (server) limit token operations per second
+	RateBurst  int     // (server) allow burst of operations before limit kicks in
 	User       *uint   // User argument for PKCS#11 login (optional)
 	UseKeyring bool    // Read PIN from system keyring
 

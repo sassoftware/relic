@@ -120,6 +120,9 @@ func (s *Server) openTokens() error {
 			if err == nil {
 				// instrument token with metrics and caching
 				tok = tokencache.Metrics{Token: tok}
+				if tconf.RateLimit != 0 {
+					tok = tokencache.NewLimiter(tok, tconf.RateLimit, tconf.RateBurst)
+				}
 				tok = tokencache.New(tok, expiry)
 			}
 		}
