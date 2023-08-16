@@ -27,6 +27,7 @@ jobs:
           GOOS=linux   GOARCH=amd64   go build -ldflags "$ldflags" -tags clientonly -o build/relic-client-linux-amd64
           GOOS=linux   GOARCH=arm64   go build -ldflags "$ldflags" -tags clientonly -o build/relic-client-linux-arm64
           GOOS=linux   GOARCH=ppc64le go build -ldflags "$ldflags" -tags clientonly -o build/relic-client-linux-ppc64le
+          GOOS=freebsd GOARCH=amd64   go build -ldflags "$ldflags" -tags clientonly -o build/relic-client-freebsd-amd64
 
       - name: Build server
         run: CGO_ENABLED=1 go build -ldflags "$ldflags" -o build/relic-linux-amd64

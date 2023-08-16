@@ -19,6 +19,9 @@ package main
 // Commands and signers for the basic client only (pure Go, all OSes)
 
 import (
+	"runtime/debug"
+	"strings"
+
 	"github.com/sassoftware/relic/v7/cmdline/shared"
 	"github.com/sassoftware/relic/v7/config"
 
@@ -52,8 +55,18 @@ var (
 )
 
 func main() {
-	config.Version = version
-	config.Commit = commit
-	config.UserAgent = "relic/" + version
+	if version != "unknown" {
+		// normal CI compilation path
+		config.Version = version
+		config.Commit = commit
+	} else if bi, ok := debug.ReadBuildInfo(); ok {
+		// built from go module with `go install`
+		if strings.HasPrefix(bi.Main.Version, "v") {
+			config.Version = bi.Main.Version
+			config.Commit = bi.Main.Sum
+		}
+	}
+
+	config.UserAgent = "relic/" + config.Version
 	shared.Main()
 }
