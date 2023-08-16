@@ -116,12 +116,12 @@ func setupDigester(hash crypto.Hash, header []byte, hvals *peHeaderValues, secti
 	imageDigest.Write(header)
 	h := &imageHasher{hashFunc: hash, imageDigest: imageDigest, doPageHash: doPageHash}
 	if doPageHash {
-		h.zeroPage = make([]byte, hvals.sectionAlign) // full page of zeroes, for padding
-		h.pageBuf = make([]byte, hvals.sectionAlign)  // scratch space
+		h.zeroPage = make([]byte, hvals.pageSize) // full page of zeroes, for padding
+		h.pageBuf = make([]byte, hvals.pageSize)  // scratch space
 		// make space for all the page hashes
 		pages := 2
 		for _, sh := range sections {
-			spage := (sh.SizeOfRawData + hvals.sectionAlign - 1) / hvals.sectionAlign
+			spage := (sh.SizeOfRawData + hvals.pageSize - 1) / hvals.pageSize
 			pages += int(spage)
 		}
 		h.pageHashes = make([]byte, 0, pages*(4+hash.Size()))
@@ -213,9 +213,26 @@ func readCoffHeader(r io.Reader, d io.Writer) (*pe.FileHeader, error) {
 	return hdr, nil
 }
 
+const (
+	// https://learn.microsoft.com/en-us/windows/win32/debug/pe-format#optional-header-image-only
+	optHeaderMagicPE32     = 0x10b
+	optHeaderMagicPE32Plus = 0x20b
+
+	// https://learn.microsoft.com/en-us/windows/win32/debug/pe-format#machine-types
+	imageFileMachineAlpha   = 0x184
+	imageFileMachineAlpha64 = 0x284
+)
+
 func readOptHeader(r io.Reader, d io.Writer, peStart int64, fh *pe.FileHeader) (*peHeaderValues, error) {
 	hvals := new(peHeaderValues)
 	hvals.peStart = peStart
+	// https://devblogs.microsoft.com/oldnewthing/20210510-00/
+	switch fh.Machine {
+	case pe.IMAGE_FILE_MACHINE_IA64, imageFileMachineAlpha, imageFileMachineAlpha64:
+		hvals.pageSize = 8192
+	default:
+		hvals.pageSize = 4096
+	}
 	buf := make([]byte, fh.SizeOfOptionalHeader)
 	if _, err := io.ReadFull(r, buf); err != nil {
 		return nil, err
@@ -227,7 +244,7 @@ func readOptHeader(r io.Reader, d io.Writer, peStart int64, fh *pe.FileHeader) (
 	var dd pe.DataDirectory
 	optMagic := binary.LittleEndian.Uint16(buf[:2])
 	switch optMagic {
-	case 0x10b:
+	case optHeaderMagicPE32:
 		// PE32
 		var opt pe.OptionalHeader32
 		if err := binaryReadBytes(buf, &opt); err != nil {
@@ -239,9 +256,8 @@ func readOptHeader(r io.Reader, d io.Writer, peStart int64, fh *pe.FileHeader) (
 		dd = opt.DataDirectory[4]
 		dd4Start = 128
 		hvals.sizeOfHdr = int64(opt.SizeOfHeaders)
-		hvals.sectionAlign = opt.SectionAlignment
 		hvals.fileAlign = opt.FileAlignment
-	case 0x20b:
+	case optHeaderMagicPE32Plus:
 		// PE32+
 		var opt pe.OptionalHeader64
 		if err := binaryReadBytes(buf, &opt); err != nil {
@@ -253,7 +269,6 @@ func readOptHeader(r io.Reader, d io.Writer, peStart int64, fh *pe.FileHeader) (
 		dd = opt.DataDirectory[4]
 		dd4Start = 144
 		hvals.sizeOfHdr = int64(opt.SizeOfHeaders)
-		hvals.sectionAlign = opt.SectionAlignment
 		hvals.fileAlign = opt.FileAlignment
 	default:
 		return nil, errors.New("unrecognized optional header magic")
@@ -332,8 +347,8 @@ type peHeaderValues struct {
 	secTblStart int64
 	// size of all headers plus padding
 	sizeOfHdr int64
-	// section alignment in memory
-	sectionAlign uint32
+	// architecture page size
+	pageSize uint32
 	// section alignment in file
 	fileAlign uint32
 	// file offset and size of the certificate table
