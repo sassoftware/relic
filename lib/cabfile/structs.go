@@ -43,11 +43,15 @@ type Header struct {
 	CabNumber   uint16
 }
 
+const reserveHeaderSize = 4
+
 type ReserveHeader struct {
 	HeaderSize uint16
 	FolderSize uint8
 	DataSize   uint8
 }
+
+const signatureHeaderSize = 20
 
 type SignatureHeader struct {
 	Unknown1           uint32

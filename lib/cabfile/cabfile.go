@@ -21,9 +21,9 @@ import (
 	"crypto"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"hash"
 	"io"
-	"io/ioutil"
 
 	"github.com/sassoftware/relic/v7/lib/binpatch"
 )
@@ -33,7 +33,7 @@ func Digest(r io.Reader, hashFunc crypto.Hash) (*CabinetDigest, error) {
 	var d hash.Hash
 	var dw io.Writer
 	if hashFunc == 0 {
-		dw = ioutil.Discard
+		dw = io.Discard
 	} else {
 		d = hashFunc.New()
 		dw = d
@@ -45,47 +45,68 @@ func Digest(r io.Reader, hashFunc crypto.Hash) (*CabinetDigest, error) {
 	if cab.Header.Magic != Magic {
 		return nil, errors.New("not a cab file")
 	}
-
 	outHeader := cab.Header
+	var addOffset int
 	if cab.Header.Flags&FlagReservePresent != 0 {
+		// read reserve header
 		if err := binary.Read(r, binary.LittleEndian, &cab.ReserveHeader); err != nil {
 			return nil, err
 		}
-		if cab.ReserveHeader.HeaderSize > 0 {
-			if cab.ReserveHeader.HeaderSize != 20 {
-				return nil, errors.New("unknown reserved data")
+		if cab.ReserveHeader.HeaderSize < signatureHeaderSize || cab.ReserveHeader.FolderSize != 0 || cab.ReserveHeader.DataSize != 0 {
+			return nil, errors.New("unknown reserved data")
+		}
+		cab.SignatureHeader = new(SignatureHeader)
+		if err := binary.Read(r, binary.LittleEndian, cab.SignatureHeader); err != nil {
+			return nil, err
+		}
+		if padding := cab.ReserveHeader.HeaderSize - signatureHeaderSize; padding > 0 {
+			// cabinet files may be created with space reserved; ensure in this case that it's all zeroed out
+			if cab.SignatureHeader.CabinetSize != 0 {
+				// must not have both padding and an actual signature header
+				return nil, fmt.Errorf("reserve header for signature is %d bytes; expected %d bytes",
+					cab.ReserveHeader.HeaderSize, signatureHeaderSize)
 			}
-			cab.SignatureHeader = new(SignatureHeader)
-			if err := binary.Read(r, binary.LittleEndian, cab.SignatureHeader); err != nil {
+			pbuf := make([]byte, padding)
+			if _, err := io.ReadFull(r, pbuf); err != nil {
 				return nil, err
 			}
-			if cab.Header.TotalSize != cab.SignatureHeader.CabinetSize {
-				return nil, errors.New("mismatch between cabinet size and signature header size")
+			for _, v := range pbuf {
+				if v != 0 {
+					return nil, errors.New("invalid padding in signature reserve header")
+				}
 			}
-		} else {
-			return nil, errors.New("unknown reserved data")
+			// remove padding, since the actual signature goes at the end of the file
+			addOffset -= int(padding)
+			cab.SignatureHeader = nil
+		} else if cab.Header.TotalSize != cab.SignatureHeader.CabinetSize {
+			// signature header (if present) must agree with cabinet header
+			return nil, fmt.Errorf("cabinet size is %d but signature header specifies %d bytes",
+				cab.Header.TotalSize, cab.SignatureHeader.CabinetSize)
 		}
-		if cab.ReserveHeader.FolderSize != 0 || cab.ReserveHeader.DataSize != 0 {
-			return nil, errors.New("unknown reserved data")
-		}
+	} else {
+		// make space for a new reserve header
+		addOffset += reserveHeaderSize + signatureHeaderSize
 	}
 	if cab.Header.Flags&(FlagPrevCabinet|FlagNextCabinet) != 0 {
 		return nil, errors.New("multipart cab files are not supported")
 	} else if cab.Header.Flags&^FlagReservePresent != 0 {
 		return nil, errors.New("unsupported flags in cabinet file")
 	}
-	var addOffset uint32
-	var outSigHeader SignatureHeader
-	if cab.SignatureHeader == nil {
-		// make a new header and increment all the file offsets to make room for it
-		addOffset = 24
-		outHeader.TotalSize += addOffset
-		outHeader.Flags |= FlagReservePresent
-		outHeader.OffsetFiles += addOffset
-		outSigHeader.Unknown1 = 0x100000
-		outSigHeader.CabinetSize = outHeader.TotalSize
-	} else {
-		outSigHeader = *cab.SignatureHeader
+	// add space for signature header, or remove excess padding
+	add32(&outHeader.TotalSize, addOffset)
+	add32(&outHeader.OffsetFiles, addOffset)
+	outHeader.Flags |= FlagReservePresent
+	// construct signature header
+	outReserveHeader := ReserveHeader{HeaderSize: signatureHeaderSize}
+	outSigHeader := SignatureHeader{
+		Unknown1:    0x100000,
+		CabinetSize: outHeader.TotalSize,
+	}
+	if cab.SignatureHeader != nil {
+		// preserve unknown fields from old signature header just in case they're important
+		outSigHeader.Unknown1 = cab.SignatureHeader.Unknown1
+		outSigHeader.Unknown2 = cab.SignatureHeader.Unknown2
+		outSigHeader.Unknown3 = cab.SignatureHeader.Unknown3
 	}
 	// digest the header
 	sb := sigBlob{
@@ -105,26 +126,30 @@ func Digest(r io.Reader, hashFunc crypto.Hash) (*CabinetDigest, error) {
 	// save the updated header for writing out later
 	patched := bytes.NewBuffer(make([]byte, 0, outHeader.OffsetFiles))
 	_ = binary.Write(patched, binary.LittleEndian, outHeader)
-	_ = binary.Write(patched, binary.LittleEndian, ReserveHeader{20, 0, 0})
+	_ = binary.Write(patched, binary.LittleEndian, outReserveHeader)
 	_ = binary.Write(patched, binary.LittleEndian, outSigHeader)
 	w := io.MultiWriter(dw, patched)
+	// add offset to folder headers
 	var fh FolderHeader
 	for i := 0; i < int(cab.Header.NumFolders); i++ {
 		if err := binary.Read(r, binary.LittleEndian, &fh); err != nil {
 			return nil, err
 		}
-		fh.Offset += addOffset
+		add32(&fh.Offset, addOffset)
 		_ = binary.Write(w, binary.LittleEndian, fh)
 	}
+	// digest file contents
 	if _, err := io.CopyN(dw, r, int64(cab.Header.TotalSize-cab.Header.OffsetFiles)); err != nil {
 		return nil, err
 	}
 	if cab.SignatureHeader != nil {
+		// read old signature for verification purposes
 		cab.Signature = make([]byte, cab.SignatureHeader.SignatureSize)
 		if _, err := io.ReadFull(r, cab.Signature); err != nil {
 			return nil, err
 		}
 	}
+	// ensure there is nothing after the cabinet and signature
 	if _, err := r.Read(make([]byte, 1)); err == nil {
 		return nil, errors.New("trailing garbage after cabinet")
 	} else if err != io.EOF {
@@ -134,7 +159,12 @@ func Digest(r io.Reader, hashFunc crypto.Hash) (*CabinetDigest, error) {
 	if d != nil {
 		imprint = d.Sum(nil)
 	}
-	return &CabinetDigest{cab, imprint, hashFunc, patched.Bytes()}, nil
+	return &CabinetDigest{
+		Cabinet:  cab,
+		Imprint:  imprint,
+		HashFunc: hashFunc,
+		Patched:  patched.Bytes(),
+	}, nil
 }
 
 // Parse the cabinet file header and return it
@@ -159,4 +189,8 @@ func (d *CabinetDigest) MakePatch(pkcs []byte) *binpatch.PatchSet {
 	p.Add(0, int64(d.Cabinet.Header.OffsetFiles), hdr)
 	p.Add(int64(d.Cabinet.Header.TotalSize), int64(d.Cabinet.SignatureHeader.Size()), padded)
 	return p
+}
+
+func add32(offset *uint32, increment int) {
+	*offset = uint32(int64(*offset) + int64(increment))
 }
