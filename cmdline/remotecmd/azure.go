@@ -2,8 +2,10 @@ package remotecmd
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
@@ -14,6 +16,7 @@ import (
 
 	"github.com/AzureAD/microsoft-authentication-library-for-go/apps/cache"
 	"github.com/AzureAD/microsoft-authentication-library-for-go/apps/public"
+	"github.com/cli/browser"
 	"github.com/gregjones/httpcache"
 	"github.com/gregjones/httpcache/diskcache"
 	"github.com/peterbourgon/diskv"
@@ -23,6 +26,7 @@ import (
 
 type azureSource struct {
 	cli    public.Client
+	dvc    *dvCache
 	useAT  bool
 	scopes []string
 }
@@ -59,13 +63,14 @@ func azureTokenSource(authority, clientID string, scopes []string) (oauth2.Token
 	cache := httpcache.NewTransport(diskcache.NewWithDiskv(storage))
 	cache.Transport = tr
 	hc := &http.Client{Transport: cache}
+	s.dvc = &dvCache{
+		dv:  storage,
+		key: "msal-" + clientID,
+	}
 	// configure MSAL
 	s.cli, err = public.New(clientID,
 		public.WithAuthority(authority),
-		public.WithCache(&dvCache{
-			dv:  storage,
-			key: "msal-" + clientID,
-		}),
+		public.WithCache(s.dvc),
 		public.WithHTTPClient(hc),
 	)
 	if err != nil {
@@ -75,18 +80,30 @@ func azureTokenSource(authority, clientID string, scopes []string) (oauth2.Token
 }
 
 func (s *azureSource) Token() (*oauth2.Token, error) {
+	ctx := context.Background()
 	// use cached token or silently refresh
-	if acc := s.cli.Accounts(); len(acc) != 0 {
-		result, err := s.cli.AcquireTokenSilent(context.Background(), s.scopes, public.WithSilentAccount(acc[0]))
-		if err != nil {
-			log.Println("warning: failed to refresh cached token:", err)
-		} else {
-			return s.toToken(result)
+	if acc, err := s.cli.Accounts(ctx); len(acc) != 0 {
+		token, err := s.acquireSilent(ctx, acc[0], false)
+		if err == nil && !token.Valid() {
+			// MSAL gave us an expired ID token because it only looks at the access token.
+			// Since it doesn't surface any better options to force a refresh,
+			// wipe its cached access tokens.
+			log.Println("warning: MSAL returned an expired ID token, forcing a refresh")
+			token, err = s.acquireSilent(ctx, acc[0], true)
 		}
+		if err == nil {
+			return token, nil
+		}
+		log.Println("warning: failed to refresh cached token:", err)
+		// fallback
+	} else if err != nil {
+		return nil, fmt.Errorf("enumerating cached accounts: %w", err)
 	}
 	// use browser to interactively authenticate
 	fmt.Fprintln(os.Stderr, "attempting interactive login")
-	result, err := s.cli.AcquireTokenInteractive(context.Background(), s.scopes)
+	result, err := s.cli.AcquireTokenInteractive(ctx, s.scopes,
+		public.WithOpenURL(s.openURL),
+	)
 	if err == nil {
 		return s.toToken(result)
 	} else if !errors.As(err, new(*exec.ExitError)) && !errors.As(err, new(*exec.Error)) {
@@ -94,14 +111,23 @@ func (s *azureSource) Token() (*oauth2.Token, error) {
 	}
 	// use device code
 	fmt.Fprintln(os.Stderr, "attempting device code login")
-	dc, err := s.cli.AcquireTokenByDeviceCode(context.Background(), s.scopes)
+	dc, err := s.cli.AcquireTokenByDeviceCode(ctx, s.scopes)
 	if err != nil {
 		return nil, err
 	}
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, dc.Result.Message)
 	fmt.Fprintln(os.Stderr)
-	result, err = dc.AuthenticationResult(context.Background())
+	result, err = dc.AuthenticationResult(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return s.toToken(result)
+}
+
+func (s *azureSource) acquireSilent(ctx context.Context, account public.Account, force bool) (*oauth2.Token, error) {
+	s.dvc.wipeAccessTokens = force
+	result, err := s.cli.AcquireTokenSilent(ctx, s.scopes, public.WithSilentAccount(account))
 	if err != nil {
 		return nil, err
 	}
@@ -121,30 +147,57 @@ func (s *azureSource) toToken(res public.AuthResult) (*oauth2.Token, error) {
 	}, nil
 }
 
+func (s *azureSource) openURL(url string) error {
+	// devcontainers may have a helper to open a browser on the host
+	if v := os.Getenv("BROWSER"); v != "" {
+		fmt.Fprintln(os.Stderr, "Opening using $BROWSER:\n", url)
+		cmd := exec.Command(v, url)
+		cmd.Stdout = os.Stderr
+		cmd.Stderr = os.Stderr
+		return cmd.Run()
+	}
+	fmt.Fprintln(os.Stderr, "Opening using default browser:\n", url)
+	return browser.OpenURL(url)
+}
+
 // dvCache adapts the diskv key-value store to act as MSAL's persistence layer
 type dvCache struct {
 	dv  *diskv.Diskv
 	key string
+
+	wipeAccessTokens bool
 }
 
-func (c *dvCache) Export(cache cache.Marshaler, key string) {
+func (c *dvCache) Export(_ context.Context, cache cache.Marshaler, _ cache.ExportHints) error {
 	data, err := cache.Marshal()
-	if err == nil {
-		err = c.dv.Write(c.key, data)
-	}
 	if err != nil {
-		log.Println("error: persisting access token:", err)
+		return err
 	}
+	return c.dv.Write(c.key, data)
 }
 
-func (c *dvCache) Replace(cache cache.Unmarshaler, key string) {
+func (c *dvCache) Replace(_ context.Context, cache cache.Unmarshaler, _ cache.ReplaceHints) error {
 	data, err := c.dv.Read(c.key)
-	if err == nil {
-		err = cache.Unmarshal(data)
+	if errors.Is(err, fs.ErrNotExist) {
+		// cache miss
+		return nil
+	} else if err != nil {
+		return err
 	}
-	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		log.Println("error: reading cached access token:", err)
+	if c.wipeAccessTokens {
+		// Force MSAL to refresh by wiping its cached access tokens.
+		var d map[string]any
+		if err := json.Unmarshal(data, &d); err != nil {
+			return err
+		}
+		delete(d, "AccessToken")
+		delete(d, "IdToken")
+		data, err = json.Marshal(d)
+		if err != nil {
+			return err
+		}
 	}
+	return cache.Unmarshal(data)
 }
 
 type loggingTransport struct {

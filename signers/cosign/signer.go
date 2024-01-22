@@ -58,7 +58,7 @@ func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]b
 		Versioned:    specs.Versioned{SchemaVersion: 2},
 		MediaType:    oci.MediaTypeImageManifest,
 		ArtifactType: cosignArtifactType,
-		Config:       oci.ScratchDescriptor,
+		Config:       oci.DescriptorEmptyJSON,
 		// Subject is the OCI manifest (image) to which this artifact is attached
 		Subject: &oci.Descriptor{
 			MediaType: manifestType,
