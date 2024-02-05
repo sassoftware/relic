@@ -180,7 +180,9 @@ func (r *ComDoc) writeDirStream() error {
 	}
 	r.SAT[previous] = SecIDEndOfChain
 	r.Header.DirNextSector = first
-	r.Header.DirSectorCount = uint32(len(freeList))
+	if r.Header.Version >= 4 {
+		r.Header.DirSectorCount = uint32(len(freeList))
+	}
 	return nil
 }
 
