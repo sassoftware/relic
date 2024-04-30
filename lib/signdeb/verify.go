@@ -26,7 +26,7 @@ import (
 	"io/ioutil"
 	"strings"
 
-	"github.com/qur/ar"
+	"github.com/blakesmith/ar"
 	"golang.org/x/crypto/openpgp"
 
 	"github.com/sassoftware/relic/v7/lib/pgptools"

@@ -12,6 +12,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.26.6
 	github.com/aws/aws-sdk-go-v2/service/kms v1.27.9
 	github.com/beevik/etree v1.3.0
+	github.com/blakesmith/ar v0.0.0-20190502131153-809d4375e1fb
 	github.com/bradfitz/gomemcache v0.0.0-20230905024940-24af94b03874
 	github.com/cli/browser v1.2.0
 	github.com/go-asn1-ber/asn1-ber v1.5.5
@@ -28,7 +29,6 @@ require (
 	github.com/opencontainers/image-spec v1.1.0-rc6
 	github.com/peterbourgon/diskv v2.0.1+incompatible
 	github.com/prometheus/client_golang v1.18.0
-	github.com/qur/ar v0.0.0-20130629153254-282534b91770
 	github.com/rs/zerolog v1.32.0
 	github.com/sassoftware/go-rpmutils v0.3.0
 	github.com/spf13/cobra v1.8.0
