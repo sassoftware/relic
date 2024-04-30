@@ -31,7 +31,7 @@ import (
 	"github.com/sassoftware/relic/v7/lib/pgptools"
 	"github.com/sassoftware/relic/v7/lib/readercounter"
 
-	"github.com/qur/ar"
+	"github.com/blakesmith/ar"
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/packet"
 )
