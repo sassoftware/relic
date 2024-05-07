@@ -28,8 +28,8 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	"golang.org/x/crypto/openpgp"
-	"golang.org/x/crypto/openpgp/packet"
+	"github.com/ProtonMail/go-crypto/openpgp"
+	"github.com/ProtonMail/go-crypto/openpgp/packet"
 
 	"github.com/sassoftware/relic/v7/lib/pkcs7"
 	"github.com/sassoftware/relic/v7/lib/pkcs9"

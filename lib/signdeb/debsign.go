@@ -32,8 +32,8 @@ import (
 	"github.com/sassoftware/relic/v7/lib/readercounter"
 
 	"github.com/blakesmith/ar"
-	"golang.org/x/crypto/openpgp"
-	"golang.org/x/crypto/openpgp/packet"
+	"github.com/ProtonMail/go-crypto/openpgp"
+	"github.com/ProtonMail/go-crypto/openpgp/packet"
 )
 
 type DebSignature struct {

@@ -21,8 +21,8 @@ import (
 	"errors"
 	"io"
 
-	"golang.org/x/crypto/openpgp/armor"
-	"golang.org/x/crypto/openpgp/packet"
+	"github.com/ProtonMail/go-crypto/openpgp/armor"
+	"github.com/ProtonMail/go-crypto/openpgp/packet"
 )
 
 const maxLiteralSize = (1 << 31) - 512 // int32_max minus some room for the literal data header
@@ -66,27 +66,19 @@ func MergeSignature(w io.Writer, sig []byte, message io.Reader, withArmor bool, 
 
 // write a one-pass signature header with the fields copied from the detached signature in sig
 func writeOnePass(w io.Writer, sig []byte) error {
-	genpkt, err := packet.Read(bytes.NewReader(sig))
+	pkt, err := readOneSignature(bytes.NewReader(sig))
 	if err != nil {
 		return err
 	}
 	// parse
-	op := packet.OnePassSignature{IsLast: true}
-	switch pkt := genpkt.(type) {
-	case *packet.SignatureV3:
-		op.SigType = pkt.SigType
-		op.Hash = pkt.Hash
-		op.PubKeyAlgo = pkt.PubKeyAlgo
-		op.KeyId = pkt.IssuerKeyId
-	case *packet.Signature:
-		op.SigType = pkt.SigType
-		op.Hash = pkt.Hash
-		op.PubKeyAlgo = pkt.PubKeyAlgo
-		if pkt.IssuerKeyId != nil {
-			op.KeyId = *pkt.IssuerKeyId
-		}
-	default:
-		return errors.New("not a PGP signature")
+	op := packet.OnePassSignature{
+		SigType:    pkt.SigType,
+		Hash:       pkt.Hash,
+		PubKeyAlgo: pkt.PubKeyAlgo,
+		IsLast:     true,
+	}
+	if pkt.IssuerKeyId != nil {
+		op.KeyId = *pkt.IssuerKeyId
 	}
 	return op.Serialize(w)
 }

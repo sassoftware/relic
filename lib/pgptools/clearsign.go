@@ -22,12 +22,11 @@ import (
 	"crypto"
 	"errors"
 	"io"
-	"io/ioutil"
 
-	"golang.org/x/crypto/openpgp"
-	"golang.org/x/crypto/openpgp/armor"
-	"golang.org/x/crypto/openpgp/clearsign"
-	"golang.org/x/crypto/openpgp/packet"
+	"github.com/ProtonMail/go-crypto/openpgp"
+	"github.com/ProtonMail/go-crypto/openpgp/armor"
+	"github.com/ProtonMail/go-crypto/openpgp/clearsign"
+	"github.com/ProtonMail/go-crypto/openpgp/packet"
 )
 
 var sigHeader = []byte("-----BEGIN PGP SIGNATURE-----")
@@ -120,7 +119,7 @@ func headClearSign(r io.Reader, w io.Writer) error {
 		line := s.Bytes()
 		if bytes.Equal(line, sigHeader) {
 			// found the end of the document, drain the rest of the reader
-			_, err := io.Copy(ioutil.Discard, r)
+			_, err := io.Copy(io.Discard, r)
 			return err
 		}
 		if _, err := w.Write(line); err != nil {
@@ -133,7 +132,7 @@ func headClearSign(r io.Reader, w io.Writer) error {
 	if s.Err() != nil {
 		return s.Err()
 	}
-	return errors.New("Signature block not found")
+	return errors.New("signature block not found")
 }
 
 // Set up a pgp signature config based on the hash algorithm in an existing
@@ -144,23 +143,13 @@ func configFromSig(sigarmor []byte) (*packet.Config, error) {
 		return nil, err
 	}
 	if block.Type != "PGP SIGNATURE" {
-		return nil, errors.New("Not a PGP signature")
+		return nil, errors.New("not a PGP signature")
 	}
-	parser := packet.NewReader(block.Body)
-	pkt, err := parser.Next()
+	sig, err := readOneSignature(block.Body)
 	if err != nil {
-		return nil, errors.New("Not a PGP signature")
+		return nil, err
 	}
-	var hashFunc crypto.Hash
-	switch sig := pkt.(type) {
-	case *packet.Signature:
-		hashFunc = sig.Hash
-	case *packet.SignatureV3:
-		hashFunc = sig.Hash
-	default:
-		return nil, errors.New("Not a PGP signature")
-	}
-	return &packet.Config{DefaultHash: hashFunc}, nil
+	return &packet.Config{DefaultHash: sig.Hash}, nil
 }
 
 type fakeSigner struct{}

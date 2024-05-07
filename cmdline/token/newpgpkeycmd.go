@@ -18,7 +18,6 @@ package token
 
 import (
 	"crypto"
-	"crypto/ecdsa"
 	"crypto/rsa"
 	"encoding/hex"
 	"errors"
@@ -27,10 +26,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ProtonMail/go-crypto/openpgp"
+	"github.com/ProtonMail/go-crypto/openpgp/armor"
+	"github.com/ProtonMail/go-crypto/openpgp/packet"
 	"github.com/spf13/cobra"
-	"golang.org/x/crypto/openpgp"
-	"golang.org/x/crypto/openpgp/armor"
-	"golang.org/x/crypto/openpgp/packet"
 
 	"github.com/sassoftware/relic/v7/cmdline/shared"
 	"github.com/sassoftware/relic/v7/token"
@@ -62,8 +61,12 @@ func makeKey(key token.Key, uids []*packet.UserId) (*openpgp.Entity, error) {
 	switch pub := key.Public().(type) {
 	case *rsa.PublicKey:
 		pubKey = packet.NewRSAPublicKey(creationTime, pub)
-	case *ecdsa.PublicKey:
-		pubKey = packet.NewECDSAPublicKey(creationTime, pub)
+	// for ecdsa/eddsa protonmail openpgp does not support either
+	// - creating a PublicKey object from an existing key without silly workarounds
+	//     (because the curve defintions are in an internal package)
+	// - or, more importantly, actually using a crypto.Signer to utilize those keys to sign things
+	//
+	// so for now only RSA works.
 	default:
 		return nil, errors.New("Unsupported key type")
 	}

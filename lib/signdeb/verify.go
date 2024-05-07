@@ -27,7 +27,7 @@ import (
 	"strings"
 
 	"github.com/blakesmith/ar"
-	"golang.org/x/crypto/openpgp"
+	"github.com/ProtonMail/go-crypto/openpgp"
 
 	"github.com/sassoftware/relic/v7/lib/pgptools"
 )

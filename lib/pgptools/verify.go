@@ -22,12 +22,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"time"
 
-	"golang.org/x/crypto/openpgp"
-	"golang.org/x/crypto/openpgp/clearsign"
-	"golang.org/x/crypto/openpgp/packet"
+	"github.com/ProtonMail/go-crypto/openpgp"
+	"github.com/ProtonMail/go-crypto/openpgp/clearsign"
 )
 
 type PgpSignature struct {
@@ -40,60 +38,40 @@ type PgpSignature struct {
 // "signed", using keys from "keyring". Returns a value of ErrNoKey if the key
 // cannot be found.
 func VerifyDetached(signature, signed io.Reader, keyring openpgp.EntityList) (*PgpSignature, error) {
-	packetReader := packet.NewReader(signature)
-	genpkt, err := packetReader.Next()
-	if err == io.EOF {
-		return nil, errors.New("no PGP signature found")
-	} else if err != nil {
+	pkt, err := readOneSignature(signature)
+	if err != nil {
 		return nil, err
 	}
-	// parse
-	var hash crypto.Hash
-	var keyID uint64
-	var creationTime time.Time
-	switch pkt := genpkt.(type) {
-	case *packet.SignatureV3:
-		hash = pkt.Hash
-		keyID = pkt.IssuerKeyId
-		creationTime = pkt.CreationTime
-	case *packet.Signature:
-		if pkt.IssuerKeyId == nil {
-			return nil, errors.New("Missing keyId in signature")
+	key := findKey(keyring, pkt)
+	if key == nil {
+		if pkt.IssuerKeyId != nil {
+			return nil, ErrNoKey(*pkt.IssuerKeyId)
 		}
-		hash = pkt.Hash
-		keyID = *pkt.IssuerKeyId
-		creationTime = pkt.CreationTime
-	default:
-		return nil, errors.New("not a PGP signature")
-	}
-	// find key
-	keys := keyring.KeysById(keyID)
-	if len(keys) == 0 {
-		return nil, ErrNoKey(keyID)
+		return nil, ErrNoKey(0)
 	}
 	// calculate hash
+	hash := pkt.Hash
 	if !hash.Available() {
-		return nil, errors.New("signature uses unknown digest")
+		return nil, fmt.Errorf("signature digest %s is unknown or unavailable", hash)
 	}
 	d := hash.New()
 	if _, err := io.Copy(d, signed); err != nil {
 		return nil, err
 	}
 	// check signature
-	switch pkt := genpkt.(type) {
-	case *packet.SignatureV3:
-		err = keys[0].PublicKey.VerifySignatureV3(d, pkt)
-	case *packet.Signature:
-		err = keys[0].PublicKey.VerifySignature(d, pkt)
-	}
-	return &PgpSignature{&keys[0], creationTime, hash}, err
+	err = key.PublicKey.VerifySignature(d, pkt)
+	return &PgpSignature{
+		Key:          key,
+		CreationTime: pkt.CreationTime,
+		Hash:         hash,
+	}, err
 }
 
 // Verify a cleartext PGP signature in "signature" using keys from "keyring".
 // Returns a value of ErrNoKey in the key cannot be found. If "cleartext" is
 // not nil, then write the embedded cleartext as it is verified.
 func VerifyClearSign(signature io.Reader, cleartext io.Writer, keyring openpgp.EntityList) (*PgpSignature, error) {
-	blob, err := ioutil.ReadAll(signature)
+	blob, err := io.ReadAll(signature)
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +103,7 @@ func VerifyInline(signature io.Reader, cleartext io.Writer, keyring openpgp.Enti
 		return nil, ErrNoKey(md.SignedByKeyId)
 	}
 	if cleartext == nil {
-		cleartext = ioutil.Discard
+		cleartext = io.Discard
 	}
 	if _, err := io.Copy(cleartext, md.UnverifiedBody); err != nil {
 		return nil, err
@@ -135,9 +113,8 @@ func VerifyInline(signature io.Reader, cleartext io.Writer, keyring openpgp.Enti
 	if md.Signature != nil {
 		sig.CreationTime = md.Signature.CreationTime
 		sig.Hash = md.Signature.Hash
-	} else if md.SignatureV3 != nil {
-		sig.CreationTime = md.SignatureV3.CreationTime
-		sig.Hash = md.Signature.Hash
+	} else {
+		return nil, errors.New("unsupported inline signature")
 	}
 	return sig, md.SignatureError
 }

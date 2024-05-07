@@ -16,7 +16,14 @@
 
 package pgptools
 
-import "golang.org/x/crypto/openpgp"
+import (
+	"errors"
+	"fmt"
+	"io"
+
+	"github.com/ProtonMail/go-crypto/openpgp"
+	"github.com/ProtonMail/go-crypto/openpgp/packet"
+)
 
 // Return the primary identity name of a PGP entity
 func EntityName(entity *openpgp.Entity) string {
@@ -33,4 +40,45 @@ func EntityName(entity *openpgp.Entity) string {
 		}
 	}
 	return name
+}
+
+func readOneSignature(r io.Reader) (*packet.Signature, error) {
+	pkt, err := packet.Read(r)
+	if err != nil {
+		return nil, fmt.Errorf("parsing PGP signature: %w", err)
+	}
+	if n, _ := r.Read(make([]byte, 1)); n > 0 {
+		return nil, errors.New("expected a single PGP signature")
+	}
+	sig, ok := pkt.(*packet.Signature)
+	if !ok {
+		return nil, fmt.Errorf("expected a PGP v4 or later signature, not %T", pkt)
+	}
+	return sig, nil
+}
+
+func findKey(el openpgp.EntityList, sig *packet.Signature) *openpgp.Key {
+	for _, e := range el {
+		if sig.CheckKeyIdOrFingerprint(e.PrimaryKey) {
+			ident := e.PrimaryIdentity()
+			return &openpgp.Key{
+				Entity:        e,
+				PublicKey:     e.PrimaryKey,
+				SelfSignature: ident.SelfSignature,
+				Revocations:   e.Revocations,
+			}
+		}
+
+		for _, subKey := range e.Subkeys {
+			if sig.CheckKeyIdOrFingerprint(subKey.PublicKey) {
+				return &openpgp.Key{
+					Entity:        e,
+					PublicKey:     subKey.PublicKey,
+					SelfSignature: subKey.Sig,
+					Revocations:   subKey.Revocations,
+				}
+			}
+		}
+	}
+	return nil
 }

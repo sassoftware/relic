@@ -27,7 +27,7 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/crypto/openpgp"
+	"github.com/ProtonMail/go-crypto/openpgp"
 
 	"github.com/rs/zerolog"
 	"github.com/sassoftware/relic/v7/lib/pgptools"

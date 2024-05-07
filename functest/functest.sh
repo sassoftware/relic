@@ -58,8 +58,8 @@ done
 set -x
 
 ### RPM
-pkg="zlib-1.2.8-10.fc24.i686.rpm"
-$client verify --cert "testkeys/RPM-GPG-KEY-fedora-25-i386" "packages/$pkg"
+pkg="rocky-basesystem-11-13.el9.noarch.rpm"
+$client verify --cert "testkeys/rocky9.pgp" "packages/$pkg"
 $relic remote sign -k rsa2048 -f "packages/$pkg" -o "$signed/$pkg"
 $client verify "$signed/$pkg" 2>/dev/null && { echo expected an error; exit 1; }
 $verify_2048p "$signed/$pkg"
