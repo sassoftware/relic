@@ -16,9 +16,9 @@ package signinit
 import (
 	"sync"
 
-	"github.com/sassoftware/relic/v7/cmdline/shared"
-	"github.com/sassoftware/relic/v7/lib/pkcs9"
-	"github.com/sassoftware/relic/v7/lib/pkcs9/tsclient"
+	"github.com/sassoftware/relic/v8/cmdline/shared"
+	"github.com/sassoftware/relic/v8/lib/pkcs9"
+	"github.com/sassoftware/relic/v8/lib/pkcs9/tsclient"
 )
 
 var (

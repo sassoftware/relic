@@ -29,7 +29,7 @@ import (
 	"github.com/blakesmith/ar"
 	"github.com/ProtonMail/go-crypto/openpgp"
 
-	"github.com/sassoftware/relic/v7/lib/pgptools"
+	"github.com/sassoftware/relic/v8/lib/pgptools"
 )
 
 // Extract and verify signatures from a Debian package. A keyring of known PGP

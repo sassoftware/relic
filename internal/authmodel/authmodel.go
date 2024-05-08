@@ -4,9 +4,9 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/sassoftware/relic/v7/config"
-	"github.com/sassoftware/relic/v7/internal/zhttp"
-	"github.com/sassoftware/relic/v7/lib/audit"
+	"github.com/sassoftware/relic/v8/config"
+	"github.com/sassoftware/relic/v8/internal/zhttp"
+	"github.com/sassoftware/relic/v8/lib/audit"
 )
 
 type ctxKey int

@@ -6,7 +6,7 @@ import (
 
 	ber "github.com/go-asn1-ber/asn1-ber"
 
-	"github.com/sassoftware/relic/v7/lib/pkcs7"
+	"github.com/sassoftware/relic/v8/lib/pkcs7"
 )
 
 type SigBlob struct {

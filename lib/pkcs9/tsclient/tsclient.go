@@ -26,12 +26,12 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/sassoftware/relic/v7/config"
-	"github.com/sassoftware/relic/v7/lib/pkcs7"
-	"github.com/sassoftware/relic/v7/lib/pkcs9"
-	"github.com/sassoftware/relic/v7/lib/pkcs9/ratelimit"
-	"github.com/sassoftware/relic/v7/lib/pkcs9/timestampcache"
-	"github.com/sassoftware/relic/v7/lib/x509tools"
+	"github.com/sassoftware/relic/v8/config"
+	"github.com/sassoftware/relic/v8/lib/pkcs7"
+	"github.com/sassoftware/relic/v8/lib/pkcs9"
+	"github.com/sassoftware/relic/v8/lib/pkcs9/ratelimit"
+	"github.com/sassoftware/relic/v8/lib/pkcs9/timestampcache"
+	"github.com/sassoftware/relic/v8/lib/x509tools"
 )
 
 type tsClient struct {

@@ -26,12 +26,12 @@ import (
 	"io/ioutil"
 
 	"github.com/rs/zerolog"
-	"github.com/sassoftware/relic/v7/lib/appmanifest"
-	"github.com/sassoftware/relic/v7/lib/audit"
-	"github.com/sassoftware/relic/v7/lib/certloader"
-	"github.com/sassoftware/relic/v7/lib/magic"
-	"github.com/sassoftware/relic/v7/lib/pkcs9"
-	"github.com/sassoftware/relic/v7/signers"
+	"github.com/sassoftware/relic/v8/lib/appmanifest"
+	"github.com/sassoftware/relic/v8/lib/audit"
+	"github.com/sassoftware/relic/v8/lib/certloader"
+	"github.com/sassoftware/relic/v8/lib/magic"
+	"github.com/sassoftware/relic/v8/lib/pkcs9"
+	"github.com/sassoftware/relic/v8/signers"
 )
 
 var AppSigner = &signers.Signer{

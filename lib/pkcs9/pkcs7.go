@@ -25,8 +25,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/sassoftware/relic/v7/lib/pkcs7"
-	"github.com/sassoftware/relic/v7/lib/x509tools"
+	"github.com/sassoftware/relic/v8/lib/pkcs7"
+	"github.com/sassoftware/relic/v8/lib/x509tools"
 )
 
 func TimestampAndMarshal(ctx context.Context, psd *pkcs7.ContentInfoSignedData, timestamper Timestamper, authenticode bool) (*TimestampedSignature, error) {

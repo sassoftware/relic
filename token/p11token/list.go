@@ -28,8 +28,8 @@ import (
 
 	"github.com/miekg/pkcs11"
 
-	"github.com/sassoftware/relic/v7/lib/x509tools"
-	"github.com/sassoftware/relic/v7/token"
+	"github.com/sassoftware/relic/v8/lib/x509tools"
+	"github.com/sassoftware/relic/v8/token"
 )
 
 var classNames = map[uint]string{

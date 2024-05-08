@@ -30,9 +30,9 @@ import (
 	"github.com/ProtonMail/go-crypto/openpgp"
 
 	"github.com/rs/zerolog"
-	"github.com/sassoftware/relic/v7/lib/pgptools"
-	"github.com/sassoftware/relic/v7/lib/pkcs9"
-	"github.com/sassoftware/relic/v7/lib/x509tools"
+	"github.com/sassoftware/relic/v8/lib/pgptools"
+	"github.com/sassoftware/relic/v8/lib/pkcs9"
+	"github.com/sassoftware/relic/v8/lib/x509tools"
 )
 
 type Info struct {

@@ -25,7 +25,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/sassoftware/relic/v7/lib/certloader"
+	"github.com/sassoftware/relic/v8/lib/certloader"
 )
 
 const (

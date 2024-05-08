@@ -25,11 +25,11 @@ import (
 
 	"github.com/beevik/etree"
 
-	"github.com/sassoftware/relic/v7/lib/pkcs7"
-	"github.com/sassoftware/relic/v7/lib/pkcs9"
-	"github.com/sassoftware/relic/v7/lib/x509tools"
-	"github.com/sassoftware/relic/v7/lib/xmldsig"
-	"github.com/sassoftware/relic/v7/signers/sigerrors"
+	"github.com/sassoftware/relic/v8/lib/pkcs7"
+	"github.com/sassoftware/relic/v8/lib/pkcs9"
+	"github.com/sassoftware/relic/v8/lib/x509tools"
+	"github.com/sassoftware/relic/v8/lib/xmldsig"
+	"github.com/sassoftware/relic/v8/signers/sigerrors"
 )
 
 type ManifestSignature struct {

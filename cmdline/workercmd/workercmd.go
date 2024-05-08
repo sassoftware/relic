@@ -31,12 +31,12 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
-	"github.com/sassoftware/relic/v7/cmdline/shared"
-	"github.com/sassoftware/relic/v7/internal/activation"
-	"github.com/sassoftware/relic/v7/internal/activation/activatecmd"
-	"github.com/sassoftware/relic/v7/internal/zhttp"
-	"github.com/sassoftware/relic/v7/token/open"
-	"github.com/sassoftware/relic/v7/token/tokencache"
+	"github.com/sassoftware/relic/v8/cmdline/shared"
+	"github.com/sassoftware/relic/v8/internal/activation"
+	"github.com/sassoftware/relic/v8/internal/activation/activatecmd"
+	"github.com/sassoftware/relic/v8/internal/zhttp"
+	"github.com/sassoftware/relic/v8/token/open"
+	"github.com/sassoftware/relic/v8/token/tokencache"
 )
 
 func init() {

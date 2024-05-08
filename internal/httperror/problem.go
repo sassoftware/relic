@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/rs/zerolog"
-	"github.com/sassoftware/relic/v7/internal/zhttp"
+	"github.com/sassoftware/relic/v8/internal/zhttp"
 )
 
 // Problem implements a RFC 7807 HTTP "problem" response

@@ -22,8 +22,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/sassoftware/relic/v7/cmdline/shared"
-	"github.com/sassoftware/relic/v7/config"
+	"github.com/sassoftware/relic/v8/cmdline/shared"
+	"github.com/sassoftware/relic/v8/config"
 
 	"github.com/spf13/cobra"
 )

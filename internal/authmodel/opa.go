@@ -11,11 +11,11 @@ import (
 	"strings"
 
 	"github.com/rs/zerolog"
-	"github.com/sassoftware/relic/v7/config"
-	"github.com/sassoftware/relic/v7/internal/httperror"
-	"github.com/sassoftware/relic/v7/internal/realip"
-	"github.com/sassoftware/relic/v7/internal/zhttp"
-	"github.com/sassoftware/relic/v7/lib/audit"
+	"github.com/sassoftware/relic/v8/config"
+	"github.com/sassoftware/relic/v8/internal/httperror"
+	"github.com/sassoftware/relic/v8/internal/realip"
+	"github.com/sassoftware/relic/v8/internal/zhttp"
+	"github.com/sassoftware/relic/v8/lib/audit"
 )
 
 type PolicyAuth struct {

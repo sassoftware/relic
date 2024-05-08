@@ -22,13 +22,13 @@ import (
 	"net/http"
 
 	"github.com/rs/zerolog/hlog"
-	"github.com/sassoftware/relic/v7/internal/authmodel"
-	"github.com/sassoftware/relic/v7/internal/httperror"
-	"github.com/sassoftware/relic/v7/internal/signinit"
-	"github.com/sassoftware/relic/v7/internal/zhttp"
-	"github.com/sassoftware/relic/v7/lib/readercounter"
-	"github.com/sassoftware/relic/v7/lib/x509tools"
-	"github.com/sassoftware/relic/v7/signers"
+	"github.com/sassoftware/relic/v8/internal/authmodel"
+	"github.com/sassoftware/relic/v8/internal/httperror"
+	"github.com/sassoftware/relic/v8/internal/signinit"
+	"github.com/sassoftware/relic/v8/internal/zhttp"
+	"github.com/sassoftware/relic/v8/lib/readercounter"
+	"github.com/sassoftware/relic/v8/lib/x509tools"
+	"github.com/sassoftware/relic/v8/signers"
 )
 
 const defaultHash = crypto.SHA256

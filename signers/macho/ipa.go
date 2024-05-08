@@ -11,8 +11,8 @@ import (
 
 	"howett.net/plist"
 
-	"github.com/sassoftware/relic/v7/lib/magic"
-	"github.com/sassoftware/relic/v7/signers"
+	"github.com/sassoftware/relic/v8/lib/magic"
+	"github.com/sassoftware/relic/v8/signers"
 )
 
 var ipaVerifier = &signers.Signer{

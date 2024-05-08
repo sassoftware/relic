@@ -28,10 +28,10 @@ import (
 	"github.com/ProtonMail/go-crypto/openpgp/armor"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/sassoftware/relic/v7/config"
-	"github.com/sassoftware/relic/v7/internal/authmodel"
-	"github.com/sassoftware/relic/v7/internal/httperror"
-	"github.com/sassoftware/relic/v7/internal/signinit"
+	"github.com/sassoftware/relic/v8/config"
+	"github.com/sassoftware/relic/v8/internal/authmodel"
+	"github.com/sassoftware/relic/v8/internal/httperror"
+	"github.com/sassoftware/relic/v8/internal/signinit"
 )
 
 type keyInfo struct {

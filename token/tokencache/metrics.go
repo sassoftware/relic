@@ -11,8 +11,8 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/sassoftware/relic/v7/internal/httperror"
-	"github.com/sassoftware/relic/v7/token"
+	"github.com/sassoftware/relic/v8/internal/httperror"
+	"github.com/sassoftware/relic/v8/token"
 )
 
 var (

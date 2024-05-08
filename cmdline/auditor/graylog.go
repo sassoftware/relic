@@ -24,7 +24,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sassoftware/relic/v7/lib/audit"
+	"github.com/sassoftware/relic/v8/lib/audit"
 )
 
 func logGraylog(info *audit.Info, rowid int64) error {

@@ -32,12 +32,12 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog/log"
-	"github.com/sassoftware/relic/v7/config"
-	"github.com/sassoftware/relic/v7/internal/activation"
-	"github.com/sassoftware/relic/v7/internal/zhttp"
-	"github.com/sassoftware/relic/v7/lib/certloader"
-	"github.com/sassoftware/relic/v7/lib/x509tools"
-	"github.com/sassoftware/relic/v7/server"
+	"github.com/sassoftware/relic/v8/config"
+	"github.com/sassoftware/relic/v8/internal/activation"
+	"github.com/sassoftware/relic/v8/internal/zhttp"
+	"github.com/sassoftware/relic/v8/lib/certloader"
+	"github.com/sassoftware/relic/v8/lib/x509tools"
+	"github.com/sassoftware/relic/v8/server"
 )
 
 type Daemon struct {

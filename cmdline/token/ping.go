@@ -22,7 +22,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/sassoftware/relic/v7/cmdline/shared"
+	"github.com/sassoftware/relic/v8/cmdline/shared"
 )
 
 var PingCmd = &cobra.Command{

@@ -32,12 +32,12 @@ import (
 	"golang.org/x/net/http2"
 	"golang.org/x/oauth2"
 
-	"github.com/sassoftware/relic/v7/cmdline/shared"
-	"github.com/sassoftware/relic/v7/config"
-	"github.com/sassoftware/relic/v7/internal/authmodel"
-	"github.com/sassoftware/relic/v7/internal/httperror"
-	"github.com/sassoftware/relic/v7/lib/compresshttp"
-	"github.com/sassoftware/relic/v7/lib/x509tools"
+	"github.com/sassoftware/relic/v8/cmdline/shared"
+	"github.com/sassoftware/relic/v8/config"
+	"github.com/sassoftware/relic/v8/internal/authmodel"
+	"github.com/sassoftware/relic/v8/internal/httperror"
+	"github.com/sassoftware/relic/v8/lib/compresshttp"
+	"github.com/sassoftware/relic/v8/lib/x509tools"
 )
 
 type ReaderGetter interface {

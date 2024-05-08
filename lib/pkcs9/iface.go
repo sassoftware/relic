@@ -17,7 +17,7 @@ import (
 	"context"
 	"crypto"
 
-	"github.com/sassoftware/relic/v7/lib/pkcs7"
+	"github.com/sassoftware/relic/v8/lib/pkcs7"
 )
 
 // Timestamper is the common interface for the timestamp client and middleware

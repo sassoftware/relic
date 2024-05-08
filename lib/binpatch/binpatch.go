@@ -28,7 +28,7 @@ import (
 	"os"
 	"sort"
 
-	"github.com/sassoftware/relic/v7/lib/atomicfile"
+	"github.com/sassoftware/relic/v8/lib/atomicfile"
 )
 
 const (

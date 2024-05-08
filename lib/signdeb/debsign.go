@@ -27,9 +27,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sassoftware/relic/v7/lib/binpatch"
-	"github.com/sassoftware/relic/v7/lib/pgptools"
-	"github.com/sassoftware/relic/v7/lib/readercounter"
+	"github.com/sassoftware/relic/v8/lib/binpatch"
+	"github.com/sassoftware/relic/v8/lib/pgptools"
+	"github.com/sassoftware/relic/v8/lib/readercounter"
 
 	"github.com/blakesmith/ar"
 	"github.com/ProtonMail/go-crypto/openpgp"

@@ -20,12 +20,12 @@ import (
 	"io"
 	"os"
 
-	"github.com/sassoftware/relic/v7/lib/certloader"
-	"github.com/sassoftware/relic/v7/lib/magic"
-	"github.com/sassoftware/relic/v7/lib/signxap"
-	"github.com/sassoftware/relic/v7/signers"
-	"github.com/sassoftware/relic/v7/signers/pecoff"
-	"github.com/sassoftware/relic/v7/signers/zipbased"
+	"github.com/sassoftware/relic/v8/lib/certloader"
+	"github.com/sassoftware/relic/v8/lib/magic"
+	"github.com/sassoftware/relic/v8/lib/signxap"
+	"github.com/sassoftware/relic/v8/signers"
+	"github.com/sassoftware/relic/v8/signers/pecoff"
+	"github.com/sassoftware/relic/v8/signers/zipbased"
 )
 
 // Sign Silverlight / legacy Windows Phone apps

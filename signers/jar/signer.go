@@ -23,11 +23,11 @@ import (
 	"io"
 	"os"
 
-	"github.com/sassoftware/relic/v7/lib/certloader"
-	"github.com/sassoftware/relic/v7/lib/magic"
-	"github.com/sassoftware/relic/v7/lib/signjar"
-	"github.com/sassoftware/relic/v7/signers"
-	"github.com/sassoftware/relic/v7/signers/zipbased"
+	"github.com/sassoftware/relic/v8/lib/certloader"
+	"github.com/sassoftware/relic/v8/lib/magic"
+	"github.com/sassoftware/relic/v8/lib/signjar"
+	"github.com/sassoftware/relic/v8/signers"
+	"github.com/sassoftware/relic/v8/signers/zipbased"
 )
 
 var JarSigner = &signers.Signer{

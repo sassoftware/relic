@@ -24,7 +24,7 @@ import (
 
 	"github.com/beevik/etree"
 
-	"github.com/sassoftware/relic/v7/lib/x509tools"
+	"github.com/sassoftware/relic/v8/lib/x509tools"
 )
 
 type appxPackage struct {

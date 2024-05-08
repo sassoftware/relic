@@ -33,11 +33,11 @@ import (
 	"github.com/ProtonMail/go-crypto/openpgp/armor"
 	"github.com/ProtonMail/go-crypto/openpgp/packet"
 
-	"github.com/sassoftware/relic/v7/lib/atomicfile"
-	"github.com/sassoftware/relic/v7/lib/certloader"
-	"github.com/sassoftware/relic/v7/lib/magic"
-	"github.com/sassoftware/relic/v7/lib/pgptools"
-	"github.com/sassoftware/relic/v7/signers"
+	"github.com/sassoftware/relic/v8/lib/atomicfile"
+	"github.com/sassoftware/relic/v8/lib/certloader"
+	"github.com/sassoftware/relic/v8/lib/magic"
+	"github.com/sassoftware/relic/v8/lib/pgptools"
+	"github.com/sassoftware/relic/v8/signers"
 )
 
 var PgpSigner = &signers.Signer{

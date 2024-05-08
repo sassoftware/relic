@@ -28,11 +28,11 @@ import (
 	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/spf13/pflag"
 
-	"github.com/sassoftware/relic/v7/lib/audit"
-	"github.com/sassoftware/relic/v7/lib/binpatch"
-	"github.com/sassoftware/relic/v7/lib/magic"
-	"github.com/sassoftware/relic/v7/lib/pkcs7"
-	"github.com/sassoftware/relic/v7/lib/pkcs9"
+	"github.com/sassoftware/relic/v8/lib/audit"
+	"github.com/sassoftware/relic/v8/lib/binpatch"
+	"github.com/sassoftware/relic/v8/lib/magic"
+	"github.com/sassoftware/relic/v8/lib/pkcs7"
+	"github.com/sassoftware/relic/v8/lib/pkcs9"
 )
 
 var common *pflag.FlagSet

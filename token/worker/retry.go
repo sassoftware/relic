@@ -27,10 +27,10 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
-	"github.com/sassoftware/relic/v7/internal/httperror"
-	"github.com/sassoftware/relic/v7/internal/workerrpc"
-	"github.com/sassoftware/relic/v7/token"
-	"github.com/sassoftware/relic/v7/token/tokencache"
+	"github.com/sassoftware/relic/v8/internal/httperror"
+	"github.com/sassoftware/relic/v8/internal/workerrpc"
+	"github.com/sassoftware/relic/v8/token"
+	"github.com/sassoftware/relic/v8/token/tokencache"
 )
 
 const (

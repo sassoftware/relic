@@ -33,7 +33,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sys/unix"
 
-	"github.com/sassoftware/relic/v7/internal/closeonce"
+	"github.com/sassoftware/relic/v8/internal/closeonce"
 )
 
 // Listener implements a channel that receives ready notifications from spawned processes

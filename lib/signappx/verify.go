@@ -24,11 +24,11 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/sassoftware/relic/v7/lib/authenticode"
-	"github.com/sassoftware/relic/v7/lib/pkcs7"
-	"github.com/sassoftware/relic/v7/lib/pkcs9"
-	"github.com/sassoftware/relic/v7/lib/x509tools"
-	"github.com/sassoftware/relic/v7/signers/sigerrors"
+	"github.com/sassoftware/relic/v8/lib/authenticode"
+	"github.com/sassoftware/relic/v8/lib/pkcs7"
+	"github.com/sassoftware/relic/v8/lib/pkcs9"
+	"github.com/sassoftware/relic/v8/lib/x509tools"
+	"github.com/sassoftware/relic/v8/signers/sigerrors"
 )
 
 func Verify(r io.ReaderAt, size int64, skipDigests bool) (*AppxSignature, error) {

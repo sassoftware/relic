@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sassoftware/relic/v7/token"
+	"github.com/sassoftware/relic/v8/token"
 )
 
 // Cache keys fetched from an underlying token

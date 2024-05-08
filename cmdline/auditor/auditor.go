@@ -26,10 +26,10 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/streadway/amqp"
 
-	"github.com/sassoftware/relic/v7/cmdline/shared"
-	"github.com/sassoftware/relic/v7/config"
-	"github.com/sassoftware/relic/v7/internal/activation"
-	"github.com/sassoftware/relic/v7/lib/audit"
+	"github.com/sassoftware/relic/v8/cmdline/shared"
+	"github.com/sassoftware/relic/v8/config"
+	"github.com/sassoftware/relic/v8/internal/activation"
+	"github.com/sassoftware/relic/v8/lib/audit"
 
 	_ "github.com/lib/pq"
 )

@@ -36,9 +36,9 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/sassoftware/relic/v7/cmdline/shared"
-	"github.com/sassoftware/relic/v7/config"
-	"github.com/sassoftware/relic/v7/lib/certloader"
+	"github.com/sassoftware/relic/v8/cmdline/shared"
+	"github.com/sassoftware/relic/v8/config"
+	"github.com/sassoftware/relic/v8/lib/certloader"
 
 	"github.com/spf13/cobra"
 )

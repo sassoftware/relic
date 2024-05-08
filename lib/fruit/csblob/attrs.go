@@ -9,8 +9,8 @@ import (
 
 	"howett.net/plist"
 
-	"github.com/sassoftware/relic/v7/lib/pkcs7"
-	"github.com/sassoftware/relic/v7/lib/x509tools"
+	"github.com/sassoftware/relic/v8/lib/pkcs7"
+	"github.com/sassoftware/relic/v8/lib/x509tools"
 )
 
 func checkCDHashes(si *pkcs7.SignerInfo, computed map[crypto.Hash][]byte) error {

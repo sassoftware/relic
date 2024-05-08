@@ -30,9 +30,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/sassoftware/relic/v7/config"
-	"github.com/sassoftware/relic/v7/internal/activation/activatecmd"
-	"github.com/sassoftware/relic/v7/internal/closeonce"
+	"github.com/sassoftware/relic/v8/config"
+	"github.com/sassoftware/relic/v8/internal/activation/activatecmd"
+	"github.com/sassoftware/relic/v8/internal/closeonce"
 )
 
 const (

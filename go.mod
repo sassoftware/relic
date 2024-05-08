@@ -1,4 +1,4 @@
-module github.com/sassoftware/relic/v7
+module github.com/sassoftware/relic/v8
 
 go 1.21
 

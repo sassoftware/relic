@@ -20,7 +20,7 @@ import (
 	"github.com/gregjones/httpcache"
 	"github.com/gregjones/httpcache/diskcache"
 	"github.com/peterbourgon/diskv"
-	"github.com/sassoftware/relic/v7/lib/dlog"
+	"github.com/sassoftware/relic/v8/lib/dlog"
 	"golang.org/x/oauth2"
 )
 

@@ -22,7 +22,7 @@ import (
 
 	"software.sslmate.com/src/go-pkcs12"
 
-	"github.com/sassoftware/relic/v7/lib/passprompt"
+	"github.com/sassoftware/relic/v8/lib/passprompt"
 )
 
 func ParsePKCS12(blob []byte, prompt passprompt.PasswordGetter) (*Certificate, error) {

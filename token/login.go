@@ -21,9 +21,9 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/sassoftware/relic/v7/config"
-	"github.com/sassoftware/relic/v7/lib/passprompt"
-	"github.com/sassoftware/relic/v7/signers/sigerrors"
+	"github.com/sassoftware/relic/v8/config"
+	"github.com/sassoftware/relic/v8/lib/passprompt"
+	"github.com/sassoftware/relic/v8/signers/sigerrors"
 )
 
 func Login(tokenConf *config.TokenConfig, pinProvider passprompt.PasswordGetter, loginFunc passprompt.LoginFunc, keyringUser, initialPrompt string) error {

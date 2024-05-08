@@ -25,13 +25,13 @@ import (
 
 	"github.com/beevik/etree"
 
-	"github.com/sassoftware/relic/v7/lib/certloader"
-	"github.com/sassoftware/relic/v7/lib/magic"
-	"github.com/sassoftware/relic/v7/lib/pkcs7"
-	"github.com/sassoftware/relic/v7/lib/pkcs9"
-	"github.com/sassoftware/relic/v7/lib/xmldsig"
-	"github.com/sassoftware/relic/v7/signers"
-	"github.com/sassoftware/relic/v7/signers/zipbased"
+	"github.com/sassoftware/relic/v8/lib/certloader"
+	"github.com/sassoftware/relic/v8/lib/magic"
+	"github.com/sassoftware/relic/v8/lib/pkcs7"
+	"github.com/sassoftware/relic/v8/lib/pkcs9"
+	"github.com/sassoftware/relic/v8/lib/xmldsig"
+	"github.com/sassoftware/relic/v8/signers"
+	"github.com/sassoftware/relic/v8/signers/zipbased"
 )
 
 var Signer = &signers.Signer{

@@ -12,7 +12,7 @@ import (
 	"github.com/Azure/go-autorest/autorest/adal"
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
-	"github.com/sassoftware/relic/v7/config"
+	"github.com/sassoftware/relic/v8/config"
 )
 
 // Configure azure authentication based on the token config and/or process

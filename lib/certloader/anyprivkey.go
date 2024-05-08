@@ -31,7 +31,7 @@ import (
 	"github.com/ProtonMail/go-crypto/openpgp/armor"
 	"github.com/ProtonMail/go-crypto/openpgp/packet"
 
-	"github.com/sassoftware/relic/v7/lib/passprompt"
+	"github.com/sassoftware/relic/v8/lib/passprompt"
 )
 
 // Parse and decrypt a private key. It can be a RSA or ECDA key in PKCS#1 or

@@ -24,10 +24,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/sassoftware/relic/v7/lib/authenticode"
-	"github.com/sassoftware/relic/v7/lib/certloader"
-	"github.com/sassoftware/relic/v7/lib/magic"
-	"github.com/sassoftware/relic/v7/signers"
+	"github.com/sassoftware/relic/v8/lib/authenticode"
+	"github.com/sassoftware/relic/v8/lib/certloader"
+	"github.com/sassoftware/relic/v8/lib/magic"
+	"github.com/sassoftware/relic/v8/signers"
 )
 
 var PeSigner = &signers.Signer{

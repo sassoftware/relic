@@ -8,7 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/sassoftware/relic/v7/signers"
+	"github.com/sassoftware/relic/v8/signers"
 )
 
 const (

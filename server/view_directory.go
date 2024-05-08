@@ -23,8 +23,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/sassoftware/relic/v7/internal/authmodel"
-	"github.com/sassoftware/relic/v7/internal/realip"
+	"github.com/sassoftware/relic/v8/internal/authmodel"
+	"github.com/sassoftware/relic/v8/internal/realip"
 )
 
 func (s *Server) serveDirectory(rw http.ResponseWriter, req *http.Request) error {

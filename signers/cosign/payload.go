@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/opencontainers/go-digest"
-	"github.com/sassoftware/relic/v7/config"
-	"github.com/sassoftware/relic/v7/signers"
+	"github.com/sassoftware/relic/v8/config"
+	"github.com/sassoftware/relic/v8/signers"
 )
 
 const (

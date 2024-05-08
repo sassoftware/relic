@@ -7,10 +7,10 @@ import (
 	"io"
 	"io/ioutil"
 
-	"github.com/sassoftware/relic/v7/lib/binpatch"
-	"github.com/sassoftware/relic/v7/lib/certloader"
-	"github.com/sassoftware/relic/v7/lib/fruit/csblob"
-	"github.com/sassoftware/relic/v7/lib/pkcs9"
+	"github.com/sassoftware/relic/v8/lib/binpatch"
+	"github.com/sassoftware/relic/v8/lib/certloader"
+	"github.com/sassoftware/relic/v8/lib/fruit/csblob"
+	"github.com/sassoftware/relic/v8/lib/pkcs9"
 )
 
 func Sign(ctx context.Context, r io.Reader, cert *certloader.Certificate, params *csblob.SignatureParams) (*binpatch.PatchSet, *pkcs9.TimestampedSignature, error) {
