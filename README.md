@@ -36,14 +36,14 @@ Other features include:
 * Creating X509 certificate signing requests (CSR) and self-signed certificates
 * Limited X509 CA support -- signing CSRs and cross-signing certificates
 * Creating simple PGP public keys
-* RSA and ECDSA supported for all signature types
+* RSA and ECDSA supported for all non-PGP signature types (due to a limitation in the underlying PGP implementation, ECDSA is not currently possible for PGP signature types)
 * Verify signatures, certificate chains and timestamps on all supported package types
 * Save token PINs in the system keyring
 
 # Platforms
 Linux, Windows and MacOS are supported. Other platforms probably work as well.
 
-relic is tested using libsofthsm2 and Gemalto SafeNet Network HSM (Luna SA). Every vendor PKCS#11 implementation has quirks, so if relic doesn't work with your hardware please submit a pull request.
+relic is tested using libsofthsm2. Every vendor PKCS#11 implementation has quirks, so if relic doesn't work with your hardware please submit a pull request.
 
 # Installation
 Pre-built client binaries are available from the Github releases page. Alternately, relic can be built from source:
