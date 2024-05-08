@@ -125,6 +125,24 @@ func (info *Info) AttrsForLog(prefix string) *zerolog.Event {
 	return ev
 }
 
+func (info *Info) AppendTo(logFile string) error {
+	f, err := os.OpenFile(logFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+	if err != nil {
+		return fmt.Errorf("writing audit log: %w", err)
+	}
+	defer f.Close()
+
+	blob, err := info.Marshal()
+	if err != nil {
+		return fmt.Errorf("writing audit log: %w", err)
+	}
+	blob = append(blob, '\n')
+	if _, err := f.Write(blob); err != nil {
+		return fmt.Errorf("writing audit log: %w", err)
+	}
+	return nil
+}
+
 // Parse audit data from a JSON blob
 func Parse(blob []byte) (*Info, error) {
 	if len(blob) == 0 {

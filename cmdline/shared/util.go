@@ -72,6 +72,9 @@ func initConfig(client bool) error {
 		}
 		return err
 	}
+	if cfg.Amqp != nil {
+		fmt.Fprintln(os.Stderr, "Warning: The AMQP audit sink is deprecated and will be removed in a future release")
+	}
 	CurrentConfig = cfg
 	return nil
 }

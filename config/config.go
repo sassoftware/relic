@@ -20,7 +20,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -162,13 +162,14 @@ type Config struct {
 	Timestamp *TimestampConfig         `yaml:",omitempty"`
 	Amqp      *AmqpConfig              `yaml:",omitempty"`
 
-	PinFile string `yaml:",omitempty"` // Optional YAML file with additional token PINs
+	AuditFile string `yaml:",omitempty"` // Optional log file for signatures
+	PinFile   string `yaml:",omitempty"` // Optional YAML file with additional token PINs
 
 	path string
 }
 
 func ReadFile(path string) (*Config, error) {
-	data, err := ioutil.ReadFile(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
@@ -201,7 +202,7 @@ func (config *Config) Normalize(path string) error {
 	}
 	config.Clients = normalized
 	if config.PinFile != "" {
-		contents, err := ioutil.ReadFile(config.PinFile)
+		contents, err := os.ReadFile(config.PinFile)
 		if err != nil {
 			return fmt.Errorf("reading PinFile: %w", err)
 		}

@@ -73,6 +73,7 @@ func (a *PolicyAuth) Authenticate(req *http.Request) (UserInfo, error) {
 		Roles:       result.Result.Roles,
 		AllowedKeys: result.Result.AllowedKeys,
 		Claims:      result.Result.Claims,
+		DecisionID:  result.ID,
 	}, nil
 }
 
@@ -121,7 +122,8 @@ type PolicyInfo struct {
 	Roles       []string
 	AllowedKeys []string
 
-	Claims map[string]interface{}
+	Claims     map[string]interface{}
+	DecisionID string
 }
 
 // Allowed checks whether the named key is visible to the current user
@@ -147,6 +149,9 @@ func (i *PolicyInfo) AuditContext(info *audit.Info) {
 	info.Attributes["client.sub"] = i.Subject
 	if v := i.Claims["iss"]; v != nil {
 		info.Attributes["client.iss"] = v
+	}
+	if i.DecisionID != "" {
+		info.Attributes["client.decision_id"] = i.DecisionID
 	}
 }
 

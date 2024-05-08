@@ -91,5 +91,11 @@ func PublishAudit(info *audit.Info) error {
 			return fmt.Errorf("failed to publish audit log: %w", err)
 		}
 	}
+	if logFile := shared.CurrentConfig.AuditFile; logFile != "" {
+		if err := info.AppendTo(logFile); err != nil {
+			return fmt.Errorf("writing audit log: %w", err)
+		}
+	}
+
 	return nil
 }

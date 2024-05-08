@@ -38,7 +38,6 @@ Other features include:
 * Creating simple PGP public keys
 * RSA and ECDSA supported for all signature types
 * Verify signatures, certificate chains and timestamps on all supported package types
-* Sending audit logs to an AMQP broker, with an optional sealing signature
 * Save token PINs in the system keyring
 
 # Platforms

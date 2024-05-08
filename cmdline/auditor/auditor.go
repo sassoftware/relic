@@ -48,6 +48,7 @@ func init() {
 }
 
 func auditCmd(cmd *cobra.Command, args []string) error {
+	fmt.Fprintln(os.Stderr, "Warning: The AMQP audit sink is deprecated and will be removed in a future release")
 	if err := readConfig(); err != nil {
 		return err
 	}
