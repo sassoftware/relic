@@ -196,6 +196,9 @@ server:
 # name of the token and the value is the PIN.
 #pinfile: /etc/relic/pin.yaml
 
+# Optionally append a log entry for each signature created to this file
+#auditfile: /var/log/relic/audit.log
+
 # Configure trusted timestamping servers, used by keys that have timestamping
 # enabled when using a signature type that supports it.
 timestamp:
@@ -221,19 +224,6 @@ timestamp:
   # Optional rate limit for timestamp requests
   #ratelimit: 1  # requests per second
   #rateburst: 10 # burst capacity
-
-# AMQP broker used to submit audit logs
-amqp:
-  # Optional audit logging to an AMQP broker
-  #url: amqp://guest:guest@127.0.0.1:5672
-
-  # Optional TLS parameters
-  #cacert:
-  #keyfile:
-  #certfile:
-
-  # "fanout" type exchange to send audit messages to, default relic.signatures
-  #sigsXchg: relic.signatures
 
 # Authentication to the server is via client certificate. Certificates are
 # identified by their fingerprint. Fingerprints can be obtained by using the
