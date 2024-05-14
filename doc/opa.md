@@ -20,6 +20,8 @@ relic will provide the following inputs to the policy:
 
 - token - The Bearer token provided in the `Authorization` header, if provided
 - fingerprint - Digest of the client's leaf certificate, if provided
+- client_cert - The client's provided certificate chain, in PEM format,
+  with the leaf certificate last
 - path - Path from the URL being accessed
 - query - Query parameters from the URL being accessed
 

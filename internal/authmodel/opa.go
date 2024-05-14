@@ -3,7 +3,9 @@ package authmodel
 import (
 	"bytes"
 	"context"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"io"
 	"net/http"
@@ -44,6 +46,7 @@ func (a *PolicyAuth) Authenticate(req *http.Request) (UserInfo, error) {
 		return nil, err
 	} else if len(peerCerts) != 0 {
 		input.Fingerprint = fingerprint(peerCerts[0])
+		input.ClientCert = formatCerts(peerCerts)
 	}
 	if input.Token == "" && input.Fingerprint == "" {
 		return nil, httperror.ErrTokenRequired
@@ -164,6 +167,7 @@ type policyInput struct {
 	Query       url.Values `json:"query"`
 	Token       string     `json:"token"`
 	Fingerprint string     `json:"fingerprint"`
+	ClientCert  string     `json:"client_cert"`
 }
 
 type policyResponse struct {
@@ -203,6 +207,19 @@ func bearerToken(req *http.Request) string {
 		return ""
 	}
 	return auth[len(prefix):]
+}
+
+func formatCerts(peerCerts []*x509.Certificate) string {
+	var certs strings.Builder
+	for i := range peerCerts {
+		// OPA wants leaf cert last, which is the opposite of how they arrive
+		cert := peerCerts[len(peerCerts)-i-1]
+		_ = pem.Encode(&certs, &pem.Block{
+			Type:  "CERTIFICATE",
+			Bytes: cert.Raw,
+		})
+	}
+	return certs.String()
 }
 
 var should401 = map[string]bool{
