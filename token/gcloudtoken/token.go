@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"time"
 
 	kms "cloud.google.com/go/kms/apiv1"
 	"google.golang.org/api/option"
@@ -45,13 +44,11 @@ func open(conf *config.Config, tokenName string, pinProvider passprompt.Password
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-	defer cancel()
 	var opts []option.ClientOption
 	if tconf.Pin != nil {
 		opts = append(opts, option.WithCredentialsFile(*tconf.Pin))
 	}
-	cli, err := kms.NewKeyManagementClient(ctx, opts...)
+	cli, err := kms.NewKeyManagementClient(context.Background(), opts...)
 	if err != nil {
 		return nil, err
 	}
