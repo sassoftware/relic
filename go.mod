@@ -1,4 +1,6 @@
-module github.com/sassoftware/relic/v8
+module github.com/hodbn/relic/v8
+
+replace github.com/sassoftware/relic/v8 => github.com/hodbn/relic/v8 master
 
 go 1.22.0
 
