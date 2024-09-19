@@ -25,11 +25,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/sassoftware/relic/v8/lib/authenticode"
-	"github.com/sassoftware/relic/v8/lib/certloader"
-	"github.com/sassoftware/relic/v8/lib/x509tools"
-	"github.com/sassoftware/relic/v8/signers"
-	"github.com/sassoftware/relic/v8/signers/pecoff"
+	"github.com/mind-security/relic/v8/lib/authenticode"
+	"github.com/mind-security/relic/v8/lib/certloader"
+	"github.com/mind-security/relic/v8/lib/x509tools"
+	"github.com/mind-security/relic/v8/signers"
+	"github.com/mind-security/relic/v8/signers/pecoff"
 )
 
 var PsSigner = &signers.Signer{

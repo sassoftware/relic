@@ -20,8 +20,8 @@ import (
 	"archive/zip"
 	"crypto"
 
-	"github.com/sassoftware/relic/v8/lib/authenticode"
-	"github.com/sassoftware/relic/v8/lib/pkcs9"
+	"github.com/mind-security/relic/v8/lib/authenticode"
+	"github.com/mind-security/relic/v8/lib/pkcs9"
 )
 
 const (

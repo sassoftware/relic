@@ -25,7 +25,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/sassoftware/relic/v8/lib/dlog"
+	"github.com/mind-security/relic/v8/lib/dlog"
 )
 
 // Simple libassuan client

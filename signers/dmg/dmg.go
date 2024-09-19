@@ -6,9 +6,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/sassoftware/relic/v8/lib/certloader"
-	"github.com/sassoftware/relic/v8/lib/fruit/dmg"
-	"github.com/sassoftware/relic/v8/signers"
+	"github.com/mind-security/relic/v8/lib/certloader"
+	"github.com/mind-security/relic/v8/lib/fruit/dmg"
+	"github.com/mind-security/relic/v8/signers"
 )
 
 var signer = &signers.Signer{

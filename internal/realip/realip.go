@@ -23,7 +23,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/sassoftware/relic/v8/internal/zhttp"
+	"github.com/mind-security/relic/v8/internal/zhttp"
 )
 
 const (

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"testing/iotest"
 
-	"github.com/sassoftware/relic/v8/lib/comdoc"
+	"github.com/mind-security/relic/v8/lib/comdoc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

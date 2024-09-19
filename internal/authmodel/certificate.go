@@ -6,13 +6,13 @@ import (
 	"encoding/hex"
 	"net/http"
 
+	"github.com/mind-security/relic/v8/config"
+	"github.com/mind-security/relic/v8/internal/httperror"
+	"github.com/mind-security/relic/v8/internal/realip"
+	"github.com/mind-security/relic/v8/internal/zhttp"
+	"github.com/mind-security/relic/v8/lib/audit"
+	"github.com/mind-security/relic/v8/lib/x509tools"
 	"github.com/rs/zerolog"
-	"github.com/sassoftware/relic/v8/config"
-	"github.com/sassoftware/relic/v8/internal/httperror"
-	"github.com/sassoftware/relic/v8/internal/realip"
-	"github.com/sassoftware/relic/v8/internal/zhttp"
-	"github.com/sassoftware/relic/v8/lib/audit"
-	"github.com/sassoftware/relic/v8/lib/x509tools"
 )
 
 // CertificateAuth requires all callers have a client certificate that either

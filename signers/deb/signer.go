@@ -22,13 +22,13 @@ import (
 	"io"
 	"os"
 
+	"github.com/mind-security/relic/v8/lib/audit"
+	"github.com/mind-security/relic/v8/lib/certloader"
+	"github.com/mind-security/relic/v8/lib/magic"
+	"github.com/mind-security/relic/v8/lib/signdeb"
+	"github.com/mind-security/relic/v8/signers"
+	"github.com/mind-security/relic/v8/signers/sigerrors"
 	"github.com/rs/zerolog"
-	"github.com/sassoftware/relic/v8/lib/audit"
-	"github.com/sassoftware/relic/v8/lib/certloader"
-	"github.com/sassoftware/relic/v8/lib/magic"
-	"github.com/sassoftware/relic/v8/lib/signdeb"
-	"github.com/sassoftware/relic/v8/signers"
-	"github.com/sassoftware/relic/v8/signers/sigerrors"
 )
 
 var DebSigner = &signers.Signer{

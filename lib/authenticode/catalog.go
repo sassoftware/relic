@@ -29,10 +29,10 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/sassoftware/relic/v8/lib/certloader"
-	"github.com/sassoftware/relic/v8/lib/pkcs7"
-	"github.com/sassoftware/relic/v8/lib/pkcs9"
-	"github.com/sassoftware/relic/v8/lib/x509tools"
+	"github.com/mind-security/relic/v8/lib/certloader"
+	"github.com/mind-security/relic/v8/lib/pkcs7"
+	"github.com/mind-security/relic/v8/lib/pkcs9"
+	"github.com/mind-security/relic/v8/lib/x509tools"
 )
 
 type Catalog struct {

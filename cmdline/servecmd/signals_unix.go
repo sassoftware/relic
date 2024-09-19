@@ -24,8 +24,8 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/mind-security/relic/v8/server/daemon"
 	"github.com/rs/zerolog/log"
-	"github.com/sassoftware/relic/v8/server/daemon"
 )
 
 func watchSignals(srv *daemon.Daemon) {

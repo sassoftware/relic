@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/mind-security/relic/v8/config"
+	"github.com/mind-security/relic/v8/signers"
 	"github.com/opencontainers/go-digest"
-	"github.com/sassoftware/relic/v8/config"
-	"github.com/sassoftware/relic/v8/signers"
 )
 
 const (

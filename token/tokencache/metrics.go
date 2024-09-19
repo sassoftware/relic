@@ -9,10 +9,10 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/mind-security/relic/v8/internal/httperror"
+	"github.com/mind-security/relic/v8/token"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/sassoftware/relic/v8/internal/httperror"
-	"github.com/sassoftware/relic/v8/token"
 )
 
 var (

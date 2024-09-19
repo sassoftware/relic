@@ -23,9 +23,9 @@ import (
 
 	"github.com/streadway/amqp"
 
-	"github.com/sassoftware/relic/v8/config"
-	"github.com/sassoftware/relic/v8/lib/certloader"
-	"github.com/sassoftware/relic/v8/lib/x509tools"
+	"github.com/mind-security/relic/v8/config"
+	"github.com/mind-security/relic/v8/lib/certloader"
+	"github.com/mind-security/relic/v8/lib/x509tools"
 )
 
 // Publish audit record to a AMQP exchange

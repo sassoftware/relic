@@ -21,8 +21,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/sassoftware/relic/v8/config"
-	"github.com/sassoftware/relic/v8/lib/dlog"
+	"github.com/mind-security/relic/v8/config"
+	"github.com/mind-security/relic/v8/lib/dlog"
 )
 
 func InitConfig() error {

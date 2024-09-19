@@ -25,8 +25,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/sassoftware/relic/v8/lib/pkcs7"
-	"github.com/sassoftware/relic/v8/lib/x509tools"
+	"github.com/mind-security/relic/v8/lib/pkcs7"
+	"github.com/mind-security/relic/v8/lib/x509tools"
 )
 
 // RFC 3161 timestamping

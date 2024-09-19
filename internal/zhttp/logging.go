@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mind-security/relic/v8/internal/logrotate"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/sassoftware/relic/v8/internal/logrotate"
 )
 
 type ctxKey int

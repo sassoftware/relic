@@ -24,8 +24,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/sassoftware/relic/v8/lib/pkcs7"
-	"github.com/sassoftware/relic/v8/lib/x509tools"
+	"github.com/mind-security/relic/v8/lib/pkcs7"
+	"github.com/mind-security/relic/v8/lib/x509tools"
 )
 
 // Verify that the digest (imprint) in a timestamp token matches the given data

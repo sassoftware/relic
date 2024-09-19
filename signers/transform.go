@@ -30,8 +30,8 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/sassoftware/relic/v8/lib/atomicfile"
-	"github.com/sassoftware/relic/v8/lib/binpatch"
+	"github.com/mind-security/relic/v8/lib/atomicfile"
+	"github.com/mind-security/relic/v8/lib/binpatch"
 )
 
 type Transformer interface {

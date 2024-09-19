@@ -26,10 +26,10 @@ import (
 	"io/ioutil"
 	"strings"
 
-	"github.com/blakesmith/ar"
 	"github.com/ProtonMail/go-crypto/openpgp"
+	"github.com/blakesmith/ar"
 
-	"github.com/sassoftware/relic/v8/lib/pgptools"
+	"github.com/mind-security/relic/v8/lib/pgptools"
 )
 
 // Extract and verify signatures from a Debian package. A keyring of known PGP

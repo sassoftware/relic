@@ -19,8 +19,8 @@ import (
 	"github.com/cli/browser"
 	"github.com/gregjones/httpcache"
 	"github.com/gregjones/httpcache/diskcache"
+	"github.com/mind-security/relic/v8/lib/dlog"
 	"github.com/peterbourgon/diskv"
-	"github.com/sassoftware/relic/v8/lib/dlog"
 	"golang.org/x/oauth2"
 )
 

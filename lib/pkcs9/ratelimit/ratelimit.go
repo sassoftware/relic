@@ -19,10 +19,10 @@ import (
 
 	"golang.org/x/time/rate"
 
+	"github.com/mind-security/relic/v8/lib/pkcs7"
+	"github.com/mind-security/relic/v8/lib/pkcs9"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/sassoftware/relic/v8/lib/pkcs7"
-	"github.com/sassoftware/relic/v8/lib/pkcs9"
 )
 
 var metricRateLimited = promauto.NewCounter(prometheus.CounterOpts{

@@ -8,7 +8,7 @@ import (
 	"hash"
 	"io"
 
-	"github.com/sassoftware/relic/v8/lib/pkcs9"
+	"github.com/mind-security/relic/v8/lib/pkcs9"
 )
 
 type VerifiedBlob struct {

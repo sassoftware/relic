@@ -27,7 +27,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/sassoftware/relic/v8/config"
+	"github.com/mind-security/relic/v8/config"
 )
 
 type AuditConfig struct {

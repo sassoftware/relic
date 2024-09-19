@@ -24,10 +24,10 @@ import (
 	"errors"
 	"io"
 
-	"github.com/sassoftware/relic/v8/lib/binpatch"
-	"github.com/sassoftware/relic/v8/lib/certloader"
-	"github.com/sassoftware/relic/v8/lib/x509tools"
-	"github.com/sassoftware/relic/v8/lib/zipslicer"
+	"github.com/mind-security/relic/v8/lib/binpatch"
+	"github.com/mind-security/relic/v8/lib/certloader"
+	"github.com/mind-security/relic/v8/lib/x509tools"
+	"github.com/mind-security/relic/v8/lib/zipslicer"
 )
 
 type Digest struct {

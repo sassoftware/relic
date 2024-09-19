@@ -25,13 +25,13 @@ import (
 	"io"
 	"io/ioutil"
 
+	"github.com/mind-security/relic/v8/lib/appmanifest"
+	"github.com/mind-security/relic/v8/lib/audit"
+	"github.com/mind-security/relic/v8/lib/certloader"
+	"github.com/mind-security/relic/v8/lib/magic"
+	"github.com/mind-security/relic/v8/lib/pkcs9"
+	"github.com/mind-security/relic/v8/signers"
 	"github.com/rs/zerolog"
-	"github.com/sassoftware/relic/v8/lib/appmanifest"
-	"github.com/sassoftware/relic/v8/lib/audit"
-	"github.com/sassoftware/relic/v8/lib/certloader"
-	"github.com/sassoftware/relic/v8/lib/magic"
-	"github.com/sassoftware/relic/v8/lib/pkcs9"
-	"github.com/sassoftware/relic/v8/signers"
 )
 
 var AppSigner = &signers.Signer{

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/sassoftware/relic/v8/lib/fruit/csblob"
-	"github.com/sassoftware/relic/v8/signers/sigerrors"
+	"github.com/mind-security/relic/v8/lib/fruit/csblob"
+	"github.com/mind-security/relic/v8/signers/sigerrors"
 )
 
 func Verify(r io.ReaderAt, infoPlist, resources []byte, skipDigests bool) (*csblob.VerifiedBlob, error) {

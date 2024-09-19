@@ -8,7 +8,7 @@ import (
 	"crypto/x509"
 	"testing"
 
-	"github.com/sassoftware/relic/v8/lib/x509tools"
+	"github.com/mind-security/relic/v8/lib/x509tools"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -23,13 +23,13 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/sassoftware/relic/v8/lib/atomicfile"
-	"github.com/sassoftware/relic/v8/lib/authenticode"
-	"github.com/sassoftware/relic/v8/lib/certloader"
-	"github.com/sassoftware/relic/v8/lib/comdoc"
-	"github.com/sassoftware/relic/v8/lib/magic"
-	"github.com/sassoftware/relic/v8/signers"
-	"github.com/sassoftware/relic/v8/signers/pecoff"
+	"github.com/mind-security/relic/v8/lib/atomicfile"
+	"github.com/mind-security/relic/v8/lib/authenticode"
+	"github.com/mind-security/relic/v8/lib/certloader"
+	"github.com/mind-security/relic/v8/lib/comdoc"
+	"github.com/mind-security/relic/v8/lib/magic"
+	"github.com/mind-security/relic/v8/signers"
+	"github.com/mind-security/relic/v8/signers/pecoff"
 )
 
 var MsiSigner = &signers.Signer{

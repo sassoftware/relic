@@ -1,6 +1,4 @@
-module github.com/hodbn/relic/v8
-
-replace github.com/sassoftware/relic/v8 => github.com/hodbn/relic/v8 v8.0.0-20240901171733-76ab24e6cf50
+module github.com/mind-security/relic/v8
 
 go 1.22.0
 

@@ -26,8 +26,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/rs/zerolog/log"
 
-	"github.com/sassoftware/relic/v8/internal/zhttp"
-	"github.com/sassoftware/relic/v8/token"
+	"github.com/mind-security/relic/v8/internal/zhttp"
+	"github.com/mind-security/relic/v8/token"
 )
 
 var (

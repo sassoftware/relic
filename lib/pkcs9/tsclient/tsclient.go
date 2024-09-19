@@ -23,15 +23,15 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/mind-security/relic/v8/config"
+	"github.com/mind-security/relic/v8/lib/pkcs7"
+	"github.com/mind-security/relic/v8/lib/pkcs9"
+	"github.com/mind-security/relic/v8/lib/pkcs9/ratelimit"
+	"github.com/mind-security/relic/v8/lib/pkcs9/timestampcache"
+	"github.com/mind-security/relic/v8/lib/x509tools"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/sassoftware/relic/v8/config"
-	"github.com/sassoftware/relic/v8/lib/pkcs7"
-	"github.com/sassoftware/relic/v8/lib/pkcs9"
-	"github.com/sassoftware/relic/v8/lib/pkcs9/ratelimit"
-	"github.com/sassoftware/relic/v8/lib/pkcs9/timestampcache"
-	"github.com/sassoftware/relic/v8/lib/x509tools"
 )
 
 type tsClient struct {

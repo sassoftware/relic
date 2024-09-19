@@ -22,10 +22,10 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/sassoftware/relic/v8/internal/httperror"
-	"github.com/sassoftware/relic/v8/internal/zhttp"
-	"github.com/sassoftware/relic/v8/signers/sigerrors"
-	"github.com/sassoftware/relic/v8/token"
+	"github.com/mind-security/relic/v8/internal/httperror"
+	"github.com/mind-security/relic/v8/internal/zhttp"
+	"github.com/mind-security/relic/v8/signers/sigerrors"
+	"github.com/mind-security/relic/v8/token"
 )
 
 func handleFunc(f func(http.ResponseWriter, *http.Request) error) http.HandlerFunc {

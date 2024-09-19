@@ -29,13 +29,13 @@ import (
 	"github.com/rs/zerolog"
 	rpmutils "github.com/sassoftware/go-rpmutils"
 
-	"github.com/sassoftware/relic/v8/lib/audit"
-	"github.com/sassoftware/relic/v8/lib/binpatch"
-	"github.com/sassoftware/relic/v8/lib/certloader"
-	"github.com/sassoftware/relic/v8/lib/magic"
-	"github.com/sassoftware/relic/v8/lib/pgptools"
-	"github.com/sassoftware/relic/v8/signers"
-	"github.com/sassoftware/relic/v8/signers/sigerrors"
+	"github.com/mind-security/relic/v8/lib/audit"
+	"github.com/mind-security/relic/v8/lib/binpatch"
+	"github.com/mind-security/relic/v8/lib/certloader"
+	"github.com/mind-security/relic/v8/lib/magic"
+	"github.com/mind-security/relic/v8/lib/pgptools"
+	"github.com/mind-security/relic/v8/signers"
+	"github.com/mind-security/relic/v8/signers/sigerrors"
 )
 
 var RpmSigner = &signers.Signer{

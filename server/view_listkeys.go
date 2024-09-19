@@ -20,7 +20,7 @@ import (
 	"net/http"
 	"sort"
 
-	"github.com/sassoftware/relic/v8/internal/authmodel"
+	"github.com/mind-security/relic/v8/internal/authmodel"
 )
 
 func (s *Server) serveListKeys(rw http.ResponseWriter, req *http.Request) error {

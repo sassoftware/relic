@@ -18,10 +18,10 @@ import (
 
 	"github.com/beevik/etree"
 
-	"github.com/sassoftware/relic/v8/lib/binpatch"
-	"github.com/sassoftware/relic/v8/lib/certloader"
-	"github.com/sassoftware/relic/v8/lib/pkcs7"
-	"github.com/sassoftware/relic/v8/lib/pkcs9"
+	"github.com/mind-security/relic/v8/lib/binpatch"
+	"github.com/mind-security/relic/v8/lib/certloader"
+	"github.com/mind-security/relic/v8/lib/pkcs7"
+	"github.com/mind-security/relic/v8/lib/pkcs9"
 )
 
 type SignatureParams struct {

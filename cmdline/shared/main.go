@@ -23,7 +23,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/sassoftware/relic/v8/config"
+	"github.com/mind-security/relic/v8/config"
 )
 
 var (

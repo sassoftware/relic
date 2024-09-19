@@ -22,15 +22,15 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/sassoftware/relic/v8/config"
-	"github.com/sassoftware/relic/v8/internal/authmodel"
-	"github.com/sassoftware/relic/v8/internal/realip"
-	"github.com/sassoftware/relic/v8/internal/zhttp"
-	"github.com/sassoftware/relic/v8/lib/compresshttp"
-	"github.com/sassoftware/relic/v8/token"
-	"github.com/sassoftware/relic/v8/token/open"
-	"github.com/sassoftware/relic/v8/token/tokencache"
-	"github.com/sassoftware/relic/v8/token/worker"
+	"github.com/mind-security/relic/v8/config"
+	"github.com/mind-security/relic/v8/internal/authmodel"
+	"github.com/mind-security/relic/v8/internal/realip"
+	"github.com/mind-security/relic/v8/internal/zhttp"
+	"github.com/mind-security/relic/v8/lib/compresshttp"
+	"github.com/mind-security/relic/v8/token"
+	"github.com/mind-security/relic/v8/token/open"
+	"github.com/mind-security/relic/v8/token/tokencache"
+	"github.com/mind-security/relic/v8/token/worker"
 )
 
 type Server struct {

@@ -29,8 +29,8 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/sassoftware/relic/v8/lib/x509tools"
-	"github.com/sassoftware/relic/v8/signers/sigerrors"
+	"github.com/mind-security/relic/v8/lib/x509tools"
+	"github.com/mind-security/relic/v8/signers/sigerrors"
 
 	"github.com/beevik/etree"
 )

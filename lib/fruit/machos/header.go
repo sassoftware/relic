@@ -7,7 +7,7 @@ import (
 	"errors"
 	"io"
 
-	"github.com/sassoftware/relic/v8/lib/binpatch"
+	"github.com/mind-security/relic/v8/lib/binpatch"
 )
 
 const (

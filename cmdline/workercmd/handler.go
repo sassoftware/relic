@@ -33,10 +33,10 @@ import (
 	"github.com/miekg/pkcs11"
 	"github.com/rs/zerolog/log"
 
-	"github.com/sassoftware/relic/v8/cmdline/shared"
-	"github.com/sassoftware/relic/v8/internal/workerrpc"
-	"github.com/sassoftware/relic/v8/token"
-	"github.com/sassoftware/relic/v8/token/tokencache"
+	"github.com/mind-security/relic/v8/cmdline/shared"
+	"github.com/mind-security/relic/v8/internal/workerrpc"
+	"github.com/mind-security/relic/v8/token"
+	"github.com/mind-security/relic/v8/token/tokencache"
 )
 
 // an arbitarily-chosen set of error codes that indicate that the token session

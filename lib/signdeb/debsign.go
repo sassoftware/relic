@@ -27,13 +27,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sassoftware/relic/v8/lib/binpatch"
-	"github.com/sassoftware/relic/v8/lib/pgptools"
-	"github.com/sassoftware/relic/v8/lib/readercounter"
+	"github.com/mind-security/relic/v8/lib/binpatch"
+	"github.com/mind-security/relic/v8/lib/pgptools"
+	"github.com/mind-security/relic/v8/lib/readercounter"
 
-	"github.com/blakesmith/ar"
 	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/ProtonMail/go-crypto/openpgp/packet"
+	"github.com/blakesmith/ar"
 )
 
 type DebSignature struct {

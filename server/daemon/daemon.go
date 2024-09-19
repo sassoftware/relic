@@ -30,14 +30,14 @@ import (
 	"golang.org/x/net/http2"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/mind-security/relic/v8/config"
+	"github.com/mind-security/relic/v8/internal/activation"
+	"github.com/mind-security/relic/v8/internal/zhttp"
+	"github.com/mind-security/relic/v8/lib/certloader"
+	"github.com/mind-security/relic/v8/lib/x509tools"
+	"github.com/mind-security/relic/v8/server"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog/log"
-	"github.com/sassoftware/relic/v8/config"
-	"github.com/sassoftware/relic/v8/internal/activation"
-	"github.com/sassoftware/relic/v8/internal/zhttp"
-	"github.com/sassoftware/relic/v8/lib/certloader"
-	"github.com/sassoftware/relic/v8/lib/x509tools"
-	"github.com/sassoftware/relic/v8/server"
 )
 
 type Daemon struct {

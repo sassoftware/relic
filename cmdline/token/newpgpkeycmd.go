@@ -31,8 +31,8 @@ import (
 	"github.com/ProtonMail/go-crypto/openpgp/packet"
 	"github.com/spf13/cobra"
 
-	"github.com/sassoftware/relic/v8/cmdline/shared"
-	"github.com/sassoftware/relic/v8/token"
+	"github.com/mind-security/relic/v8/cmdline/shared"
+	"github.com/mind-security/relic/v8/token"
 )
 
 var NewPgpKeyCmd = &cobra.Command{

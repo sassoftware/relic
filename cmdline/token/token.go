@@ -25,10 +25,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/sassoftware/relic/v8/cmdline/shared"
-	"github.com/sassoftware/relic/v8/config"
-	"github.com/sassoftware/relic/v8/token"
-	"github.com/sassoftware/relic/v8/token/open"
+	"github.com/mind-security/relic/v8/cmdline/shared"
+	"github.com/mind-security/relic/v8/config"
+	"github.com/mind-security/relic/v8/token"
+	"github.com/mind-security/relic/v8/token/open"
 )
 
 var TokenCmd = &cobra.Command{

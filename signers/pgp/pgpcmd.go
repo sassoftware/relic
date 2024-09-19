@@ -25,7 +25,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/sassoftware/relic/v8/cmdline/shared"
+	"github.com/mind-security/relic/v8/cmdline/shared"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"

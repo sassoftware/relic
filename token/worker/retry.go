@@ -26,11 +26,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mind-security/relic/v8/internal/httperror"
+	"github.com/mind-security/relic/v8/internal/workerrpc"
+	"github.com/mind-security/relic/v8/token"
+	"github.com/mind-security/relic/v8/token/tokencache"
 	"github.com/rs/zerolog/log"
-	"github.com/sassoftware/relic/v8/internal/httperror"
-	"github.com/sassoftware/relic/v8/internal/workerrpc"
-	"github.com/sassoftware/relic/v8/token"
-	"github.com/sassoftware/relic/v8/token/tokencache"
 )
 
 const (

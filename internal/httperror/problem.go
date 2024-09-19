@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/mind-security/relic/v8/internal/zhttp"
 	"github.com/rs/zerolog"
-	"github.com/sassoftware/relic/v8/internal/zhttp"
 )
 
 // Problem implements a RFC 7807 HTTP "problem" response

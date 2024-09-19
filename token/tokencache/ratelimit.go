@@ -6,9 +6,9 @@ import (
 	"io"
 	"time"
 
+	"github.com/mind-security/relic/v8/token"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/sassoftware/relic/v8/token"
 	"golang.org/x/time/rate"
 )
 

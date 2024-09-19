@@ -21,14 +21,14 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/mind-security/relic/v8/internal/authmodel"
+	"github.com/mind-security/relic/v8/internal/httperror"
+	"github.com/mind-security/relic/v8/internal/signinit"
+	"github.com/mind-security/relic/v8/internal/zhttp"
+	"github.com/mind-security/relic/v8/lib/readercounter"
+	"github.com/mind-security/relic/v8/lib/x509tools"
+	"github.com/mind-security/relic/v8/signers"
 	"github.com/rs/zerolog/hlog"
-	"github.com/sassoftware/relic/v8/internal/authmodel"
-	"github.com/sassoftware/relic/v8/internal/httperror"
-	"github.com/sassoftware/relic/v8/internal/signinit"
-	"github.com/sassoftware/relic/v8/internal/zhttp"
-	"github.com/sassoftware/relic/v8/lib/readercounter"
-	"github.com/sassoftware/relic/v8/lib/x509tools"
-	"github.com/sassoftware/relic/v8/signers"
 )
 
 const defaultHash = crypto.SHA256

@@ -22,7 +22,7 @@ import (
 	"errors"
 	"unicode/utf16"
 
-	"github.com/sassoftware/relic/v8/lib/redblack"
+	"github.com/mind-security/relic/v8/lib/redblack"
 )
 
 // Parse the directory stream
