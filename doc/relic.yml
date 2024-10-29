@@ -1,7 +1,6 @@
 ---
 # Tokens on which signing keys can be found. Each configured key refers to a token by name.
 tokens:
-
   # Use a PKCS#11 library as a token
   mytoken:
     # Full path to provider library
@@ -73,7 +72,6 @@ tokens:
 
 # Keys that can be used for signing
 keys:
-
   my_token_key:
     # Which token, defined above, to find the key on
     token: mytoken
@@ -94,8 +92,12 @@ keys:
     # true if a RFC 3161 timestamp should be attached, see 'timestamp' below
     timestamp: false
 
+    # Enable RFC 3161 timestamping using a specific named service,
+    # see `namedurls` below. Implies "timestamp: true".
+    #timestamper: apple
+
     # Clients with any of these roles can utilize this key
-    roles: ['somegroup']
+    roles: ["somegroup"]
 
   my_scd_key:
     token: myscd
@@ -179,7 +181,7 @@ server:
   #policyurl: http://127.0.0.1:8181/v1/data/relic
 
   # If policyurl is set, optionally specify an Azure AD tenant which will be
-  # provided to clients that wish to perform interactive token authentication.
+  # advertised to clients that wish to perform interactive token authentication.
   #azuread:
   #  authority: https://login.microsoftonline.com/00000000-1111-2222-3333-444444444444
   #  clientid: 55555555-6666-7777-8888-999999999999
@@ -211,6 +213,11 @@ timestamp:
   msurls:
     - http://mytimestamp.server
 
+  # Optional named timestamp services for specific keys.
+  namedurls:
+    apple:
+      - http://timestamp.apple.com/ts01
+
   # Optional timeout for each timestamp request
   timeout: 60
 
@@ -235,7 +242,7 @@ clients:
     nickname: myuser
     # List of roles this user possesses. Must contain at least one of the roles
     # on a key for the user to access that key.
-    roles: ['somegroup']
+    roles: ["somegroup"]
 
   # Alternately, clients can be authenticated using one or more CA
   # certificates. The CA that the client matches determines the roles they have

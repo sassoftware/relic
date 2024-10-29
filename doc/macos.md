@@ -10,14 +10,15 @@ keys:
     token: file
     x509certificate: ./devid.crt
     keyfile: ./devid.key
-    timestamp: true
+    timestamper: apple
 
 tokens:
   file:
     type: file
 timestamp:
-  urls:
-    - http://timestamp.apple.com/ts01
+  namedurls:
+    apple:
+      - http://timestamp.apple.com/ts01
 ```
 
 Binaries should be signed with the `hardened-runtime` flag is set or notarization will fail:

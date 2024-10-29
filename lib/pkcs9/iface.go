@@ -33,4 +33,6 @@ type Request struct {
 	Hash crypto.Hash
 	// Legacy indicates a nonstandard microsoft timestamp request, otherwise RFC 3161 is used
 	Legacy bool
+	// Name optionally selects a different pool of timestamp servers.
+	Name string
 }

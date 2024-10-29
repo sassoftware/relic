@@ -14,9 +14,11 @@
 package signinit
 
 import (
+	"context"
 	"sync"
 
 	"github.com/sassoftware/relic/v8/cmdline/shared"
+	"github.com/sassoftware/relic/v8/lib/pkcs7"
 	"github.com/sassoftware/relic/v8/lib/pkcs9"
 	"github.com/sassoftware/relic/v8/lib/pkcs9/tsclient"
 )
@@ -46,4 +48,16 @@ func newTimestamper() (timestamper pkcs9.Timestamper, err error) {
 		return
 	}
 	return timestamper, nil
+}
+
+// wrapper that selects a named timestamp service
+type namedTimestamper struct {
+	client pkcs9.Timestamper
+	name   string
+}
+
+func (t namedTimestamper) Timestamp(ctx context.Context, req *pkcs9.Request) (*pkcs7.ContentInfoSignedData, error) {
+	r2 := *req
+	r2.Name = t.name
+	return t.client.Timestamp(ctx, &r2)
 }

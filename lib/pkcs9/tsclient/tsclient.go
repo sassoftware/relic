@@ -87,12 +87,18 @@ func New(conf *config.TimestampConfig) (t pkcs9.Timestamper, err error) {
 
 func (c tsClient) Timestamp(ctx context.Context, req *pkcs9.Request) (*pkcs7.ContentInfoSignedData, error) {
 	var urls []string
-	if req.Legacy {
+	switch {
+	case req.Name != "":
+		urls = c.conf.NamedURLs[req.Name]
+		if len(urls) == 0 {
+			return nil, fmt.Errorf("timestamp.namedurls[%q] is empty", req.Name)
+		}
+	case req.Legacy:
 		urls = c.conf.MsURLs
 		if len(urls) == 0 {
 			return nil, errors.New("timestamp.msurls is empty")
 		}
-	} else {
+	default:
 		urls = c.conf.URLs
 		if len(urls) == 0 {
 			return nil, errors.New("timestamp.urls is empty")

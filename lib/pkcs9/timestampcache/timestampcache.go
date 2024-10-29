@@ -93,5 +93,6 @@ func cacheKey(req *pkcs9.Request) string {
 	if req.Legacy {
 		prefix = "msft"
 	}
+	prefix += req.Name
 	return fmt.Sprintf("%s-%d-%x", prefix, req.Hash, d.Sum(nil))
 }

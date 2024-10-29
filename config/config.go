@@ -68,6 +68,7 @@ type KeyConfig struct {
 	IsPkcs12        bool     // If true, key file contains PKCS#12 key and certificate chain
 	Roles           []string // List of user roles that can use this key
 	Timestamp       bool     // If true, attach a timestamped countersignature when possible
+	Timestamper     string   // If set, use the named timestamper to countersign
 	Hide            bool     // If true, then omit this key from 'remote list-keys'
 
 	name  string
@@ -138,6 +139,7 @@ type RemoteConfig struct {
 type TimestampConfig struct {
 	URLs      []string // List of timestamp server URLs
 	MsURLs    []string // List of microsoft-style URLs
+	NamedURLs map[string][]string
 	Timeout   int      // Connect timeout in seconds
 	CaCert    string   // Path to CA certificate
 	Memcache  []string // host:port of memcached to use for caching timestamps
