@@ -25,7 +25,7 @@ func init() {
 	signer.Flags().String("bundle-id", "", "(Apple) app bundle ID")
 	signer.Flags().String("info-plist", "", "(Apple) Info.plist file to bind to the signature")
 	signer.Flags().String("entitlements", "", "(Apple) entitlements file to embed")
-	signer.Flags().Bool("hardened-runtime", false, "(Apple) enable hardened runtime")
+	signer.Flags().Bool("hardened-runtime", true, "(Apple) enable hardened runtime")
 	signer.Flags().String("requirements", "", "(Apple) requirements file to embed (binary only)")
 	signer.Flags().String("resources", "", "(Apple) CodeResources file to bind to the signature")
 	signers.Register(signer)
