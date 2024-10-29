@@ -6,14 +6,14 @@ import (
 	"crypto/ecdsa"
 	"crypto/rsa"
 	"crypto/x509"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"strings"
 
-	"github.com/Azure/azure-sdk-for-go/services/keyvault/2016-10-01/keyvault"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azkeys"
 	"github.com/go-jose/go-jose/v3"
 
 	"github.com/sassoftware/relic/v8/config"
@@ -27,14 +27,13 @@ const tokenType = "azure"
 type kvToken struct {
 	config *config.Config
 	tconf  *config.TokenConfig
-	cli    *keyvault.BaseClient
+	cred   azcore.TokenCredential
 }
 
 type kvKey struct {
 	kconf    *config.KeyConfig
-	cli      *keyvault.BaseClient
+	cli      *azkeys.Client
 	pub      crypto.PublicKey
-	kbase    string
 	kname    string
 	kversion string
 	id       []byte
@@ -50,16 +49,14 @@ func open(conf *config.Config, tokenName string, pinProvider passprompt.Password
 	if err != nil {
 		return nil, err
 	}
-	auth, err := newAuthorizer(tconf)
+	cred, err := newCredential(tconf)
 	if err != nil {
 		return nil, fmt.Errorf("configuring azure auth: %w", err)
 	}
-	cli := keyvault.New()
-	cli.Authorizer = auth
 	return &kvToken{
 		config: conf,
 		tconf:  tconf,
-		cli:    &cli,
+		cred:   cred,
 	}, nil
 }
 
@@ -124,7 +121,7 @@ func (t *kvToken) getKey(ctx context.Context, keyConf *config.KeyConfig, pingOnl
 		}
 	case len(words) == 3 && words[1] == "certificates":
 		// link to a cert, pick the latest version
-		cert, err = t.loadCertificateLatest(ctx, baseURL, words[2])
+		cert, err = t.loadCertificateVersion(ctx, baseURL, words[2], "")
 		if err != nil {
 			return nil, fmt.Errorf("key %q: fetching certificate: %w", keyConf.Name(), err)
 		} else if pingOnly {
@@ -133,15 +130,19 @@ func (t *kvToken) getKey(ctx context.Context, keyConf *config.KeyConfig, pingOnl
 	default:
 		return nil, fmt.Errorf("key %q: %w", keyConf.Name(), errKeyID)
 	}
-	key, err := t.cli.GetKey(ctx, baseURL, cert.KeyName, cert.KeyVersion)
+	keyClient, err := azkeys.NewClient(baseURL, t.cred, nil)
+	if err != nil {
+		return nil, fmt.Errorf("key %q: %w", keyConf.Name(), err)
+	}
+	key, err := keyClient.GetKey(ctx, cert.KeyName, cert.KeyVersion, nil)
 	if err != nil {
 		return nil, fmt.Errorf("key %q: %w", keyConf.Name(), err)
 	} else if pingOnly {
 		return nil, nil
 	}
 	// strip off -HSM suffix to get a key type jose will accept
-	kty := strings.TrimSuffix(string(key.Key.Kty), "-HSM")
-	key.Key.Kty = keyvault.JSONWebKeyType(kty)
+	kty := azkeys.KeyType(strings.TrimSuffix(string(*key.Key.Kty), "-HSM"))
+	key.Key.Kty = &kty
 	// marshal back to JSON and then parse using jose to get a PublicKey
 	keyBlob, err := json.Marshal(key.Key)
 	if err != nil {
@@ -153,9 +154,8 @@ func (t *kvToken) getKey(ctx context.Context, keyConf *config.KeyConfig, pingOnl
 	}
 	return &kvKey{
 		kconf:    keyConf,
-		cli:      t.cli,
+		cli:      keyClient,
 		pub:      jwk.Key,
-		kbase:    baseURL,
 		kname:    cert.KeyName,
 		kversion: cert.KeyVersion,
 		cert:     cert.CertBlob,
@@ -192,7 +192,6 @@ func (k *kvKey) SignContext(ctx context.Context, digest []byte, opts crypto.Sign
 	if err != nil {
 		return nil, err
 	}
-	encoded := base64.RawURLEncoding.EncodeToString(digest)
 	kname, kversion := k.kname, k.kversion
 	if wantKeyID := token.KeyID(ctx); len(wantKeyID) != 0 {
 		// reusing a key the client saw before
@@ -202,17 +201,14 @@ func (k *kvKey) SignContext(ctx context.Context, digest []byte, opts crypto.Sign
 		}
 		kname, kversion = cert.KeyName, cert.KeyVersion
 	}
-	resp, err := k.cli.Sign(ctx, k.kbase, kname, kversion, keyvault.KeySignParameters{
-		Algorithm: keyvault.JSONWebKeySignatureAlgorithm(alg),
-		Value:     &encoded,
-	})
+	resp, err := k.cli.Sign(ctx, kname, kversion, azkeys.SignParameters{
+		Algorithm: &alg,
+		Value:     digest,
+	}, nil)
 	if err != nil {
 		return nil, err
 	}
-	sig, err := base64.RawURLEncoding.DecodeString(*resp.Result)
-	if err != nil {
-		return nil, err
-	}
+	sig := resp.Result
 	if _, ok := k.pub.(*ecdsa.PublicKey); ok {
 		// repack as ASN.1
 		unpacked, err := x509tools.UnpackEcdsaSignature(sig)
@@ -233,8 +229,8 @@ func (k *kvKey) ImportCertificate(cert *x509.Certificate) error {
 }
 
 // select a JOSE signature algorithm based on the public key algorithm and requested hash func
-func (k *kvKey) sigAlgorithm(opts crypto.SignerOpts) (string, error) {
-	var alg string
+func (k *kvKey) sigAlgorithm(opts crypto.SignerOpts) (azkeys.SignatureAlgorithm, error) {
+	var alg azkeys.SignatureAlgorithm
 	switch opts.HashFunc() {
 	case crypto.SHA256:
 		alg = "256"
