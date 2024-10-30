@@ -46,7 +46,7 @@ func Sign(ctx context.Context, r io.Reader, cert *certloader.Certificate, hashTy
 	}
 	origSigSize := removeSigs(toc)
 	// reserve space for new signatures and insert elements into TOC
-	newSigSize := reserveSignatures(toc, hashType, cert.Chain())
+	newSigSize := reserveSignatures(toc, hashType, cert.Certificates)
 	// verify and discard remaining input files
 	heap := &streamReaderAt{r: r}
 	if err := checkFiles(toc, heap); err != nil {
@@ -230,7 +230,7 @@ func appendSignatures(ctx context.Context, out *bytes.Buffer, ztoc []byte, uncom
 		usedSigSize += int64(len(classicBytes))
 	}
 	// CMS signature
-	builder := pkcs7.NewBuilder(cert.Signer(), cert.Chain(), hashType)
+	builder := pkcs7.NewBuilder(cert.Signer(), cert.Certificates, hashType)
 	if err := builder.SetContentData(ztocHash); err != nil {
 		return nil, err
 	}

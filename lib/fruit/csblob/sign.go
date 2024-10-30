@@ -91,7 +91,7 @@ func (p *SignatureParams) DefaultsFromBundle(cert *certloader.Certificate) error
 		p.TeamIdentifier = TeamID(cert.Leaf)
 	}
 	if p.Requirements == nil {
-		req, err := DefaultRequirement(p.SigningIdentity, cert.Chain())
+		req, err := DefaultRequirement(p.SigningIdentity, cert.Certificates)
 		if err != nil {
 			return fmt.Errorf("computing default designated requirement: %w", err)
 		}
@@ -202,7 +202,9 @@ func Sign(ctx context.Context, cert *certloader.Certificate, params *SignaturePa
 	}
 	items = append(items, hashedItems...)
 	// sign
-	builder := pkcs7.NewBuilder(cert.Signer(), cert.Chain(), params.HashFunc)
+	// IMPORTANT: make sure to include the root CA, or AMFI gets mad:
+	// "does not pass CT evaluation"
+	builder := pkcs7.NewBuilder(cert.Signer(), cert.Certificates, params.HashFunc)
 	if err := builder.SetContentData(firstCD); err != nil {
 		return nil, nil, err
 	}

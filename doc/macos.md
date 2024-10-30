@@ -2,7 +2,42 @@
 
 relic has preliminary support for signing MacOS and iOS binaries.
 
-For example, to sign a Mac binary for offline distribution, you will need a DevID certificate.
+For example, to sign a Mac binary for offline distribution,
+you will need a Dev ID certificate:
+
+```sh
+# Create a signing request:
+openssl genrsa -out devid.key 2048
+openssl req -new -subj /CN=devid -key devid.key -out devid.csr
+# Submit the CSR to https://developer.apple.com/account/resources/certificates/add
+# and retrieve the CER, then:
+openssl x509 -inform DER -in devid.cer -out devid.crt
+
+# Identify the intermdiate certificate needed:
+openssl x509 -in devid.crt -noout -issuer
+# e.g. issuer=CN = Developer ID Certification Authority, OU = G2, ...
+
+# Navigate to https://www.apple.com/certificateauthority/
+# and find the matching certificate.
+# Then fetch and reformat it:
+curl -Ls https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer \
+  | openssl x509 -inform DER -out intermediate.crt
+# Repeat for the root CA:
+curl -Ls https://www.apple.com/appleca/AppleIncRootCertificate.cer \
+  | openssl x509 -inform DER -out root.crt
+
+# Confirm that the chain is complete:
+openssl verify -ignore_critical -CAfile root.crt \
+  -untrusted intermediate.crt devid.crt
+# devid.crt: OK
+
+# Finally, append the chain to the signing cert:
+cat intermediate.crt root.crt >>devid.crt
+```
+
+Note that the root CA certificate **must** be included,
+otherwise verification errors may occur.
+
 Configure relic to use the cert with Apple's timestamp servers:
 
 ```yaml
@@ -22,18 +57,25 @@ timestamp:
       - http://timestamp.apple.com/ts01
 ```
 
-    relic sign -k devid -f foo-darwin-amd64
+Finally, sign a binary or package:
 
-Binaries are signed with the `hardened-runtime` flag by default, which is required for notarization to succeed.
-If this is not desired then it can be disabled with `--hardened-runtime=false`.
+```sh
+relic sign -k devid -f foo-darwin-amd64
+```
 
-Note also that relic currently does not support signing multi-arch ("fat") binaries, although it can verify them.
+Binaries are signed with the `hardened-runtime` flag by default,
+which is required for notarization to succeed.
+If this is not desired then it can be disabled
+with `--hardened-runtime=false`.
+
+Note also that relic currently does not support signing multi-arch
+("fat") binaries, although it can verify them.
 Sign each arch separately and then combine them afterwards:
 
-    go install github.com/randall77/makefat@latest
-    relic sign -f foo-darwin-amd64
-    relic sign -f foo-darwin-arm64
-    makefat foo foo-darwin-amd64 foo-darwin-arm64
-    relic verify foo
-
-The signed binary can then be placed into a regular zip file and uploaded for notarization.
+```sh
+go install github.com/randall77/makefat@latest
+relic sign -f foo-darwin-amd64
+relic sign -f foo-darwin-arm64
+makefat foo foo-darwin-amd64 foo-darwin-arm64
+relic verify foo
+```
