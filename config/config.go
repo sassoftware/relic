@@ -161,6 +161,7 @@ type Config struct {
 	Server    *ServerConfig            `yaml:",omitempty"`
 	Clients   map[string]*ClientConfig `yaml:",omitempty"`
 	Remote    *RemoteConfig            `yaml:",omitempty"`
+	Notary    *NotaryConfig            `yaml:",omitempty"`
 	Timestamp *TimestampConfig         `yaml:",omitempty"`
 	Amqp      *AmqpConfig              `yaml:",omitempty"`
 

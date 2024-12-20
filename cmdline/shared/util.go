@@ -26,14 +26,18 @@ import (
 )
 
 func InitConfig() error {
-	return initConfig(false)
+	return initConfig(false, false)
 }
 
 func InitClientConfig() error {
-	return initConfig(true)
+	return initConfig(true, false)
 }
 
-func initConfig(client bool) error {
+func InitConfigIfExists() error {
+	return initConfig(false, true)
+}
+
+func initConfig(client, dontCare bool) error {
 	if CurrentConfig != nil {
 		return nil
 	}
@@ -53,11 +57,17 @@ func initConfig(client bool) error {
 		}
 	}
 	if ArgConfig == "" {
+		if dontCare {
+			return nil
+		}
 		return errors.New("--config not specified")
 	}
 	cfg, err := config.ReadFile(ArgConfig)
 	if err != nil {
 		if os.IsNotExist(err) && usedDefault {
+			if dontCare {
+				return nil
+			}
 			if client {
 				// try to use environment
 				cfg, err = config.FromEnvironment()
