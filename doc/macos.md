@@ -79,3 +79,31 @@ relic sign -f foo-darwin-arm64
 makefat foo foo-darwin-amd64 foo-darwin-arm64
 relic verify foo
 ```
+
+## Notarization
+
+relic includes a basic tool for submitting bundles to be notarized.
+To use it, you first need to generate a team API authentication key
+using [App Store Connect](https://appstoreconnect.apple.com/).
+Do not use an "individual" key - the notary API only supports team keys.
+
+Then you can bundle your binary or binaries into a ZIP and submit it:
+
+```sh
+zip submission.zip binary1 [binary2...]
+relic notary submit submission.zip \
+  --issuer api-issuer-id \
+  --key-id api-key-id \
+  --key api-key.p8
+```
+
+After completion you can inspect `submission.log` for details about the result.
+
+relic does not currently support ticket stapling,
+so consumers of your signed binary must have internet access
+to retrieve tickets from the app store directly.
+
+For more information about notarization see
+<https://developer.apple.com/documentation/security/notarizing_macos_software_before_distribution/>
+and
+<https://developer.apple.com/documentation/notaryapi/submitting-software-for-notarization-over-the-web>

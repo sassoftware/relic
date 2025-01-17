@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path"
@@ -17,9 +18,10 @@ import (
 )
 
 var (
-	argKeyID, argKey, argIssuer string
-	argNoWait, argJSON          bool
-	argTimeout                  time.Duration
+	argKeyID, argKey, argIssuer  string
+	argLogFile                   string
+	argNoWait, argNoLog, argJSON bool
+	argTimeout                   time.Duration
 )
 
 func init() {
@@ -44,6 +46,15 @@ func init() {
 	infoCmd.Flags().AddFlagSet(cliFlags)
 	notaryCmd.AddCommand(infoCmd)
 
+	logsCmd := &cobra.Command{
+		Use:   "logs <submission-id>",
+		Short: "Get logs from a submission",
+		Args:  cobra.ExactArgs(1),
+		RunE:  runLogs,
+	}
+	logsCmd.Flags().AddFlagSet(cliFlags)
+	notaryCmd.AddCommand(logsCmd)
+
 	submitCmd := &cobra.Command{
 		Use:   "submit file.zip|file.pkg|file.dmg",
 		Short: "Submit a bundle to App Store Connect for notarization",
@@ -52,7 +63,9 @@ func init() {
 	}
 	submitCmd.Flags().AddFlagSet(cliFlags)
 	submitCmd.Flags().BoolVar(&argNoWait, "no-wait", false, "Exit after submission without waiting for results")
+	submitCmd.Flags().BoolVar(&argNoLog, "no-print-log", false, "Don't print submission log after a rejected submission")
 	submitCmd.Flags().DurationVar(&argTimeout, "timeout", 0, "Maximum wait time before exiting without a result")
+	submitCmd.Flags().StringVar(&argLogFile, "notary-log-file", "submission.log", "Filename to save the submission log")
 	notaryCmd.AddCommand(submitCmd)
 }
 
@@ -96,6 +109,30 @@ func printStatus(status *notary.SubmissionStatus) {
 	}
 }
 
+func fetchLogs(r io.Reader, doPrint bool) {
+	var dest io.Writer
+	if argLogFile != "" {
+		f, err := os.Create(argLogFile)
+		if err != nil {
+			log.Println("error: writing log:", err)
+			dest = os.Stdout
+		} else {
+			defer f.Close()
+			if doPrint {
+				dest = io.MultiWriter(f, os.Stdout)
+			} else {
+				dest = f
+			}
+		}
+	} else if doPrint {
+		dest = os.Stdout
+	}
+	_, err := io.Copy(dest, r)
+	if err != nil {
+		log.Println("error: retrieving log:", err)
+	}
+}
+
 func runInfo(cmd *cobra.Command, args []string) error {
 	cli, err := makeClient()
 	if err != nil {
@@ -106,6 +143,22 @@ func runInfo(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	printStatus(status)
+	return nil
+}
+
+func runLogs(cmd *cobra.Command, args []string) error {
+	cli, err := makeClient()
+	if err != nil {
+		return err
+	}
+	logs, err := cli.GetSubmissionLogs(context.Background(), args[0])
+	if err != nil {
+		return err
+	}
+	defer logs.Close()
+	if _, err := io.Copy(os.Stdout, logs); err != nil {
+		return fmt.Errorf("retrieving log: %w", err)
+	}
 	return nil
 }
 
@@ -188,6 +241,16 @@ func runSubmit(cmd *cobra.Command, args []string) error {
 		log.Printf("Timeout of %s exceeded. Last status:", argTimeout)
 	}
 	printStatus(lastStatus)
+	doPrint := lastStatus != nil && lastStatus.Attributes.Status != notary.StatusAccepted
+	if argLogFile != "" || doPrint {
+		logs, err := cli.GetSubmissionLogs(ctx, submissionID)
+		if err != nil {
+			log.Printf("error: writing log to %q: %+v", argLogFile, err)
+		} else {
+			defer logs.Close()
+			fetchLogs(logs, doPrint)
+		}
+	}
 	if lastStatus == nil || lastStatus.Attributes.Status != notary.StatusAccepted {
 		os.Exit(1)
 	}
