@@ -308,8 +308,10 @@ func readSections(r io.Reader, d io.Writer, fh *pe.FileHeader, hvals *peHeaderVa
 			// some samples have a SizeOfHeaders that goes past the start of the first section
 			hvals.sizeOfHdr = p
 		}
-		// Adjust any sections that are not properly aligned
-		sections[i].SizeOfRawData = align32(section.SizeOfRawData, hvals.fileAlign)
+		// Adjust any sections that are not properly aligned, except for the last one, as it might be truncated
+		if i < len(sections)-1 {
+			sections[i].SizeOfRawData = align32(section.SizeOfRawData, hvals.fileAlign)
+		}
 	}
 	// hash the padding after the section table
 	if _, err := io.CopyN(d, r, hvals.sizeOfHdr-secTblEnd); err != nil {
