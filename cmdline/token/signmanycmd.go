@@ -33,7 +33,7 @@ import (
 
 var SignManyCmd = &cobra.Command{
 	Use:   "sign-many",
-	Short: "Sign multiple packages using a token",
+	Short: "Sign multiple packages at once using a token",
 	RunE:  signManyCmd,
 }
 
