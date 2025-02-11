@@ -25,10 +25,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/sassoftware/relic/v7/cmdline/shared"
-	"github.com/sassoftware/relic/v7/internal/signinit"
-	"github.com/sassoftware/relic/v7/lib/certloader"
-	"github.com/sassoftware/relic/v7/signers"
+	"github.com/sassoftware/relic/v8/cmdline/shared"
+	"github.com/sassoftware/relic/v8/internal/signinit"
+	"github.com/sassoftware/relic/v8/lib/certloader"
+	"github.com/sassoftware/relic/v8/signers"
 )
 
 var SignManyCmd = &cobra.Command{
