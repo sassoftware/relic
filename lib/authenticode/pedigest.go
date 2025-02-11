@@ -68,8 +68,15 @@ func DigestPE(r io.Reader, hash crypto.Hash, doPageHash bool) (*PEDigest, error)
 		return nil, err
 	}
 	digester := setupDigester(hash, buf.Bytes(), hvals, sections, doPageHash)
-	// Hash sections
+	// Hash gap between header and first section if it exists
 	nextSection := hvals.sizeOfHdr
+	if len(sections) > 0 && int64(sections[0].PointerToRawData) > hvals.sizeOfHdr {
+		if _, err := io.CopyN(digester.imageDigest, r, int64(sections[0].PointerToRawData)-hvals.sizeOfHdr); err != nil {
+			return nil, fmt.Errorf("failed to read data between header and first PE section")
+		}
+		nextSection = int64(sections[0].PointerToRawData)
+	}
+	// Hash sections
 	for i, sh := range sections {
 		if sh.SizeOfRawData == 0 {
 			continue
