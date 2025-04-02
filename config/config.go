@@ -70,6 +70,7 @@ type KeyConfig struct {
 	Timestamp       bool     // If true, attach a timestamped countersignature when possible
 	Timestamper     string   // If set, use the named timestamper to countersign
 	Hide            bool     // If true, then omit this key from 'remote list-keys'
+	Memcache        []string // host:port of memcached to use for caching signatures
 
 	name  string
 	token *TokenConfig

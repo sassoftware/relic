@@ -29,6 +29,7 @@ import (
 	"github.com/sassoftware/relic/v8/signers"
 	"github.com/sassoftware/relic/v8/signers/sigerrors"
 	"github.com/sassoftware/relic/v8/token"
+	"github.com/sassoftware/relic/v8/token/signaturecache"
 )
 
 // InitKey loads the cert chain for a key
@@ -85,6 +86,15 @@ func Init(ctx context.Context, mod *signers.Signer, tok token.Token, keyName str
 		Audit: auditInfo,
 		Flags: flags,
 	}
+
+	// Use signature cache if configured
+	if len(kconf.Memcache) > 0 {
+		cert.PrivateKey, err = signaturecache.New(kconf, cert.PrivateKey.(crypto.Signer))
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
 	opts = opts.WithContext(ctx)
 	return cert, &opts, nil
 }

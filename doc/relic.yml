@@ -96,6 +96,10 @@ keys:
     # see `namedurls` below. Implies "timestamp: true".
     #timestamper: apple
 
+    # Optional memcache servers for memoizing signing requests
+    #memcache:
+    # - 127.0.0.1:11211
+
     # Clients with any of these roles can utilize this key
     roles: ["somegroup"]
 
