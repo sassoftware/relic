@@ -89,7 +89,7 @@ func Init(ctx context.Context, mod *signers.Signer, tok token.Token, keyName str
 
 	// Use signature cache if configured
 	if len(kconf.Memcache) > 0 {
-		cert.PrivateKey, err = signaturecache.New(kconf, cert.PrivateKey.(crypto.Signer))
+		cert.PrivateKey, err = signaturecache.New(kconf, &opts, cert.PrivateKey.(crypto.Signer))
 		if err != nil {
 			return nil, nil, err
 		}

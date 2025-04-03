@@ -21,6 +21,7 @@ import (
 
 	"github.com/bradfitz/gomemcache/memcache"
 	"github.com/sassoftware/relic/v8/config"
+	"github.com/sassoftware/relic/v8/signers"
 )
 
 const (
@@ -35,18 +36,19 @@ type SignatureCache interface {
 
 type signatureCache struct {
 	keyConf  *config.KeyConfig
+	opts     *signers.SignOpts
 	signer   crypto.Signer
 	Memcache *memcache.Client
 }
 
-func New(keyConf *config.KeyConfig, signer crypto.Signer) (SignatureCache, error) {
+func New(keyConf *config.KeyConfig, opts *signers.SignOpts, signer crypto.Signer) (SignatureCache, error) {
 	selector := new(memcache.ServerList)
 	if err := selector.SetServers(keyConf.Memcache...); err != nil {
 		return nil, fmt.Errorf("parsing memcache servers: %w", err)
 	}
 	mc := memcache.NewFromSelector(selector)
 	mc.Timeout = memcacheTimeout
-	return &signatureCache{keyConf, signer, mc}, nil
+	return &signatureCache{keyConf, opts, signer, mc}, nil
 }
 
 func (c *signatureCache) Public() crypto.PublicKey {
@@ -54,10 +56,11 @@ func (c *signatureCache) Public() crypto.PublicKey {
 }
 
 func (c *signatureCache) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts) ([]byte, error) {
-	cacheKey := fmt.Sprintf("%s-%x", c.keyConf.Name(), digest)
+	cacheKey := fmt.Sprintf("sig-%s-%x", c.keyConf.Name(), digest)
 
 	item, err := c.Memcache.Get(cacheKey)
 	if err == nil && item != nil {
+		c.opts.Audit.Attributes["sig.cache"] = "hit"
 		return item.Value, nil
 	}
 
@@ -72,5 +75,6 @@ func (c *signatureCache) Sign(rand io.Reader, digest []byte, opts crypto.SignerO
 		Expiration: int32(memcacheExpiry / time.Second),
 	})
 
+	c.opts.Audit.Attributes["sig.cache"] = "miss"
 	return signature, nil
 }
