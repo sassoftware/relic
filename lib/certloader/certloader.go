@@ -27,6 +27,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"slices"
 
 	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/ProtonMail/go-crypto/openpgp/packet"
@@ -38,6 +39,8 @@ import (
 
 const asn1Magic = 0x30 // weak but good enough?
 var pkcs7SignedData = []byte{0x06, 0x09, 0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x01, 0x07, 0x02}
+
+var requiredRootCACommonNames = []string{"Apple Root CA"}
 
 // A bundle of X509 certificate chain and/or PGP certificate, with optional private key
 type Certificate struct {
@@ -57,8 +60,8 @@ func (s *Certificate) Chain() []*x509.Certificate {
 		chain = append(chain, s.Leaf)
 	}
 	for i, cert := range s.Certificates {
-		if i > 0 && bytes.Equal(cert.RawIssuer, cert.RawSubject) {
-			// omit root CA
+		if !slices.Contains(requiredRootCACommonNames, cert.Subject.CommonName) && i > 0 && bytes.Equal(cert.RawIssuer, cert.RawSubject) {
+			// omit root CAs unless they are in the required list.
 			continue
 		} else if cert == s.Leaf {
 			// already in list
