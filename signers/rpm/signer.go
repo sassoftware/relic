@@ -26,8 +26,8 @@ import (
 	"strings"
 	"time"
 
+	rpmutils "github.com/mind-security/go-rpmutils"
 	"github.com/rs/zerolog"
-	rpmutils "github.com/sassoftware/go-rpmutils"
 
 	"github.com/mind-security/relic/v8/lib/audit"
 	"github.com/mind-security/relic/v8/lib/binpatch"

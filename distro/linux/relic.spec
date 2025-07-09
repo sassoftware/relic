@@ -3,7 +3,7 @@ Version: 1.0
 Release: 1%{?dist}
 Summary: Client to the relic secure package signing service
 License: Apache 2.0
-URL: http://github.com/sassoftware/relic
+URL: http://github.com/mind-security/relic
 Source0: relic.tar
 Group: Utilities/File
 BuildArch: x86_64

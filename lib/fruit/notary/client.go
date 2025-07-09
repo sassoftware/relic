@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/sassoftware/relic/v8/config"
-	"github.com/sassoftware/relic/v8/internal/httperror"
+	"github.com/mind-security/relic/v8/config"
+	"github.com/mind-security/relic/v8/internal/httperror"
 	"golang.org/x/oauth2"
 )
 

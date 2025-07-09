@@ -10,9 +10,9 @@ import (
 	"path"
 	"time"
 
-	"github.com/sassoftware/relic/v8/cmdline/shared"
-	"github.com/sassoftware/relic/v8/config"
-	"github.com/sassoftware/relic/v8/lib/fruit/notary"
+	"github.com/mind-security/relic/v8/cmdline/shared"
+	"github.com/mind-security/relic/v8/config"
+	"github.com/mind-security/relic/v8/lib/fruit/notary"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )

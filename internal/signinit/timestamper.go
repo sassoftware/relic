@@ -17,10 +17,10 @@ import (
 	"context"
 	"sync"
 
-	"github.com/sassoftware/relic/v8/cmdline/shared"
-	"github.com/sassoftware/relic/v8/lib/pkcs7"
-	"github.com/sassoftware/relic/v8/lib/pkcs9"
-	"github.com/sassoftware/relic/v8/lib/pkcs9/tsclient"
+	"github.com/mind-security/relic/v8/cmdline/shared"
+	"github.com/mind-security/relic/v8/lib/pkcs7"
+	"github.com/mind-security/relic/v8/lib/pkcs9"
+	"github.com/mind-security/relic/v8/lib/pkcs9/tsclient"
 )
 
 var (

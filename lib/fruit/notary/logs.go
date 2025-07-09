@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/sassoftware/relic/v8/internal/httperror"
+	"github.com/mind-security/relic/v8/internal/httperror"
 )
 
 type getLogsResponse struct {
