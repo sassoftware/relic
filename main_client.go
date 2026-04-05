@@ -36,6 +36,7 @@ import (
 	_ "github.com/mind-security/relic/v8/signers/cosign"
 	_ "github.com/mind-security/relic/v8/signers/deb"
 	_ "github.com/mind-security/relic/v8/signers/dmg"
+	_ "github.com/mind-security/relic/v8/signers/hlkx"
 	_ "github.com/mind-security/relic/v8/signers/jar"
 	_ "github.com/mind-security/relic/v8/signers/macho"
 	_ "github.com/mind-security/relic/v8/signers/msi"

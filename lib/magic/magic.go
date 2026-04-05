@@ -48,6 +48,7 @@ const (
 	FileTypeCAT
 	FileTypeAPPX
 	FileTypeVSIX
+	FileTypeHLKX
 	FileTypeXAP
 	FileTypeAPK
 	FileTypeMachO
@@ -204,6 +205,8 @@ func detectZip(f *os.File) FileType {
 			return FileTypeAPPX
 		case "extension.vsixmanifest":
 			return FileTypeVSIX
+		case "WTTManifest.xml":
+			return FileTypeHLKX
 		case "META-INF/MANIFEST.MF":
 			// APKs are also JARs so save this for last
 			isJar = true

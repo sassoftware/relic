@@ -1,5 +1,5 @@
-//go:build linux || darwin || (windows && amd64)
-// +build linux darwin windows,amd64
+//go:build linux || darwin || (windows && amd64) || (windows && arm64)
+// +build linux darwin windows,amd64 windows,arm64
 
 //
 // Copyright (c) SAS Institute Inc.
