@@ -16,7 +16,6 @@ package hlkx
 
 import (
 	"archive/zip"
-	"crypto"
 	"errors"
 	"io"
 	"os"
@@ -54,10 +53,6 @@ func testPath(fp string) bool {
 }
 
 func sign(r io.Reader, cert *certloader.Certificate, opts signers.SignOpts) ([]byte, error) {
-	// OPC/HLKX package signatures must use SHA-1. PackageDigitalSignatureManager
-	// (WindowsBase.dll) does not verify packages signed with any other algorithm —
-	// it wraps all failures as XmlException("Signature structures are corrupted").
-	opts.Hash = crypto.SHA1
 	m, err := mangleZip(r, opts.Hash)
 	if err != nil {
 		return nil, err
