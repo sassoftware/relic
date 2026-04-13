@@ -33,8 +33,12 @@ const (
 	tsFormatXML        = "YYYY-MM-DDThh:mm:ss.sTZD"
 	tsFormatGo         = "2006-01-02T15:04:05.0-07:00"
 
-	// XML declaration with standalone="yes" as required by HLKX
-	xmlDeclaration = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n"
+	// XML declaration with standalone="yes" as required by HLKX.
+	// No trailing newline: PackageDigitalSignatureManager loads the psdsxs with
+	// PreserveWhitespace=true, so a newline between the declaration and <Signature>
+	// becomes an XmlWhitespace child node, making ChildNodes.Count == 3 and
+	// causing an XmlException("Signature structures are corrupted").
+	xmlDeclaration = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
 
 	// OPC/HLKX relationship transform and C14N algorithm URIs
 	relTransformAlg = "http://schemas.openxmlformats.org/package/2006/RelationshipTransform"

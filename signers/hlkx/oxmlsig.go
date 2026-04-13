@@ -124,7 +124,7 @@ func checkTimestamp(root *etree.Element, encryptedDigest []byte) (*pkcs9.Counter
 // HLKX uses the big-endian hex of the serial number (matching .NET's reversed little-endian
 // GetSerialNumber() output) as the base name.
 func calcCertFileName(cert *x509.Certificate) string {
-	return strings.ToUpper(hex.EncodeToString(cert.SerialNumber.Bytes()))
+	return hex.EncodeToString(cert.SerialNumber.Bytes())
 }
 
 func readSignature(files zipFiles) ([]byte, []*x509.Certificate, error) {
@@ -187,33 +187,51 @@ func (m *mangler) makeSignature(cert *certloader.Certificate, opts signers.SignO
 	}
 	pkg := etree.NewElement("Object")
 	pkg.CreateAttr("Id", "idPackageObject")
-	// file manifest
+	// file manifest — xmlns:opc is declared on each opc:RelationshipsGroupReference element
+	// directly, NOT on Manifest. Our SerializeCanonical pushes namespace declarations down
+	// to first-use (exclusive-C14N-like), but .NET's inclusive C14N keeps them on the element
+	// that declares them. By declaring xmlns:opc on the opc: elements themselves both
+	// behaviours agree: xmlns:opc stays on each opc:RelationshipsGroupReference.
 	manifest := pkg.CreateElement("Manifest")
 	names := make([]string, 0, len(m.digests)+1)
 	for name := range m.digests {
 		names = append(names, name)
 	}
-	// Include _rels/.rels via RelationshipTransform, sorted into its natural position.
-	if m.rootRelsRef != nil {
+	// Include _rels/.rels references (plain c14n + RelationshipTransform), sorted into natural position.
+	if m.rootRelsC14NDigest != nil {
 		names = append(names, "_rels/.rels")
 	}
 	sort.Strings(names)
 	for _, name := range names {
-		// Special Reference for _rels/.rels: OPC RelationshipTransform + C14N.
-		if name == "_rels/.rels" && m.rootRelsRef != nil {
-			ref := manifest.CreateElement("Reference")
-			ref.CreateAttr("URI", "/_rels/.rels?ContentType="+contentTypes["rels"])
-			transforms := ref.CreateElement("Transforms")
-			relTr := transforms.CreateElement("Transform")
-			relTr.CreateAttr("Algorithm", relTransformAlg)
-			relTr.CreateAttr("xmlns:opc", nsDigSig)
-			for _, st := range m.rootRelsRef.sourceTypes {
-				grp := relTr.CreateElement("opc:RelationshipsGroupReference")
-				grp.CreateAttr("SourceType", st)
+		// Special handling for _rels/.rels: emit a plain C14N reference covering
+		// the entire part, then (if present) a RelationshipTransform reference
+		// covering only the HLKX-specific relationships.
+		if name == "_rels/.rels" {
+			if m.rootRelsC14NDigest != nil {
+				ref := manifest.CreateElement("Reference")
+				ref.CreateAttr("URI", "/_rels/.rels?ContentType="+contentTypes["rels"])
+				transforms := ref.CreateElement("Transforms")
+				transforms.CreateElement("Transform").CreateAttr("Algorithm", c14nAlg)
+				ref.CreateElement("DigestMethod").CreateAttr("Algorithm", hashUri)
+				ref.CreateElement("DigestValue").SetText(base64.StdEncoding.EncodeToString(m.rootRelsC14NDigest))
 			}
-			transforms.CreateElement("Transform").CreateAttr("Algorithm", c14nAlg)
-			ref.CreateElement("DigestMethod").CreateAttr("Algorithm", hashUri)
-			ref.CreateElement("DigestValue").SetText(base64.StdEncoding.EncodeToString(m.rootRelsRef.digest))
+			if m.rootRelsRef != nil {
+				ref := manifest.CreateElement("Reference")
+				ref.CreateAttr("URI", "/_rels/.rels?ContentType="+contentTypes["rels"])
+				transforms := ref.CreateElement("Transforms")
+				relTr := transforms.CreateElement("Transform")
+				relTr.CreateAttr("Algorithm", relTransformAlg)
+				for _, st := range m.rootRelsRef.sourceTypes {
+					grp := relTr.CreateElement("opc:RelationshipsGroupReference")
+					// Declare xmlns:opc on each element so both our SerializeCanonical
+					// and .NET's inclusive C14N agree on placement.
+					grp.CreateAttr("xmlns:opc", nsDigSig)
+					grp.CreateAttr("SourceType", st)
+				}
+				transforms.CreateElement("Transform").CreateAttr("Algorithm", c14nAlg)
+				ref.CreateElement("DigestMethod").CreateAttr("Algorithm", hashUri)
+				ref.CreateElement("DigestValue").SetText(base64.StdEncoding.EncodeToString(m.rootRelsRef.digest))
+			}
 			continue
 		}
 		digest := m.digests[name]
@@ -236,17 +254,21 @@ func (m *mangler) makeSignature(cert *certloader.Certificate, opts signers.SignO
 	props := pkg.CreateElement("SignatureProperties")
 	proptime := props.CreateElement("SignatureProperty")
 	proptime.CreateAttr("Id", "idSignatureTime")
-	proptime.CreateAttr("Target", "")
+	proptime.CreateAttr("Target", "#SignatureIdValue")
 	sigtime := proptime.CreateElement("SignatureTime")
 	sigtime.CreateAttr("xmlns", nsDigSig)
 	sigtime.CreateElement("Format").SetText(tsFormatXML)
 	sigtime.CreateElement("Value").SetText(opts.Time.Format(tsFormatGo))
-	// sign — HLKX always embeds certs separately, so IncludeX509 is false
-	xopts := xmldsig.SignOptions{UseRecC14n: true, IncludeKeyValue: true}
+	// sign — HLKX always embeds certs separately, so IncludeX509/IncludeKeyValue are false.
+	// OmitObjectTransforms: OPC verifiers apply C14N by default for element references.
+	xopts := xmldsig.SignOptions{UseRecC14n: true, OmitObjectTransforms: true}
 	sigel, err := xmldsig.SignEnveloping(pkg, opts.Hash, cert.Signer(), cert.Chain(), xopts)
 	if err != nil {
 		return nil, err
 	}
+	// OPC/HLKX requires Id="SignatureIdValue" on the root Signature element so that
+	// PackageDigitalSignatureManager can locate and process the signature.
+	sigel.CreateAttr("Id", "SignatureIdValue")
 	// timestamp
 	if cert.Timestamper != nil {
 		encryptedDigest, _ := base64.StdEncoding.DecodeString(sigel.SelectElement("SignatureValue").Text())

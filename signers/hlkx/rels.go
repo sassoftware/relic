@@ -139,7 +139,14 @@ func (m *mangler) newRels(parent, child, relType string) error {
 	}
 	// Root rels uses RelationshipTransform (computed via computeRootRelsRef),
 	// not a plain digest, so do not add it to m.digests.
+	// But also compute a plain C14N digest for the additional manifest reference
+	// that covers the entire _rels/.rels (including the origin relationship).
 	if parent == "" {
+		c14nDigest, err := m.computeRelsC14NDigest(contents)
+		if err != nil {
+			return err
+		}
+		m.rootRelsC14NDigest = c14nDigest
 		return m.addFileNoDigest(relPath(parent), contents)
 	}
 	return m.addFile(relPath(parent), contents)
