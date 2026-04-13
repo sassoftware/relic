@@ -15,6 +15,7 @@
 package hlkx
 
 import (
+	"bytes"
 	"crypto"
 	"encoding/xml"
 	"fmt"
@@ -95,9 +96,12 @@ func (rels *oxfRelationships) Marshal() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	ret := make([]byte, len(xml.Header), len(xml.Header)+len(x))
-	copy(ret, xml.Header)
-	ret = append(ret, x...)
+	// Convert Go's explicit closing tags to self-closing for empty elements,
+	// matching what Windows OPC tooling produces.
+	x = bytes.ReplaceAll(x, []byte("></Relationship>"), []byte("/>"))
+	// Use opcXMLDecl (no standalone, no trailing newline) so the root element
+	// immediately follows the declaration, as required by OPC tooling.
+	ret := append([]byte(opcXMLDecl), x...)
 	return ret, nil
 }
 
