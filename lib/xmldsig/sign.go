@@ -43,6 +43,11 @@ type SignOptions struct {
 	IncludeX509 bool
 	// Add a KeyValue element with the public key
 	IncludeKeyValue bool
+	// OmitObjectTransforms, if true, skips emitting a Transforms element on the
+	// Reference that covers the enveloped Object. Required by OPC/HLKX: the
+	// verifier applies C14N by default for element references, so the digest
+	// computation (which always uses C14N) remains correct.
+	OmitObjectTransforms bool
 }
 
 func (s SignOptions) c14nNamespace() string {
@@ -125,11 +130,13 @@ func buildSignedInfo(signature *etree.Element, refId, hashAlg, sigAlg string, re
 		reference.CreateAttr("URI", "#"+refId)
 		reference.CreateAttr("Type", NsXMLDsig+"Object")
 	}
-	transforms := reference.CreateElement("Transforms")
-	if refId == "" {
-		transforms.CreateElement("Transform").CreateAttr("Algorithm", AlgDsigEnvelopedSignature)
+	if refId == "" || !opts.OmitObjectTransforms {
+		transforms := reference.CreateElement("Transforms")
+		if refId == "" {
+			transforms.CreateElement("Transform").CreateAttr("Algorithm", AlgDsigEnvelopedSignature)
+		}
+		transforms.CreateElement("Transform").CreateAttr("Algorithm", opts.c14nNamespace())
 	}
-	transforms.CreateElement("Transform").CreateAttr("Algorithm", opts.c14nNamespace())
 	reference.CreateElement("DigestMethod").CreateAttr("Algorithm", hashAlg)
 	reference.CreateElement("DigestValue").SetText(base64.StdEncoding.EncodeToString(refDigest))
 	return signedinfo

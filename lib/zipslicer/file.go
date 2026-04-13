@@ -169,10 +169,17 @@ func (f *File) GetDirectoryHeader() ([]byte, error) {
 		}
 		b := bytes.NewBuffer(make([]byte, 0, zip64ExtraLen+4+len(f.Extra)))
 		_ = binary.Write(b, binary.LittleEndian, extra)
-		b.Write(f.Extra)
+		b.Write(stripZip64Extra(f.Extra)) // avoid duplicating stale ZIP64 extra
 		f.Extra = b.Bytes()
 		hdr.ExtraLen = uint16(b.Len())
 		hdr.ReaderVersion = zip45
+	} else {
+		// Strip any stale ZIP64 extra left over from the original file. When a
+		// file's offset is updated (e.g. after mangling), the ZIP64 extra still
+		// holds the old offset, which causes "bad headers" errors in strict
+		// readers (7z, Windows OPC) that see the 32-bit and ZIP64 offsets disagree.
+		f.Extra = stripZip64Extra(f.Extra)
+		hdr.ExtraLen = uint16(len(f.Extra))
 	}
 	b := bytes.NewBuffer(make([]byte, 0, directoryHeaderLen+len(f.Name)+len(f.Extra)+len(f.Comment)))
 	_ = binary.Write(b, binary.LittleEndian, hdr)
@@ -180,6 +187,25 @@ func (f *File) GetDirectoryHeader() ([]byte, error) {
 	b.Write(f.Extra)
 	b.Write(f.Comment)
 	return b.Bytes(), nil
+}
+
+// stripZip64Extra returns the extra field bytes with any ZIP64 (tag 0x0001)
+// entry removed. All other extra fields are preserved in order.
+func stripZip64Extra(extra []byte) []byte {
+	var out []byte
+	for i := 0; i+4 <= len(extra); {
+		tag := binary.LittleEndian.Uint16(extra[i:])
+		sz := int(binary.LittleEndian.Uint16(extra[i+2:]))
+		end := i + 4 + sz
+		if end > len(extra) {
+			break
+		}
+		if tag != zip64ExtraID {
+			out = append(out, extra[i:end]...)
+		}
+		i = end
+	}
+	return out
 }
 
 func (f *File) GetLocalHeader() ([]byte, error) {
