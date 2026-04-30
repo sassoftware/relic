@@ -29,6 +29,7 @@ import (
 	"strings"
 
 	"github.com/xi2/xz"
+	"github.com/klauspost/compress/zstd"
 )
 
 type PackageInfo struct {
@@ -45,6 +46,8 @@ func parseControl(r io.Reader, ext string) (*PackageInfo, error) {
 		r = bzip2.NewReader(r)
 	case ".xz":
 		r, err = xz.NewReader(r, 0)
+	case ".zst":
+		r, err = zstd.NewReader(r)
 	case "":
 	default:
 		err = errors.New("unrecognized compression on control.tar")
