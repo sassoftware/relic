@@ -47,6 +47,7 @@ import (
 	_ "github.com/sassoftware/relic/v8/signers/vsix"
 	_ "github.com/sassoftware/relic/v8/signers/xap"
 	_ "github.com/sassoftware/relic/v8/signers/xar"
+	_ "github.com/sassoftware/relic/v8/signers/blob"
 )
 
 var (
