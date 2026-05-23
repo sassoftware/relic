@@ -37,6 +37,7 @@ import (
 	_ "github.com/sassoftware/relic/v8/signers/deb"
 	_ "github.com/sassoftware/relic/v8/signers/dmg"
 	_ "github.com/sassoftware/relic/v8/signers/jar"
+	_ "github.com/sassoftware/relic/v8/signers/jsf"
 	_ "github.com/sassoftware/relic/v8/signers/macho"
 	_ "github.com/sassoftware/relic/v8/signers/msi"
 	_ "github.com/sassoftware/relic/v8/signers/pecoff"

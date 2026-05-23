@@ -25,8 +25,10 @@ require (
 	github.com/go-jose/go-jose/v4 v4.0.4
 	github.com/golang/snappy v0.0.4
 	github.com/google/uuid v1.6.0
+	github.com/gowebpki/jcs v1.0.1
 	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79
 	github.com/howeyc/gopass v0.0.0-20210920133722-c8aef6fb66ef
+	github.com/iancoleman/orderedmap v0.3.0
 	github.com/kr/pretty v0.3.1
 	github.com/lib/pq v1.10.9
 	github.com/miekg/pkcs11 v1.1.1
