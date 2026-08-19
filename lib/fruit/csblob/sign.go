@@ -117,6 +117,13 @@ func Sign(ctx context.Context, cert *certloader.Certificate, params *SignaturePa
 	if err := params.DefaultsFromBundle(cert); err != nil {
 		return nil, nil, fmt.Errorf("setting signature params: %w", err)
 	}
+	if params.Entitlement != nil && params.EntitlementDER == nil {
+		der, err := EntitlementDER(params.Entitlement)
+		if err != nil {
+			return nil, nil, fmt.Errorf("encoding DER entitlement: %w", err)
+		}
+		params.EntitlementDER = der
+	}
 	// build list of special slots to hash. for these the hash covers the blob
 	// header as well so they have to be marshalled here
 	var entBlob, entDERBlob, reqBlob []byte
